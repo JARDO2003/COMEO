@@ -1,35 +1,20 @@
 // ============================================================
-// SYSCOHADA — Service Worker v2.0
+// SYSCOHADA — Service Worker v2.0.1
 // Cache-first strategy + offline support complet
+// FIX: Response clone before body is consumed
 // ============================================================
 
 const APP_NAME = 'SYSCOHADA';
-const CACHE_VERSION = 'v2.0.0';
+const CACHE_VERSION = 'v2.0.1';
 const CACHE_STATIC = `${APP_NAME}-static-${CACHE_VERSION}`;
 const CACHE_DYNAMIC = `${APP_NAME}-dynamic-${CACHE_VERSION}`;
 const CACHE_FONTS = `${APP_NAME}-fonts-${CACHE_VERSION}`;
 
 // Fichiers à mettre en cache immédiatement à l'installation
 const STATIC_ASSETS = [
+  '/',
   '/index.html',
-  '/J.html',
-  '/manifest.json',
-  '/sw.js',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg',
-  '/images/u.jpg'
-];
-
-// Domaines à mettre en cache dynamiquement
-const CACHEABLE_DOMAINS = [
-  'fonts.googleapis.com',
-  'fonts.gstatic.com'
+  '/manifest.json'
 ];
 
 // ——— INSTALL ———
@@ -39,7 +24,6 @@ self.addEventListener('install', event => {
     caches.open(CACHE_STATIC)
       .then(cache => {
         console.log('[SW] Caching static assets...');
-        // Cache chaque fichier individuellement pour éviter l'échec total
         return Promise.allSettled(
           STATIC_ASSETS.map(url =>
             cache.add(url).catch(err => console.warn(`[SW] Could not cache ${url}:`, err))
@@ -48,7 +32,7 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('[SW] Install complete');
-        return self.skipWaiting(); // Prend le contrôle immédiatement
+        return self.skipWaiting();
       })
   );
 });
@@ -61,13 +45,12 @@ self.addEventListener('activate', event => {
       .then(cacheNames => {
         return Promise.all(
           cacheNames
-            .filter(name => {
-              // Supprime les anciens caches de cette app
-              return name.startsWith(APP_NAME) && 
-                     name !== CACHE_STATIC && 
-                     name !== CACHE_DYNAMIC &&
-                     name !== CACHE_FONTS;
-            })
+            .filter(name =>
+              name.startsWith(APP_NAME) &&
+              name !== CACHE_STATIC &&
+              name !== CACHE_DYNAMIC &&
+              name !== CACHE_FONTS
+            )
             .map(name => {
               console.log(`[SW] Deleting old cache: ${name}`);
               return caches.delete(name);
@@ -76,7 +59,7 @@ self.addEventListener('activate', event => {
       })
       .then(() => {
         console.log('[SW] Activation complete');
-        return self.clients.claim(); // Contrôle tous les onglets ouverts
+        return self.clients.claim();
       })
   );
 });
@@ -86,42 +69,47 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignore les requêtes non-GET et les requêtes Firebase
+  // Ignore non-GET, Firebase, analytics, extensions
   if (request.method !== 'GET') return;
   if (url.hostname.includes('firebase') || url.hostname.includes('google-analytics')) return;
   if (url.protocol === 'chrome-extension:') return;
 
-  // FONTS — Cache-first avec fallback réseau
+  // FONTS — Cache-first
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.open(CACHE_FONTS).then(cache =>
         cache.match(request).then(cached => {
           if (cached) return cached;
           return fetch(request).then(response => {
-            if (response.ok) cache.put(request, response.clone());
+            // ✅ FIX: clone AVANT toute consommation
+            if (response && response.ok) {
+              cache.put(request, response.clone());
+            }
             return response;
-          });
+          }).catch(() => cached || new Response('', { status: 503 }));
         })
       )
     );
     return;
   }
 
-  // ASSETS STATIQUES — Cache-first
-  if (STATIC_ASSETS.some(asset => url.pathname === asset || url.pathname.endsWith(asset))) {
+  // ASSETS STATIQUES — Cache-first avec fallback réseau
+  const isStaticAsset = STATIC_ASSETS.some(asset =>
+    url.pathname === asset || url.pathname === asset.replace(/^\//, '')
+  );
+
+  if (isStaticAsset) {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) return cached;
         return fetch(request).then(response => {
-          if (response.ok) {
+          // ✅ FIX: clone AVANT toute consommation
+          if (response && response.ok) {
             caches.open(CACHE_STATIC).then(cache => cache.put(request, response.clone()));
           }
           return response;
         }).catch(() => {
-          // Fallback offline pour les pages HTML
-          if (request.headers.get('accept').includes('text/html')) {
-            return caches.match('/index.html');
-          }
+          return caches.match('/index.html');
         });
       })
     );
@@ -132,18 +120,26 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(request)
       .then(response => {
-        if (response.ok && url.origin === self.location.origin) {
-          caches.open(CACHE_DYNAMIC).then(cache => cache.put(request, response.clone()));
+        // ✅ FIX: vérifier que la réponse est valide avant de cloner
+        if (response && response.ok && response.status < 400 && url.origin === self.location.origin) {
+          const responseClone = response.clone();
+          caches.open(CACHE_DYNAMIC).then(cache => cache.put(request, responseClone));
         }
         return response;
       })
       .catch(() => {
         return caches.match(request).then(cached => {
           if (cached) return cached;
-          // Page offline générique pour les requêtes HTML
-          if (request.headers.get('accept') && request.headers.get('accept').includes('text/html')) {
+          // Fallback HTML
+          const acceptHeader = request.headers.get('accept') || '';
+          if (acceptHeader.includes('text/html')) {
             return caches.match('/index.html');
           }
+          // Réponse vide pour éviter l'erreur "Failed to convert value to Response"
+          return new Response('', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         });
       })
   );
@@ -156,7 +152,7 @@ self.addEventListener('sync', event => {
   }
 });
 
-// ——— NOTIFICATIONS PUSH (prêt pour extension future) ———
+// ——— NOTIFICATIONS PUSH ———
 self.addEventListener('push', event => {
   if (!event.data) return;
   const data = event.data.json();
