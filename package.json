@@ -1,0 +1,55 @@
+{
+  "name": "syscohada-pwa",
+  "version": "2.0.0",
+  "description": "Plan Comptable SYSCOHADA Révisé — Application Web Progressive (PWA)",
+  "author": "SYSCOHADA",
+  "license": "MIT",
+  "private": true,
+  "homepage": ".",
+  "keywords": [
+    "syscohada",
+    "ohada",
+    "plan-comptable",
+    "comptabilite",
+    "afrique",
+    "pwa",
+    "offline"
+  ],
+  "scripts": {
+    "start": "npx serve . -p 3000 --no-clipboard",
+    "dev": "npx live-server --port=3000 --open=index.html",
+    "build": "node scripts/build.js",
+    "generate-icons": "node scripts/generate-icons.js",
+    "audit": "npx lighthouse http://localhost:3000 --output=html --output-path=./reports/lighthouse.html",
+    "validate-manifest": "npx pwa-asset-generator images/u.jpg images --manifest manifest.json --index index.html",
+    "serve": "npx serve . -p 3000",
+    "preview": "npx serve . -l 3000"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serve": "^14.2.0",
+    "live-server": "^1.2.2",
+    "pwa-asset-generator": "^6.3.1",
+    "workbox-cli": "^7.0.0",
+    "lighthouse": "^11.0.0"
+  },
+  "pwa": {
+    "name": "SYSCOHADA Révisé",
+    "short_name": "SYSCOHADA",
+    "theme_color": "#0a0e1a",
+    "background_color": "#060910",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/index.html"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
