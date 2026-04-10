@@ -4,7 +4,7 @@
 // FIX: Response clone before body is consumed
 // ============================================================
 
-const APP_NAME = 'SYSCOHADA';
+const APP_NAME = 'COMEO';
 const CACHE_VERSION = 'v2.0.1';
 const CACHE_STATIC = `${APP_NAME}-static-${CACHE_VERSION}`;
 const CACHE_DYNAMIC = `${APP_NAME}-dynamic-${CACHE_VERSION}`;
