@@ -2,97 +2,45 @@
   "name": "SYSCOHADA Révisé",
   "short_name": "SYSCOHADA",
   "description": "Plan Comptable SYSCOHADA Révisé + Tables Financières OHADA 2023",
-  "start_url": "/index.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#060910",
   "theme_color": "#0a0e1a",
   "lang": "fr",
-  "dir": "ltr",
-  "categories": ["finance", "education", "business"],
   "icons": [
     {
-      "src": "images/u.jpg",
-      "sizes": "72x72",
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "images/u.jpg",
-      "sizes": "96x96",
-      "type": "image/jpg",
-      "purpose": "any"
-    },
-    {
-      "src": "images/u.jpg",
-      "sizes": "128x128",
-      "type": "image/jpg",
-      "purpose": "any"
-    },
-    {
-      "src": "images/u.jpg",
-      "sizes": "144x144",
-      "type": "image/jpg",
-      "purpose": "any"
-    },
-    {
-      "src": "images/u.jpg",
-      "sizes": "152x152",
-      "type": "image/jpg",
-      "purpose": "any"
-    },
-    {
-      "src": "images/u.jpg",
-      "sizes": "192x192",
-      "type": "image/jpg",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "images/u.jpg",
-      "sizes": "384x384",
-      "type": "image/jpg",
-      "purpose": "any"
-    },
-    {
-      "src": "images/u.jpg",
+      "src": "images/icon-512.png",
       "sizes": "512x512",
-      "type": "image/jpg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "images/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "images/u.jpg",
+      "src": "images/screenshot-mobile.png",
       "sizes": "390x844",
-      "type": "image/jpg",
-      "form_factor": "narrow",
-      "label": "Plan Comptable SYSCOHADA"
+      "type": "image/png",
+      "form_factor": "narrow"
     },
     {
-      "src": "images/u.jpg",
+      "src": "images/screenshot-desktop.png",
       "sizes": "1280x800",
-      "type": "image/jpg",
-      "form_factor": "wide",
-      "label": "SYSCOHADA sur bureau"
+      "type": "image/png",
+      "form_factor": "wide"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Plan Comptable",
-      "short_name": "Comptes",
-      "description": "Accéder au plan comptable",
-      "url": "/index.html#comptable",
-      "icons": [{ "src": "images/u.jpg", "sizes": "96x96" }]
-    },
-    {
-      "name": "Tables Financières",
-      "short_name": "Tables",
-      "description": "Accéder aux tables financières",
-      "url": "/index.html#financieres",
-      "icons": [{ "src": "images/u.jpg", "sizes": "96x96" }]
-    }
-  ],
-  "related_applications": [],
-  "prefer_related_applications": false
+  ]
 }
