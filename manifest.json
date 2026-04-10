@@ -13,66 +13,66 @@
   "categories": ["finance", "education", "business"],
   "icons": [
     {
-      "src": "images/icon-72.png",
+      "src": "images/u.jpg",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "images/icon-96.png",
+      "src": "images/u.jpg",
       "sizes": "96x96",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any"
     },
     {
-      "src": "images/icon-128.png",
+      "src": "images/u.jpg",
       "sizes": "128x128",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any"
     },
     {
-      "src": "images/icon-144.png",
+      "src": "images/u.jpg",
       "sizes": "144x144",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any"
     },
     {
-      "src": "images/icon-152.png",
+      "src": "images/u.jpg",
       "sizes": "152x152",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any"
     },
     {
-      "src": "images/icon-192.png",
+      "src": "images/u.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "images/icon-384.png",
+      "src": "images/u.jpg",
       "sizes": "384x384",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any"
     },
     {
-      "src": "images/icon-512.png",
+      "src": "images/u.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "images/screenshot-mobile.png",
+      "src": "images/u.jpg",
       "sizes": "390x844",
-      "type": "image/png",
+      "type": "image/jpg",
       "form_factor": "narrow",
       "label": "Plan Comptable SYSCOHADA"
     },
     {
-      "src": "images/screenshot-desktop.png",
+      "src": "images/u.jpg",
       "sizes": "1280x800",
-      "type": "image/png",
+      "type": "image/jpg",
       "form_factor": "wide",
       "label": "SYSCOHADA sur bureau"
     }
@@ -83,14 +83,14 @@
       "short_name": "Comptes",
       "description": "Accéder au plan comptable",
       "url": "/index.html#comptable",
-      "icons": [{ "src": "images/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "images/u.jpg", "sizes": "96x96" }]
     },
     {
       "name": "Tables Financières",
       "short_name": "Tables",
       "description": "Accéder aux tables financières",
       "url": "/index.html#financieres",
-      "icons": [{ "src": "images/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "images/u.jpg", "sizes": "96x96" }]
     }
   ],
   "related_applications": [],
