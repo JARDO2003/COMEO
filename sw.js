@@ -15,14 +15,14 @@ const STATIC_ASSETS = [
   '/J.html',
   '/manifest.json',
   '/sw.js',
-  '/images/icon-72.png',
-  '/images/icon-96.png',
-  '/images/icon-128.png',
-  '/images/icon-144.png',
-  '/images/icon-152.png',
-  '/images/icon-192.png',
-  '/images/icon-384.png',
-  '/images/icon-512.png',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
+  '/images/u.jpg',
   '/images/u.jpg'
 ];
 
