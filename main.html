@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<!-- PWA Meta -->
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="COMEO">
+<meta name="application-name" content="COMEO">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="msapplication-TileColor" content="#0a0e1a">
+<meta name="msapplication-TileImage" content="images/icon-144.png">
+<meta name="msapplication-config" content="browserconfig.xml">
+<meta name="format-detection" content="telephone=no">
+
+<!-- SEO -->
+<meta name="description" content="Plan Comptable + Tables Financières — Application hors-ligne pour la zone OHADA">
+<meta name="keywords" content="comeo, ohada, plan comptable, comptabilité, afrique, tables financières">
+<meta name="author" content="COMEO">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="COMEO">
+<meta property="og:description" content="Plan Comptable + Tables Financières">
+<meta property="og:image" content="images/icon-512.png">
+
+<!-- Manifest PWA -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Apple Touch Icons -->
+<link rel="apple-touch-icon" href="images/icon-152.png">
+<link rel="apple-touch-icon" sizes="72x72" href="images/icon-72.png">
+<link rel="apple-touch-icon" sizes="96x96" href="images/icon-96.png">
+<link rel="apple-touch-icon" sizes="128x128" href="images/icon-128.png">
+<link rel="apple-touch-icon" sizes="144x144" href="images/icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/icon-152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="images/icon-192.png">
+<link rel="apple-touch-startup-image" href="images/icon-512.png">
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="images/icon-96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="images/icon-72.png">
+<link rel="shortcut icon" href="images/icon-192.png">
+
+<title>SYSCOHADA — Plan Comptable & Tables Financières</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Styles de l'application -->
+<link rel="stylesheet" href="main.css">
+
+<!-- Firebase tracking -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
+    authDomain: "data-com-a94a8.firebaseapp.com",
+    databaseURL: "https://data-com-a94a8-default-rtdb.firebaseio.com",
+    projectId: "data-com-a94a8",
+    storageBucket: "data-com-a94a8.firebasestorage.app",
+    messagingSenderId: "276904640935",
+    appId: "1:276904640935:web:9cd805aeba6c34c767f682"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  function getSessionId() {
+    let sid = sessionStorage.getItem('syscohada_sid');
+    if (!sid) { sid = 'u_' + Date.now() + '_' + Math.random().toString(36).substr(2,9); sessionStorage.setItem('syscohada_sid', sid); }
+    return sid;
+  }
+  function getWeekKey(date) {
+    const d = new Date(date); d.setHours(0,0,0,0); d.setDate(d.getDate() + 4 - (d.getDay()||7));
+    const yearStart = new Date(d.getFullYear(),0,1);
+    const weekNo = Math.ceil((((d - yearStart)/86400000)+1)/7);
+    return `${d.getFullYear()}_S${String(weekNo).padStart(2,'0')}`;
+  }
+  async function recordInteraction(type='visit') {
+    try {
+      const now = new Date();
+      const dateKey = now.toISOString().slice(0,10).replace(/-/g,'_');
+      const weekKey = getWeekKey(now);
+      const monthKey = now.toISOString().slice(0,7).replace(/-/g,'_');
+      const sid = getSessionId();
+      await set(ref(db,`sessions/day/${dateKey}/${sid}`), {ts:serverTimestamp(),type});
+      await set(ref(db,`sessions/week/${weekKey}/${sid}`), {ts:serverTimestamp(),type});
+      await set(ref(db,`sessions/month/${monthKey}/${sid}`), {ts:serverTimestamp(),type});
+      const iRef = ref(db,`interactions/${dateKey}`);
+      const snap = await get(iRef);
+      const current = snap.exists() ? (snap.val().count||0) : 0;
+      await set(iRef, {count:current+1, lastUpdate:serverTimestamp()});
+    } catch(e) { console.warn('Firebase:', e); }
+  }
+  window._fbRecord = recordInteraction;
+  window.fbTrack = (type) => recordInteraction(type);
+  window.addEventListener('DOMContentLoaded', () => recordInteraction('visit'));
+</script>
+</head>
+<body>
+
+<div class="bg-scene"><div class="grid-lines"></div></div>
+<div class="offline-bar" id="offlineBar">📡 Hors-ligne — données en cache disponibles</div>
+<div class="update-banner" id="updateBanner">
+  🔄 Nouvelle version disponible !
+  <button class="update-btn" onclick="applyUpdate()">Mettre à jour</button>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-wrap">
+      <img src="images/u.jpg" alt="COMEO"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="logo-fallback" style="display:none">S</div>
+    </div>
+    <div class="header-text">
+      <div class="header-title">COMEO</div>
+      <div class="header-sub">Plan Comptable · Tables Financières · OHADA 2023</div>
+    </div>
+    <div class="header-actions">
+      <a href="J.html" class="stats-link" title="Statistiques">
+        <span class="live-dot"></span>
+        <span class="stats-txt">Stats</span>
+      </a>
+      <button class="pwa-install-btn" id="installBtn" title="Télécharger l'application">
+        <span class="btn-dl-icon">⬇</span>
+        <span class="btn-txt">Installer</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Bannière instructions iOS -->
+<div class="ios-install-banner" id="iosBanner">
+  <button class="ios-banner-close" onclick="closeIosBanner()">✕</button>
+  <div class="ios-banner-title">📱 Installer COMEO sur iPhone</div>
+  <div class="ios-banner-sub">Accès hors-ligne · Icône sur l'écran d'accueil · Expérience native</div>
+  <div class="ios-steps">
+    <div class="ios-step">
+      <span class="ios-step-num">1</span>
+      <span>Appuyez sur le bouton <strong>Partager</strong> ⬆ en bas de Safari</span>
+    </div>
+    <div class="ios-step">
+      <span class="ios-step-num">2</span>
+      <span>Faites défiler et appuyez <strong>"Sur l'écran d'accueil"</strong></span>
+    </div>
+    <div class="ios-step">
+      <span class="ios-step-num">3</span>
+      <span>Appuyez sur <strong>Ajouter</strong> — l'app apparaît comme native !</span>
+    </div>
+  </div>
+</div>
+
+<!-- NAV PRINCIPALE -->
+<nav class="main-nav">
+  <button class="main-tab active" data-page="comptable" style="--tab-color:var(--gold)">
+    <span>📚</span> Plan Comptable
+  </button>
+  <button class="main-tab" data-page="financieres" style="--tab-color:var(--fin)">
+    <span>📐</span> Tables Financières
+  </button>
+</nav>
+
+<!-- PAGE COMPTABLE -->
+<div class="page active" id="page-comptable">
+  <div class="search-zone">
+    <div class="search-label">Bibliothèque des Comptes SYSCOHADA</div>
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="searchInput"
+             placeholder="Numéro de compte ou libellé..."
+             autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="search-clear" id="clearBtn">✕</button>
+    </div>
+    <div class="search-stats" id="searchStats">1 412 comptes · 9 classes · SYSCOHADA Révisé 2023</div>
+  </div>
+  <div class="tabs-wrap">
+    <div class="tabs" id="tabsBar">
+      <button class="tab-btn active" data-view="library">📚 Bibliothèque</button>
+      <button class="tab-btn" data-view="c1">Classe 1</button>
+      <button class="tab-btn" data-view="c2">Classe 2</button>
+      <button class="tab-btn" data-view="c3">Classe 3</button>
+      <button class="tab-btn" data-view="c4">Classe 4</button>
+      <button class="tab-btn" data-view="c5">Classe 5</button>
+      <button class="tab-btn" data-view="c6">Classe 6</button>
+      <button class="tab-btn" data-view="c7">Classe 7</button>
+      <button class="tab-btn" data-view="c8">Classe 8</button>
+      <button class="tab-btn" data-view="c9">Classe 9</button>
+    </div>
+  </div>
+  <main class="main" id="mainContent"></main>
+</div>
+
+<!-- PAGE TABLES FINANCIÈRES -->
+<div class="page" id="page-financieres">
+  <main class="main">
+    <div class="fin-page">
+      <div class="fin-hero">
+        <div class="fin-hero-title">Tables Financières</div>
+        <div class="fin-hero-sub">Mathématiques financières — Intérêts composés, annuités, remboursements. Taux 1,25% à 13% · Périodes 1 à 30</div>
+        <div class="fin-hero-badges">
+          <span class="fin-badge">T1 — Capitalisation</span>
+          <span class="fin-badge">T2 — Actualisation</span>
+          <span class="fin-badge">T3 — Annuité acquise</span>
+          <span class="fin-badge">T4 — Annuité actuelle</span>
+          <span class="fin-badge">T5 — Remboursement</span>
+          <span class="fin-badge">48 taux · 30 périodes</span>
+        </div>
+      </div>
+      <div class="table-selector">
+        <div class="table-card active" style="--tc:#10b981" onclick="selectTable(0,this)"><div class="tc-num">T1</div><div class="tc-title">Valeur Acquise</div><div class="tc-formula">C = (1+i)ⁿ</div></div>
+        <div class="table-card" style="--tc:#3b7fd4" onclick="selectTable(1,this)"><div class="tc-num" style="color:#3b7fd4">T2</div><div class="tc-title">Valeur Actuelle</div><div class="tc-formula">C = (1+i)⁻ⁿ</div></div>
+        <div class="table-card" style="--tc:#a855f7" onclick="selectTable(2,this)"><div class="tc-num" style="color:#a855f7">T3</div><div class="tc-title">Annuité Acquise</div><div class="tc-formula">C = [(1+i)ⁿ-1]/i</div></div>
+        <div class="table-card" style="--tc:#f97316" onclick="selectTable(3,this)"><div class="tc-num" style="color:#f97316">T4</div><div class="tc-title">Annuité Actuelle</div><div class="tc-formula">C = [1-(1+i)⁻ⁿ]/i</div></div>
+        <div class="table-card" style="--tc:#ec4899" onclick="selectTable(4,this)"><div class="tc-num" style="color:#ec4899">T5</div><div class="tc-title">Remboursement</div><div class="tc-formula">C = i/[1-(1+i)⁻ⁿ]</div></div>
+      </div>
+      <div class="fin-calc">
+        <div class="fin-calc-title">🧮 Calculatrice Financière</div>
+        <div class="calc-inputs">
+          <div class="calc-field"><label>Capital (C)</label><input type="number" class="calc-input" id="calcCapital" placeholder="Ex: 1000000"></div>
+          <div class="calc-field"><label>Taux (%)</label><input type="number" class="calc-input" id="calcTaux" placeholder="Ex: 5" step="0.01" min="0"></div>
+          <div class="calc-field"><label>Périodes (n)</label><input type="number" class="calc-input" id="calcN" placeholder="Ex: 10" min="1" max="100"></div>
+          <button class="calc-btn" onclick="calculate()">Calculer</button>
+        </div>
+        <div class="calc-result" id="calcResult">
+          <div class="calc-result-label" id="calcResultLabel"></div>
+          <div class="calc-result-value" id="calcResultValue"></div>
+          <div class="calc-result-formula" id="calcResultFormula"></div>
+        </div>
+      </div>
+      <div class="fin-controls">
+        <div class="fin-ctrl-group"><span class="fin-ctrl-label">Taux (%)</span><select class="fin-select" id="taucSelect" onchange="renderFinTable()"><option value="">— Tous —</option></select></div>
+        <div class="fin-ctrl-group"><span class="fin-ctrl-label">Surligner n</span><select class="fin-select" id="hlNSelect" onchange="renderFinTable()"><option value="">—</option></select></div>
+        <div class="fin-ctrl-group"><span class="fin-ctrl-label">Surligner taux</span><select class="fin-select" id="hlTauxSelect" onchange="renderFinTable()"><option value="">—</option></select></div>
+      </div>
+      <div class="fin-table-wrap"><div class="fin-table-container"><table class="fin-table" id="finTable"></table></div></div>
+    </div>
+  </main>
+</div>
+
+<div class="bottom-bar">Plan Comptable <span>SYSCOHADA</span> · Tables <span>Financières</span> · OHADA <span>2023</span> · <span>MARCIO JARDEL ZINZINDOHOUE tout droit reservé</span></div>
+<div class="toast" id="toast"></div>
+
+<!-- Script principal de l'application -->
+<script src="main.js"></script>
+</body>
+</html>
