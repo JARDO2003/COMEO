@@ -1,0 +1,21 @@
+# robots.txt - COMEO
+# https://comeo-murex.vercel.app
+
+User-agent: *
+Allow: /
+
+# Bloquer les fichiers techniques inutiles pour le SEO
+Disallow: /browserconfig.xml
+Disallow: /manifest.json
+Disallow: /package.json
+Disallow: /app.js
+Disallow: /main.js
+Disallow: /splash.js
+Disallow: /splash.css
+Disallow: /main.css
+
+# Autoriser les images
+Allow: /images/
+
+# Sitemap
+Sitemap: https://comeo-murex.vercel.app/sitemap.xml
