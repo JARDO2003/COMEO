@@ -1,5 +1,13 @@
 {
-  "buildCommand": null,
-  "outputDirectory": ".",
-  "installCommand": "echo skip"
+  "headers": [
+    {
+      "source": "/sitemap.xml",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/xml"
+        }
+      ]
+    }
+  ]
 }
