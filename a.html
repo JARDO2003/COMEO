@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>marcioAI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <!-- Tesseract OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div id="avatar">
+      <img src="images/u.jpg" alt="marcioAI logo" onerror="this.style.display='none';this.parentElement.textContent='MA'">
+    </div>
+    <div id="header-info">
+      <div id="header-name">marcioAI</div>
+      <div id="header-status">MarcioDEV</div>
+    </div>
+    <div id="model-badge">MarcioDev V1</div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="messages">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">
+        <img src="images/u.jpg" alt="marcioAI" onerror="this.style.display='none';this.parentElement.textContent='MA'">
+      </div>
+      <h3>Bonjour, je suis marcioAI</h3>
+      <p>Assistant IA créé par Marcio Jardel Zinzindohoue. Envoyez du texte, une image (le texte sera extrait) ou un message vocal.</p>
+      <div class="suggestions">
+        <button class="sug-btn" onclick="quickSend('C\'est quoi l\'intelligence artificielle ?')">C'est quoi l'IA ?</button>
+        <button class="sug-btn" onclick="quickSend('Qui es-tu et qui t\'a créé ?')">Qui es-tu ?</button>
+        <button class="sug-btn" onclick="quickSend('Quelles sont tes capacités ?')">Tes capacités ?</button>
+        <button class="sug-btn" onclick="quickSend('Donne-moi 5 conseils de productivité')">Conseils prod.</button>
+        <button class="sug-btn" onclick="quickSend('Explique-moi la régression linéaire avec les formules')">Régression linéaire</button>
+        <button class="sug-btn" onclick="quickSend('Aide-moi à rédiger un email professionnel')">Email pro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INPUT AREA -->
+  <div id="input-area">
+
+    <div id="img-preview-wrap">
+      <img id="img-preview-thumb" src="" alt="preview"/>
+      <span id="img-preview-name">image.jpg</span>
+      <button id="img-preview-remove" onclick="clearImage()">✕</button>
+    </div>
+
+    <div id="ocr-progress">
+      <span id="ocr-label">Lecture OCR…</span>
+      <div id="ocr-bar-wrap"><div id="ocr-bar"></div></div>
+      <span id="ocr-pct">0%</span>
+    </div>
+
+    <div id="audio-preview-wrap">
+      <audio id="audio-preview" controls></audio>
+      <button id="audio-preview-remove" onclick="clearAudio()">✕</button>
+    </div>
+
+    <div id="input-row">
+      <!-- Image button -->
+      <button class="icon-btn" onclick="document.getElementById('file-input').click()" title="Envoyer une image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      </button>
+      <input type="file" id="file-input" accept="image/*" onchange="handleImageSelect(event)"/>
+
+      <!-- Voice button -->
+      <button class="icon-btn" id="voice-btn" onclick="toggleVoice()" title="Message vocal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+
+      <textarea id="user-input" placeholder="Écrivez un message…" rows="1"></textarea>
+
+      <button id="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- Script -->
+<script src="script.js"></script>
+</body>
+</html>
