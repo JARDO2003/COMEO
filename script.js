@@ -167,6 +167,8 @@ function handleImageSelect(e) {
     document.getElementById('img-preview-thumb').src = pendingImagePreview;
     document.getElementById('img-preview-name').textContent = file.name;
     wrap.style.display = 'flex';
+    // Focus sur l'input pour que l'utilisateur puisse ajouter du texte ou envoyer directement
+    inputEl.focus();
   };
   reader.readAsDataURL(file);
   e.target.value = '';
@@ -363,6 +365,7 @@ async function sendMessage() {
   const hasImg = !!pendingImageFile;
   const hasAud = !!pendingAudioBlob;
 
+  // CORRECTION: Accepter si on a du texte OU une image OU un audio
   if (!text && !hasImg && !hasAud) return;
   if (isLoading) return;
 
@@ -378,43 +381,79 @@ async function sendMessage() {
   let audioSrcDisplay   = null;
   let transcriptionText = null;
 
+  // Traitement OCR si image présente
   if (hasImg) {
     showToast('Extraction du texte OCR…', 15000);
-    try { ocrText = await extractTextFromImage(pendingImageFile); }
-    catch(e) { showToast('Erreur OCR : ' + e.message); ocrText = ''; }
-    clearImage();
+    try { 
+      ocrText = await extractTextFromImage(pendingImageFile); 
+    }
+    catch(e) { 
+      showToast('Erreur OCR : ' + e.message); 
+      ocrText = ''; 
+    }
+    // On garde l'image pour l'affichage mais on nettoie les variables de pending
+    pendingImageFile = null;
+    pendingImagePreview = null;
   }
 
+  // Traitement transcription si audio présent
   if (hasAud) {
     showToast('Transcription audio…', 8000);
-    try { transcriptionText = await transcribeAudio(pendingAudioBlob); }
-    catch(e) { showToast('Erreur transcription audio'); }
+    try { 
+      transcriptionText = await transcribeAudio(pendingAudioBlob); 
+    }
+    catch(e) { 
+      showToast('Erreur transcription audio'); 
+    }
     audioSrcDisplay = URL.createObjectURL(pendingAudioBlob);
-    clearAudio();
+    pendingAudioBlob = null;
   }
 
+  // Afficher le message utilisateur
   addMessage('user', text || null, imagePreview, audioSrcDisplay, ocrText, transcriptionText);
-  inputEl.value = ''; inputEl.style.height = 'auto';
+  
+  // Reset input
+  inputEl.value = ''; 
+  inputEl.style.height = 'auto';
+  
+  // Cacher les previews
+  document.getElementById('img-preview-wrap').style.display = 'none';
+  document.getElementById('audio-preview-wrap').style.display = 'none';
+  
   showTyping();
 
+  // Vérifier si on a du contenu à envoyer à l'API
   const ocrIsEmpty = hasImg && (!ocrText || ocrText.length < 5);
-  if (ocrIsEmpty && !text && !transcriptionText) {
+  
+  // CORRECTION: Si on a seulement une image sans texte détecté et pas d'autre contenu,
+  // on envoie quand même l'image à l'API pour analyse visuelle
+  if (!text && !transcriptionText && ocrIsEmpty && !hasImg) {
     hideTyping();
-    addMessage('bot', `👋 Bonjour ! **marcioAI** est là pour vous aider.\n\nJe n'ai pas pu détecter de texte dans cette image. Veuillez :\n- Envoyer une image contenant du **texte lisible**\n- Ou **saisir votre question** directement dans le champ de message\n\nJe suis à votre disposition pour traiter vos sujets ! 😊`);
+    addMessage('bot', `👋 Bonjour ! **marcioAI** est là pour vous aider.\n\nJe n'ai pas pu détecter de contenu à traiter. Veuillez :\n- Envoyer une image contenant du **texte lisible**\n- Ou **saisir votre question** directement dans le champ de message\n\nJe suis à votre disposition pour traiter vos sujets ! 😊`);
     isLoading = false;
     sendBtn.disabled = false;
     inputEl.focus();
     return;
   }
 
+  // Construction du message pour l'API
   const contentParts = [];
+  
   if (text) contentParts.push({ type: 'text', text });
+  
   if (ocrText && ocrText.length >= 5) {
     contentParts.push({
       type: 'text',
       text: `[L'utilisateur a envoyé une image. Voici le texte extrait par OCR :\n\n${ocrText}\n\nAnalyse ce contenu et réponds en conséquence. Si c'est un tableau de données, présente-le proprement. Si c'est des formules mathématiques, utilise la notation LaTeX.]`
     });
+  } else if (hasImg) {
+    // Si OCR vide mais image présente, on informe quand même l'API
+    contentParts.push({
+      type: 'text',
+      text: `[L'utilisateur a envoyé une image mais je n'ai pas pu en extraire de texte lisible. L'image a été affichée dans la conversation.]`
+    });
   }
+  
   if (transcriptionText) {
     contentParts.push({ type: 'text', text: `[Message vocal transcrit] : ${transcriptionText}` });
   }
@@ -425,6 +464,7 @@ async function sendMessage() {
       ? contentParts[0].text
       : contentParts
   };
+  
   history.push(userMsg);
 
   try {
