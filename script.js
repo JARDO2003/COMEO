@@ -645,7 +645,7 @@ function showTyping() {
   const avatarEl  = document.createElement('div');
   avatarEl.className = 'msg-avatar bot';
   const img       = document.createElement('img');
-  img.src         = 'images/u.jpg';
+  img.src         = 'images/marcioAI.jpg';
   img.alt         = 'marcioAI';
   avatarEl.appendChild(img);
   d.appendChild(avatarEl);
