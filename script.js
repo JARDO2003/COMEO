@@ -622,7 +622,7 @@ function addMessage(role, text, imagePreview, audioSrc, ocrText, transcription) 
 
   if (!isUser) {
     const avatarImg = document.createElement('img');
-    avatarImg.src   = 'images/u.jpg';
+    avatarImg.src   = 'images/marcioAI.jpg';
     avatarImg.alt   = 'marcioAI';
     avatarEl.appendChild(avatarImg);
   } else {
