@@ -23,7 +23,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg);
   display: flex;
   justify-content: center;
@@ -306,7 +306,7 @@ body {
   line-height: 1.6;
 }
 .bubble code {
-  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-family: 'DM Mono', 'Fira Code', 'Cascadia Code', monospace;
   font-size: 12.5px;
   background: rgba(255,255,255,0.06);
   border-radius: 4px;
