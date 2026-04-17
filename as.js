@@ -45,7 +45,7 @@ let exportFormat='pdf';
 let ecrQueue = [], ecrQueueIdx = 0;
 let currentGroupId = null; // ID du groupe courant pour lier les 3 écritures
 
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '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';
 
 // MOBILE SIDEBAR
 function toggleMobileSidebar() {
