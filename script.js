@@ -1,4 +1,4 @@
-const GROQ_API_KEY   = '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';
+const GROQ_API_KEY   = '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';
 const GROQ_API_URL   = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_AUDIO_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
