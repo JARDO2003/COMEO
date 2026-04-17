@@ -1,22 +1,23 @@
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  const firebaseConfig = {
-    apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
-    authDomain: "data-com-a94a8.firebaseapp.com",
-    databaseURL: "https://data-com-a94a8-default-rtdb.firebaseio.com",
-    projectId: "data-com-a94a8",
-    storageBucket: "data-com-a94a8.appspot.com",
-    messagingSenderId: "276904640935",
-    appId: "1:276904640935:web:9cd805aeba6c34c767f682",
-    measurementId: "G-FYQCWY5G4S"
-  };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  window._db = db; window._fbCollection = collection; window._fbAddDoc = addDoc;
-  window._fbGetDocs = getDocs; window._fbDeleteDoc = deleteDoc; window._fbDoc = doc;
-  window._fbQuery = query; window._fbOrderBy = orderBy; window._fbSetDoc = setDoc;
-  window._fbGetDoc = getDoc; window._fbReady = true;
-  document.dispatchEvent(new Event('firebase-ready'));
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
+  authDomain: "data-com-a94a8.firebaseapp.com",
+  databaseURL: "https://data-com-a94a8-default-rtdb.firebaseio.com",
+  projectId: "data-com-a94a8",
+  storageBucket: "data-com-a94a8.appspot.com",
+  messagingSenderId: "276904640935",
+  appId: "1:276904640935:web:9cd805aeba6c34c767f682",
+  measurementId: "G-FYQCWY5G4S"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window._db = db; window._fbCollection = collection; window._fbAddDoc = addDoc;
+window._fbGetDocs = getDocs; window._fbDeleteDoc = deleteDoc; window._fbDoc = doc;
+window._fbQuery = query; window._fbOrderBy = orderBy; window._fbSetDoc = setDoc;
+window._fbGetDoc = getDoc; window._fbReady = true;
+document.dispatchEvent(new Event('firebase-ready'));
 
 // ══════════════════════════════════════════
 // PLAN COMPTABLE SYSCOHADA
@@ -27,14 +28,13 @@ const NATURE_MAP={'1':'Passif','2':'Actif','3':'Actif','4':'Mixte','5':'Actif','
 const JOURNAL_NAMES={'AC':'Achats','VE':'Ventes','BQ':'Banque','CA':'Caisse','OD':'Opérations Diverses','IN':'Inventaire','AN':'À Nouveau'};
 const JOURNAL_ICONS={'AC':'🛒','VE':'💰','BQ':'🏦','CA':'💵','OD':'📋','IN':'📦','AN':'📂'};
 
-// ══ Étiquettes lisibles par type d'écriture dans un groupe ══
 function getStepLabel(ecr, idx, total) {
   const jnl = ecr.journal;
   if(jnl === 'IN') return 'Mouvement de stock';
   if(jnl === 'AC') return 'Constatation facture achat';
   if(jnl === 'VE') return 'Constatation facture vente';
-  if(jnl === 'BQ') return idx === 0 ? 'Règlement banque' : 'Règlement banque';
-  if(jnl === 'CA') return idx === 0 ? 'Règlement caisse' : 'Règlement caisse';
+  if(jnl === 'BQ') return 'Règlement banque';
+  if(jnl === 'CA') return 'Règlement caisse';
   if(jnl === 'OD') return 'Opération diverse';
   if(jnl === 'AN') return 'À nouveau';
   return ecr.libelle || 'Écriture';
@@ -43,7 +43,7 @@ function getStepLabel(ecr, idx, total) {
 let ecritures=[], lignes=[], pieceCounter=1, currentProfile=null, isAILoading=false;
 let exportFormat='pdf';
 let ecrQueue = [], ecrQueueIdx = 0;
-let currentGroupId = null; // ID du groupe courant pour lier les 3 écritures
+let currentGroupId = null;
 
 const GROQ_API_KEY = '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';
 
@@ -267,9 +267,7 @@ function initSaisie() {
 function addLigne(compte='',libelle='',debit='',credit=''){lignes.push({compte,libelle,debit,credit});renderLignes();}
 function removeLigne(i){lignes.splice(i,1);renderLignes();}
 
-// ══════════════════════════════════════════
-// AUTO SAVE — AVEC GROUPID COMMUN
-// ══════════════════════════════════════════
+// AUTO SAVE
 async function autoSaveAllEcritures() {
   if(ecrQueue.length === 0) { toast('Aucune écriture en file d\'attente','error'); return; }
   const total = ecrQueue.length;
@@ -278,15 +276,10 @@ async function autoSaveAllEcritures() {
   const prog = document.getElementById('autoSaveProgress');
   bar.classList.add('show');
   const date = document.getElementById('ecr-date').value || new Date().toISOString().split('T')[0];
-
-  // IMPORTANT : même groupId pour toutes les écritures du lot IA
   const groupId = 'grp_' + Date.now();
-  // Libellé principal = premier libellé de la queue (ex: "Achat marchandises HT…")
   const groupLibelle = ecrQueue[0]?.libelle || 'Opération ' + new Date().toLocaleDateString('fr-FR');
-
   let saved = 0;
   const errors = [];
-
   for(let i = 0; i < ecrQueue.length; i++) {
     const ecr = ecrQueue[i];
     msg.innerHTML = `<strong>Enregistrement ${i+1}/${total}</strong> — [${ecr.journal}] ${ecr.libelle || 'Écriture '+(i+1)}`;
@@ -300,10 +293,7 @@ async function autoSaveAllEcritures() {
     const ecriture = {
       id: Date.now() + i, date, journal: ecr.journal || 'OD', piece,
       libelle: ecr.libelle || 'Écriture IA',
-      groupId,          // ← lie les 3 écritures ensemble
-      groupLibelle,     // ← titre commun du groupe
-      groupSize: total, // ← combien d'écritures dans ce groupe
-      groupIdx: i,      // ← position dans le groupe (0, 1, 2)
+      groupId, groupLibelle, groupSize: total, groupIdx: i,
       createdAt: new Date().toISOString(),
       lignes: valid.map(l => ({
         compte: String(l.compte),
@@ -366,11 +356,12 @@ function loadEcritureFromQueue(idx) {
 
 function updateQueueBar() {
   const bar = document.getElementById('saisieQueueBar');
+  if(!bar) return;
   const counter = document.getElementById('sqbCounter');
   const remaining = ecrQueue.length - ecrQueueIdx;
   if(remaining > 0) {
     bar.classList.add('show');
-    counter.textContent = remaining + ' écriture' + (remaining>1?'s':'');
+    if(counter) counter.textContent = remaining + ' écriture' + (remaining>1?'s':'');
     const btnAll = document.getElementById('btnValidateAll');
     if(btnAll) btnAll.style.display = remaining > 1 ? 'inline-flex' : 'none';
   } else { bar.classList.remove('show'); }
@@ -387,7 +378,10 @@ function skipToNextEcriture() {
   }
 }
 
-function dismissFillBanner() { document.getElementById('aiFillBanner').classList.remove('show'); }
+function dismissFillBanner() {
+  const b = document.getElementById('aiFillBanner');
+  if(b) b.classList.remove('show');
+}
 
 function showMultiEcrBanner(ecritures_ai) {
   const banner = document.getElementById('multiEcrBanner');
@@ -401,11 +395,15 @@ function showMultiEcrBanner(ecritures_ai) {
   banner.classList.add('show');
   setTimeout(()=>banner.classList.remove('show'), 60000);
 }
-function hideMultiEcrBanner() { document.getElementById('multiEcrBanner').classList.remove('show'); }
+function hideMultiEcrBanner() {
+  const b = document.getElementById('multiEcrBanner');
+  if(b) b.classList.remove('show');
+}
 
 function showSaisieNotif(libelle, count) {
   const notif = document.getElementById('saisieNotif');
   const body = document.getElementById('saisieNotifBody');
+  if(!notif) return;
   if(count > 1) {
     body.textContent = `${count} écritures liées préparées. Cliquez "Tout enregistrer" pour les grouper automatiquement.`;
   } else {
@@ -414,7 +412,10 @@ function showSaisieNotif(libelle, count) {
   notif.classList.add('show');
   setTimeout(()=>notif.classList.remove('show'), 15000);
 }
-function hideSaisieNotif() { document.getElementById('saisieNotif').classList.remove('show'); }
+function hideSaisieNotif() {
+  const n = document.getElementById('saisieNotif');
+  if(n) n.classList.remove('show');
+}
 function goToSaisie() {
   hideSaisieNotif(); navigate('saisie');
   setTimeout(()=>{
@@ -425,8 +426,10 @@ function goToSaisie() {
 
 // RENDER LIGNES
 function renderLignes() {
-  const tbody=document.getElementById('lignesBody'); tbody.innerHTML='';
-  const cardContainer=document.getElementById('lignesCardContainer'); cardContainer.innerHTML='';
+  const tbody=document.getElementById('lignesBody'); if(!tbody) return;
+  tbody.innerHTML='';
+  const cardContainer=document.getElementById('lignesCardContainer');
+  if(cardContainer) cardContainer.innerHTML='';
   lignes.forEach((l,i)=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -441,40 +444,42 @@ function renderLignes() {
       <td><input type="text" value="${l.credit||''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)" oninput="lignes[${i}].credit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateBalance()"></td>
       <td><button class="del-line" onclick="removeLigne(${i})">✕</button></td>`;
     tbody.appendChild(tr);
-    const card=document.createElement('div');
-    card.className='ligne-card';
-    card.innerHTML=`
-      <div class="ligne-card-row">
-        <div class="ligne-card-field">
-          <div class="ligne-card-label">Compte</div>
-          <div style="position:relative">
-            <input class="ligne-card-input" type="text" value="${l.compte}" placeholder="Compte…" style="font-family:var(--font-mono)"
-              oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'card')"
-              onblur="hideDropdown('c-${i}')">
-            <div class="adrop" id="drop-c-${i}"></div>
+    if(cardContainer) {
+      const card=document.createElement('div');
+      card.className='ligne-card';
+      card.innerHTML=`
+        <div class="ligne-card-row">
+          <div class="ligne-card-field">
+            <div class="ligne-card-label">Compte</div>
+            <div style="position:relative">
+              <input class="ligne-card-input" type="text" value="${l.compte}" placeholder="Compte…" style="font-family:var(--font-mono)"
+                oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'card')"
+                onblur="hideDropdown('c-${i}')">
+              <div class="adrop" id="drop-c-${i}"></div>
+            </div>
+          </div>
+          <div class="ligne-card-field">
+            <div class="ligne-card-label">Libellé</div>
+            <input class="ligne-card-input" type="text" value="${l.libelle||''}" placeholder="Libellé…" oninput="lignes[${i}].libelle=this.value">
           </div>
         </div>
-        <div class="ligne-card-field">
-          <div class="ligne-card-label">Libellé</div>
-          <input class="ligne-card-input" type="text" value="${l.libelle||''}" placeholder="Libellé…" oninput="lignes[${i}].libelle=this.value">
+        <div class="ligne-card-row">
+          <div class="ligne-card-field">
+            <div class="ligne-card-label" style="color:var(--blue)">Débit (FCFA)</div>
+            <input class="ligne-card-input" type="number" value="${l.debit||''}" placeholder="0" style="font-family:var(--font-mono)"
+              oninput="lignes[${i}].debit=parseFloat(this.value)||0;updateBalance()">
+          </div>
+          <div class="ligne-card-field">
+            <div class="ligne-card-label" style="color:var(--green)">Crédit (FCFA)</div>
+            <input class="ligne-card-input" type="number" value="${l.credit||''}" placeholder="0" style="font-family:var(--font-mono)"
+              oninput="lignes[${i}].credit=parseFloat(this.value)||0;updateBalance()">
+          </div>
         </div>
-      </div>
-      <div class="ligne-card-row">
-        <div class="ligne-card-field">
-          <div class="ligne-card-label" style="color:var(--blue)">Débit (FCFA)</div>
-          <input class="ligne-card-input" type="number" value="${l.debit||''}" placeholder="0" style="font-family:var(--font-mono)"
-            oninput="lignes[${i}].debit=parseFloat(this.value)||0;updateBalance()">
-        </div>
-        <div class="ligne-card-field">
-          <div class="ligne-card-label" style="color:var(--green)">Crédit (FCFA)</div>
-          <input class="ligne-card-input" type="number" value="${l.credit||''}" placeholder="0" style="font-family:var(--font-mono)"
-            oninput="lignes[${i}].credit=parseFloat(this.value)||0;updateBalance()">
-        </div>
-      </div>
-      <div class="ligne-card-actions">
-        <button class="del-line" style="opacity:.6" onclick="removeLigne(${i})">✕ Supprimer</button>
-      </div>`;
-    cardContainer.appendChild(card);
+        <div class="ligne-card-actions">
+          <button class="del-line" style="opacity:.6" onclick="removeLigne(${i})">✕ Supprimer</button>
+        </div>`;
+      cardContainer.appendChild(card);
+    }
   });
   updateBalance();
 }
@@ -499,13 +504,15 @@ function hideDropdown(id){setTimeout(()=>{const d=document.getElementById('drop-
 function updateBalance() {
   let d=0,c=0; lignes.forEach(l=>{d+=parseFloat(l.debit)||0;c+=parseFloat(l.credit)||0;});
   const s=d-c;
-  document.getElementById('totalDebitDisplay').textContent=fn(d);
-  document.getElementById('totalCreditDisplay').textContent=fn(c);
-  const el=document.getElementById('soldeDisplay');
-  el.textContent=fn(Math.abs(s)); el.className='val '+(Math.abs(s)<0.01?'bok':'bbad');
+  const tdd = document.getElementById('totalDebitDisplay');
+  const tcd = document.getElementById('totalCreditDisplay');
+  const el = document.getElementById('soldeDisplay');
+  if(tdd) tdd.textContent=fn(d);
+  if(tcd) tcd.textContent=fn(c);
+  if(el) { el.textContent=fn(Math.abs(s)); el.className='val '+(Math.abs(s)<0.01?'bok':'bbad'); }
 }
 
-// VALIDATION MANUELLE (écriture isolée, pas de groupId)
+// VALIDATION MANUELLE
 async function saveEcriture() {
   const date=document.getElementById('ecr-date').value;
   const journal=document.getElementById('ecr-journal').value;
@@ -516,8 +523,6 @@ async function saveEcriture() {
   if(valid.length<2){toast('Au moins 2 lignes requises','error');return;}
   let d=0,c=0; valid.forEach(l=>{d+=parseFloat(l.debit)||0;c+=parseFloat(l.credit)||0;});
   if(Math.abs(d-c)>0.01){toast("Écriture non équilibrée — Débit: "+fn(d)+" / Crédit: "+fn(c),'error');return;}
-
-  // Si on est dans une file de queue (mode IA), utiliser le groupId courant
   let groupInfo = {};
   if(ecrQueue.length > 0 && currentGroupId) {
     groupInfo = {
@@ -527,7 +532,6 @@ async function saveEcriture() {
       groupIdx: ecrQueueIdx
     };
   }
-
   const ecriture={
     id:Date.now(), date, journal, piece, libelle,
     ...groupInfo,
@@ -563,15 +567,15 @@ function getEcrituresFiltrees(opts={}) {
 }
 
 // ══════════════════════════════════════════
-// ★★★ JOURNAL — GROUPÉ PAR OPÉRATION (groupId)
+// JOURNAL
 // ══════════════════════════════════════════
-
 function resetJournalFiltre() {
   document.getElementById('jnl-date-debut').value='';
   document.getElementById('jnl-date-fin').value='';
   document.getElementById('journalFilter').value='';
   document.getElementById('journalSearch').value='';
-  document.getElementById('journal-analyse').style.display='none';
+  const a = document.getElementById('journal-analyse');
+  if(a) a.style.display='none';
   renderJournal();
 }
 
@@ -582,18 +586,16 @@ function formatDateFR(dateStr) {
   return `${parseInt(d)} ${mois[parseInt(m)]} ${y}`;
 }
 
-// Fonction principale : regroupe les écritures par groupId
 function renderJournal() {
-  const search = (document.getElementById('journalSearch').value||'').toLowerCase();
-  const filter = document.getElementById('journalFilter').value;
-  const dateDebut = document.getElementById('jnl-date-debut').value;
-  const dateFin = document.getElementById('jnl-date-fin').value;
+  const search = (document.getElementById('journalSearch')?.value||'').toLowerCase();
+  const filter = document.getElementById('journalFilter')?.value||'';
+  const dateDebut = document.getElementById('jnl-date-debut')?.value||'';
+  const dateFin = document.getElementById('jnl-date-fin')?.value||'';
   const content = document.getElementById('journalContent');
   const footer = document.getElementById('journal-totaux-footer');
+  if(!content) return;
 
   const ecFiltrees = getEcrituresFiltrees({ dateDebut, dateFin, journal: filter });
-
-  // Filtrage par recherche
   const ecFiltered = ecFiltrees.filter(e => {
     if(!search) return true;
     if((e.libelle||'').toLowerCase().includes(search)) return true;
@@ -608,66 +610,36 @@ function renderJournal() {
 
   if(!ecFiltered.length) {
     content.innerHTML = `<div class="empty-state"><div class="icon">≡</div><p>Aucune écriture pour cette sélection</p></div>`;
-    footer.style.display = 'none';
+    if(footer) footer.style.display = 'none';
     return;
   }
 
-  // ── ÉTAPE 1 : Construire des groupes ──
-  // Groupes IA : écritures ayant un groupId commun
-  // Écritures isolées : groupId absent ou unique
-  const groupMap = {}; // groupId → [ecritures]
-  const soloList = []; // écritures sans groupe
-
+  const groupMap = {};
+  const soloList = [];
   ecFiltered.forEach(e => {
     if(e.groupId) {
       if(!groupMap[e.groupId]) groupMap[e.groupId] = [];
       groupMap[e.groupId].push(e);
-    } else {
-      soloList.push(e);
-    }
+    } else { soloList.push(e); }
   });
 
-  // Convertir les groupes en tableau trié par date
   const groups = [];
-
-  // Groupes IA
   Object.values(groupMap).forEach(ecrs => {
     const sorted = [...ecrs].sort((a,b) => (a.groupIdx||0) - (b.groupIdx||0));
-    groups.push({
-      type: 'groupe',
-      date: sorted[0].date,
-      ecritures: sorted,
-      libelle: sorted[0].groupLibelle || sorted[0].libelle || 'Opération',
-      isGroupe: true
-    });
+    groups.push({ type:'groupe', date:sorted[0].date, ecritures:sorted, libelle:sorted[0].groupLibelle||sorted[0].libelle||'Opération', isGroupe:true });
   });
-
-  // Écritures isolées = chacune est son propre "groupe" d'une écriture
   soloList.forEach(e => {
-    groups.push({
-      type: 'solo',
-      date: e.date,
-      ecritures: [e],
-      libelle: e.libelle || 'Écriture',
-      isGroupe: false
-    });
+    groups.push({ type:'solo', date:e.date, ecritures:[e], libelle:e.libelle||'Écriture', isGroupe:false });
   });
-
-  // Trier tous les groupes par date
   groups.sort((a,b) => a.date.localeCompare(b.date) || (a.ecritures[0].createdAt||'').localeCompare(b.ecritures[0].createdAt||''));
 
-  // ── ÉTAPE 2 : Grouper par date (séparateur visuel) ──
   const byDate = {};
-  groups.forEach(g => {
-    if(!byDate[g.date]) byDate[g.date] = [];
-    byDate[g.date].push(g);
-  });
+  groups.forEach(g => { if(!byDate[g.date]) byDate[g.date] = []; byDate[g.date].push(g); });
 
   let totalD = 0, totalC = 0, totalLignes = 0, totalEcritures = 0;
   let html = '';
 
-  const dates = Object.keys(byDate).sort();
-  dates.forEach(date => {
+  Object.keys(byDate).sort().forEach(date => {
     html += `<div class="jnl-date-sep">
       <div class="jnl-date-sep-line"></div>
       <div class="jnl-date-sep-label">📅 ${formatDateFR(date)}</div>
@@ -675,29 +647,21 @@ function renderJournal() {
     </div>`;
 
     byDate[date].forEach(group => {
-      // Total du groupe
       let groupD = 0, groupC = 0;
       group.ecritures.forEach(e => {
         e.lignes.forEach(l => { groupD += l.debit||0; groupC += l.credit||0; });
         totalLignes += e.lignes.length;
         totalEcritures++;
       });
-      // On divise par 2 pour le total "économique" (débit = crédit en comptabilité en partie double)
-      const groupMontant = groupD; // = groupC si équilibré
       totalD += groupD; totalC += groupC;
 
-      // Déterminer le type dominant du groupe
       const mainJournal = group.ecritures[0]?.journal || 'OD';
       const icon = JOURNAL_ICONS[mainJournal] || '📋';
-
-      // IDs des docs pour suppression de groupe
       const docIds = group.ecritures.map(e => `'${e._docId}'`).join(',');
       const ecrIds = group.ecritures.map(e => e.id).join(',');
 
       if(group.isGroupe) {
-        // ── GROUPE DE 3 ÉCRITURES ──
         html += `<div class="jnl-groupe">
-          <!-- EN-TÊTE GROUPE -->
           <div class="jnl-groupe-header">
             <div class="jnl-groupe-icon">${icon}</div>
             <div class="jnl-groupe-info">
@@ -706,24 +670,21 @@ function renderJournal() {
             </div>
             <div class="jnl-groupe-total">
               <div class="jnl-groupe-total-label">Montant total</div>
-              <div class="jnl-groupe-total-val">${fn(groupMontant)} FCFA</div>
+              <div class="jnl-groupe-total-val">${fn(groupD)} FCFA</div>
             </div>
             <span class="jnl-groupe-badge-count">${group.ecritures.length} écriture${group.ecritures.length>1?'s':''}</span>
             <button class="jnl-groupe-del" onclick="deleteGroupe([${docIds}],[${ecrIds}])" title="Supprimer tout le groupe">✕ Tout supprimer</button>
           </div>
-          <!-- CORPS : liste des écritures -->
           <div class="jnl-groupe-body">
             ${group.ecritures.map((e, eIdx) => renderEcritureInGroupe(e, eIdx, group.ecritures.length)).join('')}
           </div>
         </div>`;
       } else {
-        // ── ÉCRITURE ISOLÉE (saisie manuelle) ──
         const e = group.ecritures[0];
         let eD = 0, eC = 0;
         e.lignes.forEach(l => { eD += l.debit||0; eC += l.credit||0; });
         const equil = Math.abs(eD - eC) < 1;
         const jnlCls = e.journal || 'OD';
-
         html += `<div class="jnl-groupe">
           <div class="jnl-groupe-header">
             <div class="jnl-groupe-icon">${JOURNAL_ICONS[jnlCls]||'📋'}</div>
@@ -748,29 +709,29 @@ function renderJournal() {
 
   content.innerHTML = html;
 
-  // Footer
-  footer.style.display = 'block';
-  document.getElementById('jnl-nb-groupes').textContent = groups.length;
-  document.getElementById('jnl-nb-ecr').textContent = totalEcritures;
-  document.getElementById('jnl-nb-lignes').textContent = totalLignes;
-  document.getElementById('jnl-total-debit').textContent = fn(totalD) + ' FCFA';
-  document.getElementById('jnl-total-credit').textContent = fn(totalC) + ' FCFA';
-  const eqEl = document.getElementById('jnl-equil-label');
-  const balanced = Math.abs(totalD - totalC) < 1;
-  eqEl.textContent = balanced ? '✓ Équilibré' : '✗ Déséquilibré';
-  eqEl.className = 'jnl-footer-val ' + (balanced ? 'eq' : 'neq');
+  if(footer) {
+    footer.style.display = 'block';
+    document.getElementById('jnl-nb-groupes').textContent = groups.length;
+    document.getElementById('jnl-nb-ecr').textContent = totalEcritures;
+    document.getElementById('jnl-nb-lignes').textContent = totalLignes;
+    document.getElementById('jnl-total-debit').textContent = fn(totalD) + ' FCFA';
+    document.getElementById('jnl-total-credit').textContent = fn(totalC) + ' FCFA';
+    const eqEl = document.getElementById('jnl-equil-label');
+    if(eqEl) {
+      const balanced = Math.abs(totalD - totalC) < 1;
+      eqEl.textContent = balanced ? '✓ Équilibré' : '✗ Déséquilibré';
+      eqEl.className = 'jnl-footer-val ' + (balanced ? 'eq' : 'neq');
+    }
+  }
 }
 
-// Rendu d'une écriture individuelle à l'intérieur d'un groupe
 function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
   let eD = 0, eC = 0;
   e.lignes.forEach(l => { eD += l.debit||0; eC += l.credit||0; });
   const equil = Math.abs(eD - eC) < 1;
   const jnlCls = e.journal || 'OD';
   const stepLabel = getStepLabel(e, eIdx, totalInGroupe);
-
   return `<div class="jnl-ecriture type-${jnlCls}">
-    <!-- Sous-en-tête de cette écriture -->
     <div class="jnl-ecriture-subheader">
       ${totalInGroupe > 1 ? `<span class="jnl-step-badge">${eIdx+1}</span>` : ''}
       <span class="jnl-step-jnl-badge ${jnlCls}">${jnlCls}</span>
@@ -782,18 +743,14 @@ function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
       <span class="jnl-step-equil ${equil?'ok':'nok'}">${equil?'✓':'✗'}</span>
       <button class="jnl-step-del" onclick="deleteEcriture('${e._docId}',${e.id})" title="Supprimer cette écriture">✕</button>
     </div>
-
-    <!-- Lignes comptables -->
     <div class="jnl-ecriture-body">
       <table class="jnl-lignes-table">
-        <thead>
-          <tr>
-            <th style="width:200px">Compte</th>
-            <th>Libellé</th>
-            <th class="right" style="width:140px">Débit (FCFA)</th>
-            <th class="right" style="width:140px">Crédit (FCFA)</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th style="width:200px">Compte</th>
+          <th>Libellé</th>
+          <th class="right" style="width:140px">Débit (FCFA)</th>
+          <th class="right" style="width:140px">Crédit (FCFA)</th>
+        </tr></thead>
         <tbody>
           ${e.lignes.map(l => `
             <tr>
@@ -814,7 +771,6 @@ function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
   </div>`;
 }
 
-// Supprimer tout un groupe
 async function deleteGroupe(docIds, ids) {
   if(!confirm(`Supprimer ce groupe de ${docIds.length} écriture${docIds.length>1?'s':''} ?`))return;
   for(const docId of docIds) await deleteEcritureFromFirestore(docId);
@@ -849,11 +805,12 @@ function resetGLFiltre() {
   renderGrandLivre();
 }
 function renderGrandLivre() {
-  const search=document.getElementById('glSearch').value.toLowerCase();
-  const dateDebut=document.getElementById('gl-date-debut').value;
-  const dateFin=document.getElementById('gl-date-fin').value;
+  const search=document.getElementById('glSearch')?.value?.toLowerCase()||'';
+  const dateDebut=document.getElementById('gl-date-debut')?.value||'';
+  const dateFin=document.getElementById('gl-date-fin')?.value||'';
   const opts = dateDebut||dateFin ? {filtrer:true,dateDebut,dateFin} : {};
   const map=getMap(opts), content=document.getElementById('grandLivreContent');
+  if(!content) return;
   const comptes=Object.keys(map).sort();
   if(!comptes.length){content.innerHTML='<div class="empty-state"><div class="icon">⊞</div><p>Aucun mouvement</p></div>';return;}
   const filtered=comptes.filter(c=>!search||c.includes(search)||(PC[c]||'').toLowerCase().includes(search));
@@ -895,7 +852,7 @@ function renderGrandLivre() {
     </div>`;
   }).join('');
 }
-function toggleGL(id){const el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+function toggleGL(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
 
 // BALANCE
 function resetBalanceFiltre() {
@@ -903,16 +860,18 @@ function resetBalanceFiltre() {
   document.getElementById('bal-date-fin').value='';
   document.getElementById('bal-journal').value='';
   document.getElementById('bal-classe').value='';
-  document.getElementById('balance-analyse').style.display='none';
+  const a = document.getElementById('balance-analyse');
+  if(a) a.style.display='none';
   renderBalance();
 }
 function renderBalance() {
-  const dateDebut=document.getElementById('bal-date-debut').value;
-  const dateFin=document.getElementById('bal-date-fin').value;
-  const journal=document.getElementById('bal-journal').value;
-  const classe=document.getElementById('bal-classe').value;
+  const dateDebut=document.getElementById('bal-date-debut')?.value||'';
+  const dateFin=document.getElementById('bal-date-fin')?.value||'';
+  const journal=document.getElementById('bal-journal')?.value||'';
+  const classe=document.getElementById('bal-classe')?.value||'';
   const opts = (dateDebut||dateFin||journal) ? {filtrer:true,dateDebut,dateFin,journal} : {};
   const map=getMap(opts), tbody=document.getElementById('balanceBody');
+  if(!tbody) return;
   let comptes=Object.keys(map).sort();
   if(classe) comptes = comptes.filter(c=>c.startsWith(classe));
   if(!comptes.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><p>Aucune donnée pour cette sélection</p></div></td></tr>';return;}
@@ -941,6 +900,7 @@ function renderBilan() {
   const dateArrete = document.getElementById('bilan-date-arrete')?.value;
   const opts = dateArrete ? {filtrer:true, dateFin:dateArrete} : {};
   const map=getMap(opts), content=document.getElementById('bilanContent');
+  if(!content) return;
   if(!Object.keys(map).length){content.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">⊠</div><p>Saisissez des écritures pour générer le bilan</p></div>';return;}
   const actif={immob:{title:'ACTIF IMMOBILISÉ',comptes:[]},stocks:{title:'STOCKS ET EN-COURS',comptes:[]},creances:{title:'CRÉANCES ET EMPLOIS ASSIMILÉS',comptes:[]},treso:{title:'TRÉSORERIE-ACTIF',comptes:[]}};
   const passif={cap:{title:'CAPITAUX PROPRES ET RESSOURCES ASSIMILÉES',comptes:[]},df:{title:'DETTES FINANCIÈRES',comptes:[]},dct:{title:'PASSIF CIRCULANT',comptes:[]},tp:{title:'TRÉSORERIE-PASSIF',comptes:[]}};
@@ -972,6 +932,7 @@ function renderBilan() {
 // RESULTAT
 function renderResultat() {
   const map=getMap(),content=document.getElementById('resultatContent');
+  if(!content) return;
   if(!Object.keys(map).length){content.innerHTML='<div class="empty-state"><div class="icon">↗</div><p>Aucune donnée</p></div>';return;}
   const gt=pfx=>Object.entries(map).filter(([c])=>pfx.some(p=>c.startsWith(p))).reduce((s,[,a])=>s+(a.debit-a.credit),0);
   const ventes=Math.abs(gt(['701','702','703','704','705']));
@@ -1034,6 +995,7 @@ function renderResultat() {
 // TRESORERIE
 function renderTresorerie() {
   const map=getMap(),content=document.getElementById('tresorerieContent');
+  if(!content) return;
   const tc=Object.entries(map).filter(([c])=>c.startsWith('5'));
   if(!tc.length){content.innerHTML='<div class="empty-state"><div class="icon">◎</div><p>Aucun mouvement de trésorerie</p></div>';return;}
   const total=tc.reduce((s,[,a])=>s+(a.debit-a.credit),0);
@@ -1067,12 +1029,12 @@ function renderPlanComptable() {
 }
 
 // EXPORT
-function openExportModal(){document.getElementById('exportModal').style.display='flex';selectExport('pdf');}
-function closeExportModal(){document.getElementById('exportModal').style.display='none';}
+function openExportModal(){const m=document.getElementById('exportModal');if(m)m.style.display='flex';selectExport('pdf');}
+function closeExportModal(){const m=document.getElementById('exportModal');if(m)m.style.display='none';}
 function selectExport(fmt){
   exportFormat=fmt;
-  document.getElementById('opt-pdf').classList.toggle('selected',fmt==='pdf');
-  document.getElementById('opt-word').classList.toggle('selected',fmt==='word');
+  document.getElementById('opt-pdf')?.classList.toggle('selected',fmt==='pdf');
+  document.getElementById('opt-word')?.classList.toggle('selected',fmt==='word');
 }
 function doExport(){closeExportModal();if(exportFormat==='pdf')exportPDF();else exportWord();}
 
@@ -1139,9 +1101,168 @@ function exportWord() {
 // ══════════════════════════════════════════
 // COMEO AI v4 — MOTEUR IA
 // ══════════════════════════════════════════
-function handleAiKey(e,ctx){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendToAI(ctx);}}
-function quickAI(text){document.getElementById('aiInput').value=text;navigate('dashboard');sendToAI('dashboard');}
 
+// handleAiKey — utilisé dans le HTML SYSCOHADA (pas marcioAI)
+function handleAiKey(e,ctx){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendToAI(ctx);}}
+
+// quickAI — utilisé dans le HTML SYSCOHADA
+function quickAI(text){
+  const input = document.getElementById('aiInput');
+  if(input) input.value = text;
+  navigate('dashboard');
+  sendToAI('dashboard');
+}
+
+// ── ALIAS POUR marcioAI (a.html) ──
+// quickSend est appelé par les boutons suggestions dans a.html
+function quickSend(text) {
+  const input = document.getElementById('user-input');
+  if(input) {
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+  }
+  sendMessage();
+}
+
+// sendMessage est appelé par le bouton "Envoyer" dans a.html
+function sendMessage() {
+  const input = document.getElementById('user-input');
+  if(!input) return;
+  const msg = input.value.trim();
+  if(!msg) return;
+  // Si on est dans SYSCOHADA (appShell visible), déléguer à sendToAI
+  const appShell = document.getElementById('appShell');
+  if(appShell && appShell.style.display !== 'none') {
+    sendToAI('dashboard');
+    return;
+  }
+  // Sinon on est dans marcioAI — envoyer via l'API Groq directement
+  sendMarcioMessage(msg);
+}
+
+// ── Moteur de chat pour marcioAI (a.html) ──
+let marcioHistory = [];
+
+async function sendMarcioMessage(msg) {
+  if(isAILoading) return;
+  isAILoading = true;
+  const input = document.getElementById('user-input');
+  if(input) input.value = '';
+  autoResizeTextarea(input);
+
+  // Cacher le welcome
+  const welcome = document.getElementById('welcome');
+  if(welcome) welcome.style.display = 'none';
+
+  // Afficher message utilisateur
+  appendMarcioMsg('user', msg);
+  marcioHistory.push({ role: 'user', content: msg });
+
+  // Indicateur de frappe
+  const typingId = appendMarcioTyping();
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 2048,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: `Tu es marcioAI, un assistant IA intelligent et polyvalent créé par MarcioDEV.
+Tu réponds toujours en français sauf si l'utilisateur parle une autre langue.
+Tu es utile, précis, et tu adaptes ton ton au contexte.
+Pour les formules mathématiques, utilise la notation LaTeX entre $...$ ou $$...$$`
+          },
+          ...marcioHistory
+        ]
+      })
+    });
+
+    removeMarcioTyping(typingId);
+
+    if(!response.ok) {
+      const err = await response.json().catch(()=>({}));
+      throw new Error(err.error?.message || 'Erreur API ' + response.status);
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || 'Pas de réponse.';
+    marcioHistory.push({ role: 'assistant', content: reply });
+
+    // Garder l'historique court
+    if(marcioHistory.length > 20) marcioHistory = marcioHistory.slice(-20);
+
+    appendMarcioMsg('ai', reply);
+
+  } catch(err) {
+    removeMarcioTyping(typingId);
+    appendMarcioMsg('ai', `⚠️ Erreur : ${err.message}`);
+  }
+
+  isAILoading = false;
+}
+
+function appendMarcioMsg(role, text) {
+  const messages = document.getElementById('messages');
+  if(!messages) return;
+  const div = document.createElement('div');
+  div.className = 'message ' + (role === 'user' ? 'user' : 'assistant');
+  div.innerHTML = role === 'user'
+    ? `<div class="bubble">${escapeHtml(text)}</div>`
+    : `<div class="avatar-sm"><img src="images/marcioAI.jpg" alt="AI" onerror="this.style.display='none';this.parentElement.textContent='MA'"></div><div class="bubble">${formatMarcio(text)}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  // Rendu KaTeX si disponible
+  if(window.renderMathInElement && role === 'ai') {
+    renderMathInElement(div, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
+  }
+}
+
+function appendMarcioTyping() {
+  const id = 'typing-' + Date.now();
+  const messages = document.getElementById('messages');
+  if(!messages) return id;
+  const div = document.createElement('div');
+  div.className = 'message assistant'; div.id = id;
+  div.innerHTML = `<div class="avatar-sm"><img src="images/marcioAI.jpg" alt="AI" onerror="this.style.display='none';this.parentElement.textContent='MA'"></div><div class="bubble typing-bubble"><span></span><span></span><span></span></div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return id;
+}
+
+function removeMarcioTyping(id) {
+  const el = document.getElementById(id);
+  if(el) el.remove();
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function formatMarcio(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/```(\w+)?\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+}
+
+function autoResizeTextarea(el) {
+  if(!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+// ── SYSCOHADA AI (dashboard context) ──
 function buildAIContext() {
   let tD=0,tC=0;
   ecritures.forEach(e=>e.lignes.forEach(l=>{tD+=l.debit||0;tC+=l.credit||0;}));
@@ -1168,16 +1289,14 @@ async function sendToAI(context) {
   if(isAILoading) return;
   const inputId = context==='dashboard' ? 'aiInput' : `aiInput-${context}`;
   const input = document.getElementById(inputId);
-  const msg = input.value.trim(); if(!msg) return;
+  const msg = input?.value?.trim(); if(!msg) return;
   isAILoading = true; input.value = '';
   const sendBtnId = context==='dashboard' ? 'aiSendBtn' : null;
-  if(sendBtnId) document.getElementById(sendBtnId).disabled = true;
+  if(sendBtnId) { const btn = document.getElementById(sendBtnId); if(btn) btn.disabled = true; }
   appendMsg(context,'user',msg);
   const tid = appendTyping(context);
-
   const ctxData = buildAIContext();
   const systemPrompt = buildSystemPrompt(ctxData);
-
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -1199,9 +1318,7 @@ async function sendToAI(context) {
     }
     const data = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
-
     const filtreMarker = fullText.indexOf('###FILTRE###');
-
     if(filtreMarker !== -1) {
       const displayText = fullText.substring(0, filtreMarker).trim();
       const jsonStr = fullText.substring(filtreMarker + 12).trim();
@@ -1209,17 +1326,12 @@ async function sendToAI(context) {
       try {
         const clean = jsonStr.replace(/```json|```/g,'').trim();
         const jsonMatch = clean.match(/(\{[\s\S]*?\})/);
-        if(jsonMatch) {
-          const filtre = JSON.parse(jsonMatch[1]);
-          applyFiltreAndNavigate(filtre, context);
-        }
+        if(jsonMatch) { const filtre = JSON.parse(jsonMatch[1]); applyFiltreAndNavigate(filtre, context); }
       } catch(pe) { console.warn('Filtre parse error:', pe); }
-
     } else if(fullText.includes('###ECRITURE###')) {
       const parts = fullText.split('###ECRITURE###');
       const textBeforeFirst = parts[0].trim();
       const ecrituresAI = [];
-
       for(let i = 1; i < parts.length; i++) {
         const segment = parts[i].trim();
         const jsonMatch2 = segment.match(/(\{[\s\S]*\})/);
@@ -1237,17 +1349,14 @@ async function sendToAI(context) {
           } catch(pe) { console.warn('JSON parse error écriture', i, ':', pe.message); }
         }
       }
-
       if(textBeforeFirst) appendMsg(context, 'ai', textBeforeFirst);
-
       if(ecrituresAI.length === 0) {
         appendMsg(context, 'ai', '⚠️ Je n\'ai pas pu extraire les écritures. Veuillez réessayer.');
       } else {
-        // Générer le groupId commun ici, avant la sauvegarde
         currentGroupId = 'grp_' + Date.now();
         const confirmMsg = `✅ <strong>${ecrituresAI.length} écriture${ecrituresAI.length>1?'s':''} liées</strong> préparées et groupées :<br>` +
           ecrituresAI.map((e,i)=>`<br><strong>${i+1}. [${e.journal}]</strong> ${e.libelle}`).join('') +
-          `<br><br>⚡ Cliquez <strong>"Tout enregistrer"</strong> pour les valider — elles seront groupées dans le journal.`;
+          `<br><br>⚡ Cliquez <strong>"Tout enregistrer"</strong> pour les valider.`;
         appendMsg(context, 'ai', confirmMsg);
         setEcritureQueue(ecrituresAI);
         if(context === 'saisie') {
@@ -1257,20 +1366,17 @@ async function sendToAI(context) {
           showSaisieNotif(ecrituresAI[0]?.libelle || msg.substring(0,40), ecrituresAI.length);
         }
       }
-
     } else {
       appendMsg(context, 'ai', fullText);
     }
-
   } catch(err) {
     removeTyping(context, tid);
     appendMsg(context,'ai',`Je rencontre une difficulté technique : ${err.message}. Veuillez réessayer.`);
   }
   isAILoading = false;
-  if(sendBtnId) document.getElementById(sendBtnId).disabled = false;
+  if(sendBtnId) { const btn = document.getElementById(sendBtnId); if(btn) btn.disabled = false; }
 }
 
-// Application filtre et navigation
 function applyFiltreAndNavigate(filtre, context) {
   const { type, dateDebut, dateFin, journal, compte } = filtre;
   if(type === 'journal') {
@@ -1348,7 +1454,8 @@ function fmt(text) {
 
 // TOAST
 function toast(message, type='info') {
-  const c = document.getElementById('toastContainer');
+  const c = document.getElementById('toastContainer') || document.getElementById('toast');
+  if(!c) return;
   const d = document.createElement('div'); d.className = 'toast '+type;
   const icons={success:'✓',error:'✕',info:'i'};
   const colors={success:'#4ade80',error:'#f87171',info:'#d4a853'};
@@ -1357,7 +1464,18 @@ function toast(message, type='info') {
   setTimeout(()=>d.style.opacity='0',3500); setTimeout(()=>d.remove(),4100);
 }
 
-// INIT
+// TEXTAREA AUTO-RESIZE (marcioAI)
+document.addEventListener('DOMContentLoaded', () => {
+  const textarea = document.getElementById('user-input');
+  if(textarea) {
+    textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+    textarea.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+  }
+});
+
+// INIT SESSION SYSCOHADA
 document.addEventListener('firebase-ready', async () => {
   const session = localStorage.getItem('syscohada_session');
   if(session) {
@@ -1372,44 +1490,49 @@ document.addEventListener('firebase-ready', async () => {
     } catch(e) { localStorage.removeItem('syscohada_session'); }
   }
 });
-// Exposition des fonctions globales (nécessaire avec type="module")
-window.doLogin = doLogin;
-window.doRegister = doRegister;
-window.doLogout = doLogout;
-window.switchTab = switchTab;
-window.navigate = navigate;
-window.sendToAI = sendToAI;
-window.handleAiKey = handleAiKey;
-window.quickAI = quickAI;
-window.addLigne = addLigne;
-window.removeLigne = removeLigne;
-window.saveEcriture = saveEcriture;
+
+// ══════════════════════════════════════════
+// EXPOSITION GLOBALE DE TOUTES LES FONCTIONS
+// ══════════════════════════════════════════
+window.sendMessage          = sendMessage;          // ← bouton envoyer dans a.html
+window.quickSend            = quickSend;            // ← suggestions dans a.html
+window.sendToAI             = sendToAI;             // ← SYSCOHADA dashboard
+window.handleAiKey          = handleAiKey;
+window.quickAI              = quickAI;
+window.doLogin              = doLogin;
+window.doRegister           = doRegister;
+window.doLogout             = doLogout;
+window.switchTab            = switchTab;
+window.navigate             = navigate;
+window.addLigne             = addLigne;
+window.removeLigne          = removeLigne;
+window.saveEcriture         = saveEcriture;
 window.updateAccountSuggest = updateAccountSuggest;
-window.selectAccount = selectAccount;
-window.hideDropdown = hideDropdown;
-window.updateBalance = updateBalance;
+window.selectAccount        = selectAccount;
+window.hideDropdown         = hideDropdown;
+window.updateBalance        = updateBalance;
 window.autoSaveAllEcritures = autoSaveAllEcritures;
 window.autoSaveAllFromNotif = autoSaveAllFromNotif;
-window.skipToNextEcriture = skipToNextEcriture;
-window.dismissFillBanner = dismissFillBanner;
-window.hideMultiEcrBanner = hideMultiEcrBanner;
-window.hideSaisieNotif = hideSaisieNotif;
-window.goToSaisie = goToSaisie;
-window.toggleGL = toggleGL;
-window.deleteEcriture = deleteEcriture;
-window.deleteGroupe = deleteGroupe;
-window.openExportModal = openExportModal;
-window.closeExportModal = closeExportModal;
-window.selectExport = selectExport;
-window.doExport = doExport;
-window.renderJournal = renderJournal;
-window.renderGrandLivre = renderGrandLivre;
-window.renderBalance = renderBalance;
-window.renderBilan = renderBilan;
-window.renderPlanComptable = renderPlanComptable;
-window.resetJournalFiltre = resetJournalFiltre;
-window.resetGLFiltre = resetGLFiltre;
-window.resetBalanceFiltre = resetBalanceFiltre;
-window.updateStats = updateStats;
-window.toggleMobileSidebar = toggleMobileSidebar;
-window.closeMobileSidebar = closeMobileSidebar;
+window.skipToNextEcriture   = skipToNextEcriture;
+window.dismissFillBanner    = dismissFillBanner;
+window.hideMultiEcrBanner   = hideMultiEcrBanner;
+window.hideSaisieNotif      = hideSaisieNotif;
+window.goToSaisie           = goToSaisie;
+window.toggleGL             = toggleGL;
+window.deleteEcriture       = deleteEcriture;
+window.deleteGroupe         = deleteGroupe;
+window.openExportModal      = openExportModal;
+window.closeExportModal     = closeExportModal;
+window.selectExport         = selectExport;
+window.doExport             = doExport;
+window.renderJournal        = renderJournal;
+window.renderGrandLivre     = renderGrandLivre;
+window.renderBalance        = renderBalance;
+window.renderBilan          = renderBilan;
+window.renderPlanComptable  = renderPlanComptable;
+window.resetJournalFiltre   = resetJournalFiltre;
+window.resetGLFiltre        = resetGLFiltre;
+window.resetBalanceFiltre   = resetBalanceFiltre;
+window.updateStats          = updateStats;
+window.toggleMobileSidebar  = toggleMobileSidebar;
+window.closeMobileSidebar   = closeMobileSidebar;
