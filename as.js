@@ -131,6 +131,21 @@ const JOURNAL_ICONS = {
   'AC':'🛒','VE':'💰','BQ':'🏦','CA':'💵','OD':'📋','IN':'📦','AN':'📂'
 };
 
+// ══════════════════════════════════════════
+// TRI DÉBIT AVANT CRÉDIT — NORME SYSCOHADA
+// Règle fondamentale : dans le journal, les lignes débitrices
+// apparaissent TOUJOURS avant les lignes créditrices.
+// ══════════════════════════════════════════
+function sortLignesDebitAvantCredit(lignes) {
+  return [...lignes].sort((a, b) => {
+    const aIsDebit  = (parseFloat(a.debit)  || 0) > 0;
+    const bIsDebit  = (parseFloat(b.debit)  || 0) > 0;
+    if (aIsDebit && !bIsDebit) return -1;
+    if (!aIsDebit && bIsDebit) return  1;
+    return 0;
+  });
+}
+
 function getStepLabel(ecr) {
   const jnl = ecr.journal;
   if(jnl === 'IN') return 'Mouvement de stock';
@@ -210,6 +225,25 @@ CALCULS :
 RÈGLE ABSOLUE D'ÉQUILIBRE : Σ Débits = Σ Crédits
 
 ════════════════════════════════════════════
+ORDRE DES LIGNES DANS LE JOURNAL — RÈGLE OBLIGATOIRE
+════════════════════════════════════════════
+
+⚠️ RÈGLE FONDAMENTALE SYSCOHADA — ORDRE D'ÉCRITURE :
+Les lignes DÉBITRICES doivent TOUJOURS apparaître EN PREMIER,
+suivies des lignes CRÉDITRICES. Cette règle est ABSOLUE et sans exception.
+
+CORRECT :
+  Débit  571 Caisse         100 000
+  Crédit 521 Banque                    100 000
+
+INCORRECT (INTERDIT) :
+  Crédit 521 Banque                    100 000
+  Débit  571 Caisse         100 000
+
+Dans chaque tableau "lignes" du JSON, placez TOUJOURS les objets
+avec debit > 0 AVANT les objets avec credit > 0.
+
+════════════════════════════════════════════
 CONTEXTE DE L'ENTREPRISE
 ════════════════════════════════════════════
 Entreprise : ${companyName}
@@ -240,6 +274,8 @@ RÈGLES JSON ABSOLUES :
 - Montants en FCFA entiers uniquement
 - Chaque écriture ÉQUILIBRÉE (Débit = Crédit)
 - Comptes SYSCOHADA officiels uniquement
+- Lignes DÉBITRICES (debit > 0) TOUJOURS EN PREMIER dans le tableau "lignes"
+- Lignes CRÉDITRICES (credit > 0) TOUJOURS EN DERNIER dans le tableau "lignes"
 
 ════════════════════════════════════════════
 FILTRAGE ET INTERROGATION DES DONNÉES
@@ -468,12 +504,14 @@ async function autoSaveAllEcritures() {
     valid.forEach(l => { d += Math.round(parseFloat(l.debit) || 0); c += Math.round(parseFloat(l.credit) || 0); });
     if (Math.abs(d - c) > 2) { errors.push(`Écriture ${i + 1} [${ecr.journal}] : non équilibrée (Δ ${Math.abs(d - c)} FCFA)`); continue; }
     const piece    = 'N°' + String(pieceCounter).padStart(5, '0');
+    // ── Tri débit avant crédit avant sauvegarde ──
+    const lignesSorted = sortLignesDebitAvantCredit(valid);
     const ecriture = {
       id: Date.now() + i, date, journal: ecr.journal || 'OD', piece,
       libelle: ecr.libelle || 'Écriture IA',
       groupId, groupLibelle: groupLib, groupSize: total, groupIdx: i,
       createdAt: new Date().toISOString(),
-      lignes: valid.map(l => ({
+      lignes: lignesSorted.map(l => ({
         compte:  String(l.compte),
         libelle: l.libelle || PC[String(l.compte)] || '',
         debit:   Math.round(parseFloat(l.debit)  || 0),
@@ -510,7 +548,9 @@ function setEcritureQueue(ecritures_ai) {
 function loadEcritureFromQueue(idx) {
   if (idx >= ecrQueue.length) return;
   const ecr = ecrQueue[idx];
-  lignes = ecr.lignes.map(l => ({
+  // ── Tri débit avant crédit au chargement dans la saisie ──
+  const lignesSorted = sortLignesDebitAvantCredit(ecr.lignes || []);
+  lignes = lignesSorted.map(l => ({
     compte:  String(l.compte || ''),
     libelle: l.libelle || PC[String(l.compte)] || '',
     debit:   Math.round(parseFloat(l.debit)  || 0),
@@ -721,10 +761,12 @@ async function saveEcriture() {
   if (ecrQueue.length > 0 && currentGroupId) {
     groupInfo = { groupId: currentGroupId, groupLibelle: ecrQueue[0]?.libelle || libelle, groupSize: ecrQueue.length, groupIdx: ecrQueueIdx };
   }
+  // ── Tri débit avant crédit avant sauvegarde manuelle ──
+  const lignesSorted = sortLignesDebitAvantCredit(valid);
   const ecriture = {
     id: Date.now(), date, journal, piece, libelle, ...groupInfo,
     createdAt: new Date().toISOString(),
-    lignes: valid.map(l => ({
+    lignes: lignesSorted.map(l => ({
       compte:  String(l.compte),
       libelle: l.libelle || PC[String(l.compte)] || '',
       debit:   Math.round(parseFloat(l.debit)  || 0),
@@ -917,12 +959,18 @@ function renderJournal() {
   }
 }
 
+// ══════════════════════════════════════════
+// RENDER ÉCRITURE DANS GROUPE
+// ── CORRECTION : tri débit avant crédit à l'affichage ──
+// ══════════════════════════════════════════
 function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
   let eD = 0, eC = 0;
   e.lignes.forEach(l => { eD += l.debit || 0; eC += l.credit || 0; });
   const equil     = Math.abs(eD - eC) < 1;
   const jnlCls    = e.journal || 'OD';
   const stepLabel = getStepLabel(e);
+  // ── Tri débit avant crédit pour l'affichage ──
+  const lignesAffichage = sortLignesDebitAvantCredit(e.lignes);
   return `<div class="jnl-ecriture type-${jnlCls}">
     <div class="jnl-ecriture-subheader">
       ${totalInGroupe > 1 ? `<span class="jnl-step-badge">${eIdx + 1}</span>` : ''}
@@ -944,7 +992,7 @@ function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
           <th class="right" style="width:140px">Crédit (FCFA)</th>
         </tr></thead>
         <tbody>
-          ${e.lignes.map(l => `
+          ${lignesAffichage.map(l => `
             <tr>
               <td><div class="jnl-compte-badge">
                 <span class="jnl-compte-code">${l.compte}</span>
@@ -1307,10 +1355,14 @@ function exportPDF() {
   doc.setDrawColor(212, 168, 83); doc.setLineWidth(0.5); doc.line(14, 43, pageW - 14, 43);
   const tableData = [];
   let totalD = 0, totalC = 0;
-  ecritures.forEach(e => e.lignes.forEach(l => {
-    tableData.push([e.date, e.journal, e.piece || '', l.compte, (PC[l.compte] || '').substring(0, 28), l.libelle || e.libelle || '', l.debit ? fn(l.debit) : '', l.credit ? fn(l.credit) : '']);
-    totalD += l.debit || 0; totalC += l.credit || 0;
-  }));
+  // ── Tri débit avant crédit dans l'export PDF ──
+  ecritures.forEach(e => {
+    const lignesSorted = sortLignesDebitAvantCredit(e.lignes);
+    lignesSorted.forEach(l => {
+      tableData.push([e.date, e.journal, e.piece || '', l.compte, (PC[l.compte] || '').substring(0, 28), l.libelle || e.libelle || '', l.debit ? fn(l.debit) : '', l.credit ? fn(l.credit) : '']);
+      totalD += l.debit || 0; totalC += l.credit || 0;
+    });
+  });
   doc.autoTable({
     startY: 48,
     head: [['Date','Jnl','N° Pièce','Compte','Libellé compte','Libellé opération','Débit FCFA','Crédit FCFA']],
@@ -1336,10 +1388,14 @@ function exportWord() {
   const company = currentProfile?.company || 'Entreprise';
   const now     = new Date().toLocaleDateString('fr-FR');
   let jRows = '', totalD = 0, totalC = 0;
-  ecritures.forEach(e => e.lignes.forEach(l => {
-    jRows += `<tr><td>${e.date}</td><td>${e.journal}</td><td>${e.piece || ''}</td><td>${l.compte}</td><td>${(PC[l.compte] || '').substring(0, 28)}</td><td>${l.libelle || e.libelle || ''}</td><td style="text-align:right">${l.debit ? fn(l.debit) : ''}</td><td style="text-align:right">${l.credit ? fn(l.credit) : ''}</td></tr>`;
-    totalD += l.debit || 0; totalC += l.credit || 0;
-  }));
+  // ── Tri débit avant crédit dans l'export Word ──
+  ecritures.forEach(e => {
+    const lignesSorted = sortLignesDebitAvantCredit(e.lignes);
+    lignesSorted.forEach(l => {
+      jRows += `<tr><td>${e.date}</td><td>${e.journal}</td><td>${e.piece || ''}</td><td>${l.compte}</td><td>${(PC[l.compte] || '').substring(0, 28)}</td><td>${l.libelle || e.libelle || ''}</td><td style="text-align:right">${l.debit ? fn(l.debit) : ''}</td><td style="text-align:right">${l.credit ? fn(l.credit) : ''}</td></tr>`;
+      totalD += l.debit || 0; totalC += l.credit || 0;
+    });
+  });
   const th = 'background:#0a0b10;color:#d4a853;padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase';
   const td = 'border-bottom:1px solid #e0dbd0;padding:5px 10px';
   const html = `<html><head><meta charset="utf-8"><style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt}table{width:100%;border-collapse:collapse;margin-bottom:20pt}th{${th}}td{${td}}tr:nth-child(even) td{background:#faf8f4}</style></head>
@@ -1455,7 +1511,10 @@ async function sendToAI(context) {
             if (ecr.lignes && ecr.lignes.length >= 2) {
               let d = 0, c = 0;
               ecr.lignes.forEach(l => { d += Math.round(parseFloat(l.debit) || 0); c += Math.round(parseFloat(l.credit) || 0); });
-              ecr.lignes = ecr.lignes.map(l => ({ ...l, debit: Math.round(parseFloat(l.debit) || 0), credit: Math.round(parseFloat(l.credit) || 0) }));
+              // ── Tri débit avant crédit dès la réception depuis l'IA ──
+              ecr.lignes = sortLignesDebitAvantCredit(
+                ecr.lignes.map(l => ({ ...l, debit: Math.round(parseFloat(l.debit) || 0), credit: Math.round(parseFloat(l.credit) || 0) }))
+              );
               if (Math.abs(d - c) <= 2) ecrituresAI.push(ecr);
             }
           } catch (pe) { console.warn('JSON parse error écriture', i, ':', pe.message); }
