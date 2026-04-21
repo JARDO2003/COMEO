@@ -2031,4 +2031,4 @@ window.resetGLFiltre        = resetGLFiltre;
 window.resetBalanceFiltre   = resetBalanceFiltre;
 window.updateStats          = updateStats;
 window.toggleMobileSidebar  = toggleMobileSidebar;
-window.closeMobileSidebar   = closeMobileSide
+window.closeMobileSidebar   = closeMobileSidebar;
