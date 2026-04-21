@@ -119,6 +119,7 @@
       <div class="stat-row"><span class="lbl">Total crédit</span><span class="val" id="s-credit">0</span></div>
       <div class="stat-row"><span class="lbl">Équilibre</span><span class="val g" id="s-equil">✓</span></div>
     </div>
+    <!-- WIDGET ABONNEMENT INJECTÉ ICI PAR JS -->
   </div>
 
   <div class="main">
@@ -138,7 +139,6 @@
         <div class="kpi"><div class="kpi-label">Total crédit</div><div class="kpi-value" id="dash-credit" style="color:var(--green)">0</div><div class="kpi-sub">FCFA</div></div>
         <div class="kpi"><div class="kpi-label">Résultat provisoire</div><div class="kpi-value" id="dash-res" style="color:var(--warm)">0</div><div class="kpi-sub">Produits – Charges</div></div>
       </div>
-      <!-- BANDEAU MULTI-ÉCRITURES -->
       <div class="multi-ecr-banner" id="multiEcrBanner">
         <div class="meb-icon">✅</div>
         <div class="meb-text">
@@ -151,7 +151,6 @@
           </div>
         </div>
       </div>
-      <!-- AUTO SAVE BAR -->
       <div class="auto-save-bar" id="autoSaveBar">
         <div class="asb-icon">⚡</div>
         <div class="asb-text">
@@ -250,7 +249,7 @@
       </div>
     </div>
 
-    <!-- JOURNAL REDESIGNÉ — GROUPÉ PAR OPÉRATION -->
+    <!-- JOURNAL -->
     <div class="view" id="view-journal">
       <div class="ph">
         <div><h1>Journal général</h1><p>Opérations regroupées — 3 écritures liées par opération</p></div>
@@ -259,7 +258,6 @@
           <button class="btn btn-ink" onclick="navigate('saisie')">+ Nouvelle</button>
         </div>
       </div>
-
       <div class="filtre-periode-bar">
         <label>Du</label><input type="date" id="jnl-date-debut" onchange="renderJournal()">
         <label>Au</label><input type="date" id="jnl-date-fin" onchange="renderJournal()">
@@ -273,10 +271,8 @@
         <input type="text" class="search-input" placeholder="Rechercher compte / libellé…" id="journalSearch" oninput="renderJournal()" style="min-width:160px;flex:1">
         <button class="btn-filtre-reset" onclick="resetJournalFiltre()">✕ Effacer</button>
       </div>
-
       <div id="journal-analyse" style="display:none" class="analyse-card"></div>
       <div id="journalContent"></div>
-
       <div id="journal-totaux-footer" style="display:none">
         <div class="jnl-footer-totaux">
           <div class="jnl-footer-item"><span class="jnl-footer-label">Opérations</span><span class="jnl-footer-val" id="jnl-nb-groupes" style="color:var(--warm)">0</span></div>
@@ -398,4 +394,6 @@
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
- <script type="module" src="as.js"></script>
+<script type="module" src="as.js"></script>
+</body>
+</html>
