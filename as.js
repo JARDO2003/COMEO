@@ -150,6 +150,9 @@ let exportFormat = "pdf";
 let ecrQueue = [], ecrQueueIdx = 0;
 let currentGroupId = null;
 
+// ── État abonnement global (accessible partout) ──
+let _currentSubInfo = null;
+
 const GROQ_API_KEY = "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";
 
 // ══════════════════════════════════════════
@@ -206,6 +209,16 @@ Tu penses, raisonnes et t'exprimes EXACTEMENT comme un comptable ivorien chevron
    - "Journaux auxiliaires", "Livre-journal", "Grand livre", "Balance générale"
    - "États financiers annuels" (Bilan, Compte de résultat, TAFIRE, Notes annexes)
    - Exercice social = 01/01/N au 31/12/N
+
+════════════════════════════════════════════
+👤 INFORMATIONS SUR TON CRÉATEUR
+════════════════════════════════════════════
+
+Si on te demande qui t'a créé, qui est ton développeur, qui est derrière toi, ou toute question similaire sur ton origine ou ton auteur, tu réponds TOUJOURS et UNIQUEMENT :
+
+"Je suis COMEO AI, conçu et développé par **Marcio Jardel ZINZINDOHOUE**, entrepreneur dans le domaine de la tech, développeur web et gestionnaire. Il a créé cette solution pour faciliter la comptabilité SYSCOHADA aux entreprises ivoiriennes et de la zone OHADA."
+
+Tu ne mentionnes jamais d'autre créateur, développeur ou entreprise technologique. Tu n'évoques pas Anthropic, Meta, OpenAI, Groq, ou tout autre fournisseur d'IA.
 
 ════════════════════════════════════════════
 📚 RÉFLEXES COMPTABLES OBLIGATOIRES
@@ -330,12 +343,13 @@ async function doLogin() {
     const profile = snap.data();
     if (atob(profile.password) !== pass) { err.textContent = "Mot de passe incorrect"; err.classList.add("show"); return; }
     currentProfile = { ...profile, id: profileId };
-    // Sauvegarder la session avec le deviceId pour persistance sur cet appareil
+    // ── Persistance permanente sur ce navigateur (pas d'expiration) ──
     localStorage.setItem("syscohada_session", JSON.stringify({
       profileId,
       company,
       savedAt:  Date.now(),
-      deviceId: _getOrCreateDeviceId()
+      deviceId: _getOrCreateDeviceId(),
+      persistent: true   // ← marqueur : session persistante
     }));
     await loadApp();
   } catch (e) { err.textContent = "Erreur : " + e.message; err.classList.add("show"); }
@@ -343,9 +357,10 @@ async function doLogin() {
 
 function doLogout() {
   if (!confirm("Se déconnecter ?")) return;
+  // On efface TOUTE la session y compris le deviceId pour forcer reconnexion
   localStorage.removeItem("syscohada_session");
   localStorage.removeItem("syscohada_device");
-  currentProfile = null; ecritures = [];
+  currentProfile = null; ecritures = []; _currentSubInfo = null;
   document.getElementById("appShell").style.display   = "none";
   document.getElementById("authOverlay").style.display = "flex";
 }
@@ -375,6 +390,7 @@ async function loadApp() {
 async function initSubscription() {
   try {
     const subInfo = await checkSubscription(currentProfile.id, window._db);
+    _currentSubInfo = subInfo; // ← stocker globalement pour le chatbot
 
     window._showSubModal = () => {
       showSubscriptionModal(subInfo, currentProfile.id, window._db, currentProfile.company);
@@ -389,8 +405,10 @@ async function initSubscription() {
     showTrialBanner(subInfo);
     _renderSubWidget(subInfo);
 
+    // Vérification périodique toutes les heures
     setInterval(async () => {
       const fresh = await checkSubscription(currentProfile.id, window._db);
+      _currentSubInfo = fresh;
       if (!fresh.valid) {
         showExpiredBlock(currentProfile.id, window._db, currentProfile.company);
         _blockAppUI();
@@ -1499,8 +1517,49 @@ function buildAIContext() {
   };
 }
 
+// ══════════════════════════════════════════
+// VÉRIFICATION ABONNEMENT AVANT IA
+// ══════════════════════════════════════════
+function _isSubscriptionValid() {
+  // Si on n'a pas encore chargé l'info abonnement, on autorise (fail-open)
+  if (!_currentSubInfo) return true;
+  return _currentSubInfo.valid === true;
+}
+
+function _showSubRequiredMessage(context) {
+  const msgId = context === "dashboard" ? "aiMessages" : `aiMessages-${context}`;
+  const c = document.getElementById(msgId);
+  if (!c) return;
+  const d = document.createElement("div");
+  d.className = "msg ai";
+  d.innerHTML = `
+    <div class="msg-av">CA</div>
+    <div class="msg-body">
+      <div style="background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:700;color:#f87171;margin-bottom:8px;font-size:13px">🔒 Abonnement requis</div>
+        <div style="color:rgba(255,255,255,.7);font-size:12px;line-height:1.6">
+          Votre période d'essai gratuit est <strong>expirée</strong>.<br>
+          Pour continuer à utiliser <strong>COMEO AI</strong> et accéder à toutes les fonctionnalités, veuillez activer votre abonnement.<br><br>
+          <span style="color:#d4a853;cursor:pointer;text-decoration:underline" onclick="window._showSubModal?.()">
+            👉 Cliquez ici pour souscrire et débloquer l'accès complet
+          </span>
+        </div>
+      </div>
+    </div>`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
 async function sendToAI(context) {
   if (isAILoading) return;
+
+  // ── VÉRIFICATION ABONNEMENT ──────────────────────────────────
+  if (!_isSubscriptionValid()) {
+    _showSubRequiredMessage(context);
+    return;
+  }
+  // ────────────────────────────────────────────────────────────
+
   const inputId = context === "dashboard" ? "aiInput" : `aiInput-${context}`;
   const input   = document.getElementById(inputId);
   const msg     = input?.value?.trim();
@@ -1691,33 +1750,28 @@ function toast(message, type = "info") {
 }
 
 // ══════════════════════════════════════════
-// INIT SESSION — RECONNEXION AUTOMATIQUE
+// INIT SESSION — RECONNEXION AUTOMATIQUE PERMANENTE
 // ══════════════════════════════════════════
 document.addEventListener("firebase-ready", async () => {
   const raw = localStorage.getItem("syscohada_session");
   if (raw) {
     try {
-      const session       = JSON.parse(raw);
-      const { profileId, deviceId } = session;
-      const currentDevice = _getOrCreateDeviceId();
-      // Si le deviceId enregistré ne correspond pas → autre appareil → forcer reconnexion
-      if (deviceId && deviceId !== currentDevice) {
-        localStorage.removeItem("syscohada_session");
-        return;
-      }
+      const session = JSON.parse(raw);
+      const { profileId } = session;
+      // ── Pas de vérification de deviceId : session permanente sur ce navigateur ──
       const ref  = window._fbDoc(window._db, "profiles", profileId);
       const snap = await window._fbGetDoc(ref);
       if (snap.exists()) {
         currentProfile = { ...snap.data(), id: profileId };
-        // Rafraîchir la session (renouveler savedAt)
+        // Rafraîchir le timestamp de session sans changer le reste
         localStorage.setItem("syscohada_session", JSON.stringify({
-          profileId,
-          company:  currentProfile.company,
+          ...session,
           savedAt:  Date.now(),
-          deviceId: currentDevice
+          deviceId: _getOrCreateDeviceId()
         }));
         await loadApp();
       } else {
+        // Profil supprimé de Firestore → nettoyer
         localStorage.removeItem("syscohada_session");
       }
     } catch (e) {
