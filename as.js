@@ -1619,7 +1619,7 @@ const PC= {
 
 };
 
-module.exports = planCompteSYSCOHADA;
+// (ligne supprimée — inutile en contexte navigateur)
 const CLASS_NAMES = {
   '1':'Capitaux','2':'Immobilisations','3':'Stocks','4':'Tiers',
   '5':'Trésorerie','6':'Charges','7':'Produits','8':'Spéciaux'
