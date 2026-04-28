@@ -1670,6 +1670,12 @@ let ecrQueue = [], ecrQueueIdx = 0;
 let currentGroupId = null;
 
 const GROQ_API_KEY = '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';
+const GROQ_MODELS  = [
+  'llama-3.3-70b-versatile',
+  'qwen/qwen3-32b',
+  'meta-llama/llama-4-scout-17b-16e-instruct'
+];
+let groqModelIdx = 0;
 
 // ══════════════════════════════════════════
 // MOBILE SIDEBAR
@@ -3126,11 +3132,15 @@ async function sendToAI(context) {
   const ctxData    = buildAIContext();
   const systemPrompt = buildSystemPrompt(ctxData);
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  let response, lastError;
+for (let attempt = 0; attempt < GROQ_MODELS.length; attempt++) {
+  const modelToUse = GROQ_MODELS[(groqModelIdx + attempt) % GROQ_MODELS.length];
+  try {
+    response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${GROQ_API_KEY}` },
       body: JSON.stringify({
-        model: 'deepseek-r1-distill-llama-70b',
+        model: modelToUse,
         max_tokens: 4000,
         temperature: 0.05,
         messages: [
@@ -3139,11 +3149,23 @@ async function sendToAI(context) {
         ]
       })
     });
-    removeTyping(context, tid);
-    if (!response.ok) {
-      const e2 = await response.json().catch(() => ({}));
-      throw new Error(e2.error?.message || 'Erreur API ' + response.status);
+    if (response.ok) {
+      groqModelIdx = (groqModelIdx + attempt) % GROQ_MODELS.length;
+      break;
     }
+    const errData = await response.json().catch(() => ({}));
+    lastError = errData.error?.message || 'Erreur ' + response.status;
+    if (lastError.includes('decommissioned') || lastError.includes('deprecated') || response.status === 404) {
+      toast(`⚠️ Modèle ${modelToUse} indisponible → bascule...`, 'info');
+      continue;
+    }
+    break;
+  } catch(e) { lastError = e.message; }
+}
+removeTyping(context, tid);
+if (!response || !response.ok) {
+  throw new Error(lastError || 'Tous les modèles sont indisponibles');
+}
     const data     = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
 
