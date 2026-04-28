@@ -1797,6 +1797,65 @@ CLASSE 7 — PRODUITS :
 ════════════════════════════════════════════
 ⚠️ RÈGLES FONDAMENTALES — JAMAIS VIOLÉES
 ════════════════════════════════════════════
+════════════════════════════════════════════
+⚠️ DÉTECTION AUTOMATIQUE — IMMOBILISATION
+════════════════════════════════════════════
+
+ÉTAPE OBLIGATOIRE avant toute écriture d'achat :
+→ Ce bien dure-t-il plus d'un exercice comptable (1 an) ?
+  OUI → CLASSE 2 obligatoire (jamais classe 6)
+  NON → CLASSE 6 (charges)
+
+MATÉRIEL DE TRANSPORT (véhicule, camion, moto, taxi...) :
+  → TTC donné ? : HT = TTC ÷ 1,18 | TVA = TTC × 18/118
+  → DÉBIT  2451  Matériel automobile          [montant HT]
+  → DÉBIT  4451  TVA récup. sur immobilisations [TVA 18%]
+  → CRÉDIT 4011  Fournisseur                  [montant TTC]
+  JAMAIS : 601, 602, 607, 6058 pour un véhicule
+
+MATÉRIEL INFORMATIQUE (ordinateur, tablette, serveur...) :
+  → DÉBIT  2442  Matériel informatique        [HT]
+  → DÉBIT  4451  TVA récup. sur immobilisations [TVA]
+  → CRÉDIT 4011  Fournisseur                  [TTC]
+
+MOBILIER ET MATÉRIEL DE BUREAU :
+  → DÉBIT  2444  Mobilier de bureau           [HT]
+  → DÉBIT  4451  TVA récup. sur immobilisations [TVA]
+  → CRÉDIT 4011  Fournisseur                  [TTC]
+
+BÂTIMENT :
+  → DÉBIT  2311  Bâtiments industriels        [HT]
+  → DÉBIT  4451  TVA récup. sur immobilisations [TVA]
+  → CRÉDIT 4011  Fournisseur                  [TTC]
+
+RÈGLEMENT SYSTÉMATIQUE après constatation :
+  → DÉBIT  4011  Fournisseur                  [TTC]
+  → CRÉDIT 521   Banque (virement)            [TTC]
+  ou
+  → CRÉDIT 571   Caisse (espèces)             [TTC]
+  ou
+  → CRÉDIT 552   Mobile Money                 [TTC]
+
+AMORTISSEMENTS (dotation annuelle) :
+  Véhicule (5 ans, 20%/an)    → DÉBIT 6813 | CRÉDIT 2845
+  Matériel info (3 ans, 33%/an)→ DÉBIT 6813 | CRÉDIT 2844
+  Mobilier (10 ans, 10%/an)   → DÉBIT 6813 | CRÉDIT 2844
+  Bâtiment (20 ans, 5%/an)    → DÉBIT 6813 | CRÉDIT 2831
+
+EXEMPLE CONCRET — Achat camion TTC 3 000 000 FCFA :
+HT  = 3 000 000 ÷ 1,18 = 2 542 373 FCFA
+TVA = 3 000 000 × 18/118 = 457 627 FCFA
+
+###ECRITURE###{"journal":"AC","libelle":"Achat matériel transport — Facture N°XX","lignes":[
+{"compte":"2451","libelle":"Matériel automobile","debit":2542373,"credit":0},
+{"compte":"4451","libelle":"TVA récupérable sur immobilisations 18%","debit":457627,"credit":0},
+{"compte":"4011","libelle":"Fournisseur","debit":0,"credit":3000000}
+]}
+
+###ECRITURE###{"journal":"BQ","libelle":"Règlement fournisseur matériel transport","lignes":[
+{"compte":"4011","libelle":"Fournisseur","debit":3000000,"credit":0},
+{"compte":"521","libelle":"Banque SGBCI","debit":0,"credit":3000000}
+]}
 
 RÈGLE 1 — IMMOBILISATION vs CHARGE :
   ✅ Achat véhicule/camion/moto         → DÉBIT 2451 (JAMAIS 601/607)
