@@ -23,7 +23,7 @@ document.dispatchEvent(new Event('firebase-ready'));
 // ══════════════════════════════════════════
 // PLAN COMPTABLE SYSCOHADA RÉVISÉ 2017
 // ══════════════════════════════════════════
-const PC= {
+const PC = {
   "10":"CAPITAL","101":"CAPITAL SOCIAL","1011":"Capital souscrit, non appelé","1012":"Capital souscrit, appelé, non versé","1013":"Capital souscrit, appelé, versé, non amorti","1014":"Capital souscrit, appelé, versé, amorti","1018":"Capital souscrit soumis à des conditions particulières","102":"CAPITAL PAR DOTATION","1021":"Dotation initiale","1022":"Dotations complémentaires","1028":"Autres dotations","103":"CAPITAL PERSONNEL","104":"COMPTE DE L'EXPLOITANT","1041":"Apports temporaires","1042":"Opérations courantes","1043":"Rémunérations, impôts et autres charges personnelles","1047":"Prélèvements d'autoconsommation","1048":"Autres prélèvements","105":"PRIMES LIEES AU CAPITAL SOCIAL","1051":"Primes d'émission","1052":"Primes d'apport","1053":"Primes de fusion","1054":"Primes de conversion","1058":"Autres primes","106":"ECARTS DE REEVALUATION","1061":"Ecarts de réévaluation légale","1062":"Ecarts de réévaluation libre","109":"APPORTEURS, CAPITAL SOUSCRIT, NON APPELE",
   "11":"RESERVES","111":"RESERVE LEGALE","112":"RESERVES STATUTAIRES OU CONTRACTUELLES","113":"RESERVES REGLEMENTEES","118":"AUTRES RESERVES","1181":"Réserves facultatives","1188":"Réserves diverses",
   "12":"REPORT A NOUVEAU","121":"REPORT A NOUVEAU CREDITEUR","129":"REPORT A NOUVEAU DEBITEUR",
@@ -41,7 +41,7 @@ const PC= {
   "25":"AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS","251":"Avances sur immobilisations incorporelles","252":"Avances sur immobilisations corporelles",
   "26":"TITRES DE PARTICIPATION","261":"Titres contrôle exclusif","262":"Titres contrôle conjoint","263":"Titres influence notable","268":"Autres titres de participation",
   "27":"AUTRES IMMOBILISATIONS FINANCIERES","271":"PRETS ET CREANCES","272":"PRETS AU PERSONNEL","273":"CREANCES SUR L'ETAT","274":"TITRES IMMOBILISES","275":"DEPOTS ET CAUTIONNEMENTS VERSES","276":"INTERETS COURUS","277":"CREANCES RATTACHEES A DES PARTICIPATIONS","278":"IMMOBILISATIONS FINANCIERES DIVERSES",
-  "28":"AMORTISSEMENTS","281":"AMORTISSEMENTS DES IMMOBILISATIONS INCORPORELLES","2811":"Amortissements frais de développement","2812":"Amortissements brevets, licences","2813":"Amortissements logiciels et sites internet","2815":"Amortissements fonds commercial","2818":"Amortissements autres droits","282":"AMORTISSEMENTS DES TERRAINS","2824":"Amortissements travaux de mise en valeur","283":"AMORTISSEMENTS DES BATIMENTS","2831":"Amortissements bâtiments sol propre","2832":"Amortissements bâtiments sol d'autrui","2833":"Amortissements ouvrages d'infrastructure","2834":"Amortissements installations techniques","2835":"Amortissements aménagements de bureaux","284":"AMORTISSEMENTS DU MATERIEL","2841":"Amortissements matériel industriel et commercial","2842":"Amortissements matériel agricole","2843":"Amortissements matériel d'emballage","2844":"Amortissements matériel et mobilier","2845":"Amortissements matériel de transport","2846":"Amortissements actifs biologiques","2848":"Amortissements autres matériels",
+  "28":"AMORTISSEMENTS","281":"AMORTISSEMENTS DES IMMOBILISATIONS INCORPORELLES","2811":"Amortissements frais de développement","2812":"Amortissements brevets, licences","2813":"Amortissements logiciels et sites internet","2815":"Amortissements fonds commercial","2818":"Amortissements autres droits","282":"AMORTISSEMENTS DES TERRAINS","2824":"Amortissements travaux de mise en valeur","283":"AMORTISSEMENTS DES BATIMENTS","2831":"Amortissements bâtiments sol propre","2832":"Amortissements bâtiments sol d'autrui","2834":"Amortissements installations techniques","2835":"Amortissements aménagements de bureaux","284":"AMORTISSEMENTS DU MATERIEL","2841":"Amortissements matériel industriel et commercial","2842":"Amortissements matériel agricole","2844":"Amortissements matériel et mobilier","2845":"Amortissements matériel de transport","2846":"Amortissements actifs biologiques","2848":"Amortissements autres matériels",
   "29":"DEPRECIATIONS DES IMMOBILISATIONS","291":"Dépréciations immobilisations incorporelles","293":"Dépréciations bâtiments","294":"Dépréciations matériel","296":"Dépréciations titres de participation","297":"Dépréciations autres immobilisations financières",
   "31":"MARCHANDISES","311":"MARCHANDISES A","312":"MARCHANDISES B","313":"ACTIFS BIOLOGIQUES","318":"MARCHANDISES HORS ACTIVITES ORDINAIRES",
   "32":"MATIERES PREMIERES ET FOURNITURES LIEES","321":"MATIERES A","322":"MATIERES B","323":"FOURNITURES",
@@ -78,11 +78,11 @@ const PC= {
   "63":"AUTRES SERVICES EXTERIEURS","631":"FRAIS BANCAIRES","6311":"Frais sur titres (vente, garde)","6312":"Frais sur effets","6313":"Location de coffres","6315":"Commissions sur cartes de crédit","6316":"Frais d'émission d'emprunts","6318":"Autres frais bancaires","632":"REMUNERATIONS D'INTERMEDIAIRES ET DE CONSEILS","6322":"Commissions et courtages sur ventes","6324":"Honoraires des professions réglementées","6325":"Frais d'actes et de contentieux","6327":"Rémunérations des autres prestataires de services","633":"FRAIS DE FORMATION DU PERSONNEL","634":"REDEVANCES POUR BREVETS, LICENCES, LOGICIELS, CONCESSIONS, DROITS ET VALEURS SIMILAIRES","6342":"Redevances pour brevets, licences","6343":"Redevances pour logiciels","6344":"Redevances pour marques","6346":"Redevances pour concessions, droits et valeurs similaires","635":"COTISATIONS","6351":"Cotisations","637":"REMUNERATIONS DE PERSONNEL EXTERIEUR A L'ENTITE","6371":"Personnel intérimaire","6372":"Personnel détaché ou prêté à l'entité","638":"AUTRES CHARGES EXTERNES","6381":"Frais de recrutement du personnel","6382":"Frais de déménagement","6383":"Réceptions","6384":"Missions","6388":"Charges externes diverses",
   "64":"IMPOTS ET TAXES","641":"IMPOTS ET TAXES DIRECTS","6411":"Impôts fonciers et taxes annexes","6412":"Patentes, licences et taxes annexes","6413":"Taxes sur appointements et salaires","6414":"Taxes d'apprentissage","6415":"Formation professionnelle continue","6418":"Autres impôts et taxes directs","645":"IMPOTS ET TAXES INDIRECTS","646":"DROITS D'ENREGISTREMENT","6461":"Droits de mutation","6462":"Droits de timbre","6463":"Taxes sur les véhicules de société","647":"PENALITES, AMENDES FISCALES","648":"AUTRES IMPOTS ET TAXES",
   "65":"AUTRES CHARGES","651":"PERTES SUR CREANCES CLIENTS ET AUTRES DEBITEURS","654":"VALEURS COMPTABLES DES CESSIONS COURANTES D'IMMOBILISATIONS","6541":"Immobilisations incorporelles","6542":"Immobilisations corporelles","656":"PERTE DE CHANGE SUR CREANCES ET DETTES COMMERCIALES","657":"PENALITES ET AMENDES PENALES","658":"CHARGES DIVERSES","6581":"Indemnités de fonction et autres rémunérations d'administrateurs","6582":"Dons","6583":"Mécénat","6588":"Autres charges diverses","659":"CHARGES POUR DEPRECIATIONS ET PROVISIONS",
-  "66":"CHARGES DE PERSONNEL","661":"REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NATIONAL","6611":"Appointements salaires et commissions","6612":"Primes et gratifications","6613":"Congés payés","6614":"Indemnités de préavis, de licenciement et de recherche d'embauche","6615":"Indemnités de maladie versées aux travailleurs","6616":"Supplément familial","6617":"Avantages en nature","6618":"Autres rémunérations directes","662":"REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NON NATIONAL","6621":"Appointements salaires et commissions","663":"INDEMNITES FORFAITAIRES VERSEES AU PERSONNEL","6631":"Indemnités de logement","6632":"Indemnités de représentation","6633":"Indemnités d'expatriation","6634":"Indemnités de transport","6638":"Autres indemnités et avantages divers","664":"CHARGES SOCIALES","6641":"Charges sociales sur rémunération du personnel national","6642":"Charges sociales sur rémunération du personnel non national","666":"REMUNERATIONS ET CHARGES SOCIALES DE L'EXPLOITANT INDIVIDUEL","667":"REMUNERATION TRANSFEREE DE PERSONNEL EXTERIEUR","668":"AUTRES CHARGES SOCIALES","6681":"Versements aux Syndicats et Comités d'entreprise","6684":"Médecine du travail et pharmacie","6685":"Assurances et organismes de santé","6686":"Assurances retraite et fonds de pensions","6688":"Charges sociales diverses",
+  "66":"CHARGES DE PERSONNEL","661":"REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NATIONAL","6611":"Appointements salaires et commissions","6612":"Primes et gratifications","6613":"Congés payés","6614":"Indemnités de préavis, de licenciement et de recherche d'embauche","6615":"Indemnités de maladie versées aux travailleurs","6616":"Supplément familial","6617":"Avantages en nature","6618":"Autres rémunérations directes","662":"REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NON NATIONAL","663":"INDEMNITES FORFAITAIRES VERSEES AU PERSONNEL","6631":"Indemnités de logement","6632":"Indemnités de représentation","6633":"Indemnités d'expatriation","6634":"Indemnités de transport","6638":"Autres indemnités et avantages divers","664":"CHARGES SOCIALES","6641":"Charges sociales sur rémunération du personnel national","6642":"Charges sociales sur rémunération du personnel non national","666":"REMUNERATIONS ET CHARGES SOCIALES DE L'EXPLOITANT INDIVIDUEL","667":"REMUNERATION TRANSFEREE DE PERSONNEL EXTERIEUR","668":"AUTRES CHARGES SOCIALES","6681":"Versements aux Syndicats et Comités d'entreprise","6684":"Médecine du travail et pharmacie","6685":"Assurances et organismes de santé","6686":"Assurances retraite et fonds de pensions","6688":"Charges sociales diverses",
   "67":"FRAIS FINANCIERS ET CHARGES ASSIMILEES","671":"INTERETS DES EMPRUNTS","6711":"Emprunts obligataires","6712":"Emprunts auprès des établissements de crédit","672":"INTERETS DANS LOYERS DE LOCATION ACQUISITION","673":"ESCOMPTES ACCORDES","674":"AUTRES INTERETS","6741":"Avances reçues et dépôts créditeurs","6742":"Comptes courants bloqués","6744":"Intérêts sur dettes commerciales","6745":"Intérêts bancaires et sur opérations de financement","675":"ESCOMPTES DES EFFETS DE COMMERCE","676":"PERTES DE CHANGE FINANCIERES","677":"PERTES SUR TITRES DE PLACEMENT","679":"CHARGES POUR DEPRECIATIONS ET PROVISIONS POUR RISQUES FINANCIERES",
   "68":"DOTATIONS AUX AMORTISSEMENTS","681":"DOTATIONS AUX AMORTISSEMENTS D'EXPLOITATION","6812":"Dotations aux amortissements des immobilisations incorporelles","6813":"Dotations aux amortissements des immobilisations corporelles",
   "69":"DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS","691":"DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS D'EXPLOITATION","6911":"Dotations aux provisions pour risques et charges","6913":"Dotations aux dépréciations des immobilisations incorporelles","6914":"Dotations aux dépréciations des immobilisations corporelles","697":"DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS FINANCIERES","6971":"Dotations aux provisions pour risques et charges financiers","6972":"Dotations aux dépréciations des immobilisations financières",
-  "70":"VENTES","701":"VENTES DE MARCHANDISES","7011":"dans la Région","7012":"hors Région","7013":"aux entités du groupe dans la Région","7015":"sur internet","7019":"Rabais, remises, ristournes accordés","702":"VENTES DE PRODUITS FINIS","7021":"dans la Région","7022":"hors Région","703":"VENTES DE PRODUITS INTERMEDIAIRES","704":"VENTES DE PRODUITS RESIDUELS","705":"TRAVAUX FACTURES","706":"SERVICES VENDUS","7061":"dans la Région","7062":"hors Région","707":"PRODUITS ACCESSOIRES","7071":"Ports, emballages perdus et autres frais facturés","7072":"Commissions et courtages","7073":"Locations et redevances de location - financement","7074":"Bonis sur reprises et cessions d'emballages","7075":"Mise à disposition de personnel","7076":"Redevances pour brevets, logiciels, marques et droits similaires","7077":"Services exploités dans l'intérêt du personnel","7078":"Autres produits accessoires",
+  "70":"VENTES","701":"VENTES DE MARCHANDISES","7011":"dans la Région","7012":"hors Région","7013":"aux entités du groupe dans la Région","7015":"sur internet","7019":"Rabais, remises, ristournes accordés","702":"VENTES DE PRODUITS FINIS","703":"VENTES DE PRODUITS INTERMEDIAIRES","704":"VENTES DE PRODUITS RESIDUELS","705":"TRAVAUX FACTURES","706":"SERVICES VENDUS","7061":"dans la Région","7062":"hors Région","707":"PRODUITS ACCESSOIRES","7071":"Ports, emballages perdus et autres frais facturés","7072":"Commissions et courtages","7073":"Locations et redevances de location - financement","7074":"Bonis sur reprises et cessions d'emballages","7075":"Mise à disposition de personnel","7076":"Redevances pour brevets, logiciels, marques et droits similaires","7077":"Services exploités dans l'intérêt du personnel","7078":"Autres produits accessoires",
   "71":"SUBVENTIONS D'EXPLOITATION","711":"SUR PRODUITS A L'EXPORTATION","712":"SUR PRODUITS A L'IMPORTATION","713":"SUR PRODUITS DE PEREQUATION","714":"INDEMNITES ET SUBVENTIONS D'EXPLOITATION","718":"AUTRES SUBVENTIONS D'EXPLOITATION","7181":"Versées par l'Etat et les collectivités publiques","7182":"Versées par les organismes internationaux","7183":"Versées par des tiers",
   "72":"PRODUCTION IMMOBILISEE","721":"IMMOBILISATIONS INCORPORELLES","722":"IMMOBILISATIONS CORPORELLES","724":"PRODUCTION AUTO-CONSOMMEE","726":"IMMOBILISATIONS FINANCIERES",
   "73":"VARIATIONS DES STOCKS DE BIENS ET DE SERVICES PRODUITS","734":"VARIATIONS DES STOCKS DE PRODUITS EN COURS","736":"VARIATIONS DES STOCKS DE PRODUITS FINIS","737":"VARIATIONS DES STOCKS DE PRODUITS INTERMEDIAIRES ET RESIDUELS",
@@ -136,6 +136,8 @@ let ecritures = [], lignes = [], pieceCounter = 1, currentProfile = null, isAILo
 let exportFormat = 'pdf';
 let ecrQueue = [], ecrQueueIdx = 0;
 let currentGroupId = null;
+// Historique de conversation pour maintenir le contexte avec le modèle
+let conversationHistory = [];
 
 const GROQ_API_KEY = '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';
 const GROQ_MODELS = [
@@ -158,255 +160,381 @@ function closeMobileSidebar() {
 }
 
 // ══════════════════════════════════════════
-// SYSTEM PROMPT — VERSION RENFORCÉE
+// SYSTEM PROMPT — RAISONNEMENT STRUCTURÉ
 // ══════════════════════════════════════════
 function buildSystemPrompt(ctx) {
   const { nbEcritures, companyName, exercice, totalDebit, totalCredit, comptesSoldes, allDates, ecrituresResume } = ctx;
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  return `Tu es COMEO AI — Expert-Comptable Diplômé et Commissaire aux Comptes de Côte d'Ivoire, membre de l'ONECCA-CI. Tu appliques le SYSCOHADA Révisé 2017 avec une rigueur absolue.
+  return `Tu es COMEO AI — Expert-Comptable Diplômé et Commissaire aux Comptes agréé en Côte d'Ivoire, membre de l'ONECCA-CI. Tu maîtrises parfaitement le SYSCOHADA Révisé 2017 et le droit fiscal ivoirien.
 
 ════════════════════════════════════════════
-🔴 RÈGLE ABSOLUE N°1 — TOUTES LES ÉCRITURES OBLIGATOIRES
+🧠 MÉTHODE DE RAISONNEMENT OBLIGATOIRE
 ════════════════════════════════════════════
 
-Tu DOIS toujours générer LA TOTALITÉ des écritures nécessaires pour chaque opération.
-JAMAIS une seule écriture là où plusieurs sont requises.
+Avant de produire TOUTE écriture, tu DOIS raisonner en silence selon ces étapes :
 
-SCHÉMA OBLIGATOIRE PAR TYPE D'OPÉRATION :
+ÉTAPE 1 — IDENTIFIER L'OPÉRATION
+  → Quelle est la nature exacte de l'opération ? (achat, vente, salaire, immobilisation, emprunt...)
+  → L'opération est-elle HT ou TTC ? Si TTC : HT = TTC ÷ 1,18 | TVA = TTC × 18/118
+  → Qui paie / qui reçoit ? Quelle est la contrepartie financière ?
+
+ÉTAPE 2 — COMPTER LES ÉCRITURES NÉCESSAIRES
+  → Combien d'écritures cette opération requiert-elle ? (1, 2 ou 3 ?)
+  → Ne JAMAIS générer moins d'écritures que nécessaire
+  → Vérifier : y a-t-il un mouvement de stock ? Un règlement ? Une constatation de dette ?
+
+ÉTAPE 3 — CHOISIR LES COMPTES EXACTS
+  → Classe 6 pour charges, Classe 7 pour produits, Classe 2 pour immobilisations
+  → JAMAIS 601 pour un véhicule/ordinateur/mobilier → utiliser 2451/2442/2444
+  → JAMAIS 511/512/513 pour un règlement par chèque → utiliser 521
+  → TVA : 4452 achats courants | 4451 immobilisations | 4453 transports | 4454 services
+
+ÉTAPE 4 — VÉRIFIER L'ÉQUILIBRE
+  → Σ DÉBITS = Σ CRÉDITS dans chaque écriture (tolérance : 0 FCFA)
+  → Les lignes débitrices TOUJOURS en premier (norme SYSCOHADA)
+
+ÉTAPE 5 — FORMATER EN JSON
+  → Utiliser EXACTEMENT le format ###ECRITURE### décrit ci-dessous
+
+════════════════════════════════════════════
+📋 SCHÉMAS OBLIGATOIRES PAR TYPE D'OPÉRATION
+════════════════════════════════════════════
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PAIEMENT DES SALAIRES (OBLIGATOIRE : 2 écritures)
+📌 ACHAT MARCHANDISES À CRÉDIT (3 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [OD] — Constatation de la charge (en fin de mois) :
-  DÉBIT  661   Rémunérations directes personnel national    [salaire brut]
-  CRÉDIT 422   Personnel, rémunérations dues                [salaire brut]
+Calcul : HT = montant annoncé (si HT) | TVA = HT × 18% | TTC = HT + TVA
+Si montant TTC donné : HT = TTC ÷ 1,18 (arrondi) | TVA = TTC - HT
 
-ÉCRITURE 2 [BQ] — Règlement par chèque bancaire :
-  DÉBIT  422   Personnel, rémunérations dues                [net à payer]
-  CRÉDIT 521   Banques locales                              [net à payer]
+ÉCRITURE 1 [AC] — Constatation facture fournisseur :
+  DÉBIT  601   Achats de marchandises                    [HT]
+  DÉBIT  4452  TVA récupérable sur achats 18%            [TVA]
+  CRÉDIT 401   Fournisseurs                              [TTC]
 
-⚠️ SI retenues salariales (CNPS 7,7%, CN 1,5%, ITS...) :
-ÉCRITURE 1 [OD] — Constatation de la charge :
-  DÉBIT  661   Rémunérations directes personnel national    [salaire brut]
-  CRÉDIT 422   Personnel, rémunérations dues                [salaire net]
-  CRÉDIT 431   Sécurité sociale (CNPS salarial 7,7%)        [cotis. CNPS]
-  CRÉDIT 447   Impôts retenus à la source (ITS, CN)         [impôts]
+ÉCRITURE 2 [IN] — Entrée en stock (principe de l'inventaire permanent) :
+  DÉBIT  311   Marchandises A                            [HT]
+  CRÉDIT 6031  Variation des stocks de marchandises      [HT]
 
-ÉCRITURE 2 [BQ] — Règlement des salaires nets :
-  DÉBIT  422   Personnel, rémunérations dues                [net à payer]
-  CRÉDIT 521   Banques locales                              [net à payer]
+ÉCRITURE 3 [BQ ou CA] — Règlement :
+  DÉBIT  401   Fournisseurs                              [TTC]
+  CRÉDIT 521   Banques locales (chèque/virement)         [TTC]
+  OU
+  CRÉDIT 571   Caisse (espèces)                          [TTC]
+
+Si règlement MIXTE (une partie au comptant + reste par chèque) :
+  ÉCRITURE 3a [CA] → Règlement partiel espèces :
+    DÉBIT  401   Fournisseurs                            [montant espèces TTC]
+    CRÉDIT 571   Caisse                                  [montant espèces TTC]
+  ÉCRITURE 3b [BQ] → Règlement solde par chèque :
+    DÉBIT  401   Fournisseurs                            [montant chèque TTC]
+    CRÉDIT 521   Banques locales                         [montant chèque TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 ACHAT MARCHANDISES AVEC STOCK (OBLIGATOIRE : 3 écritures)
+📌 ACHAT MARCHANDISES AU COMPTANT IMMÉDIAT (2 ou 3 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [AC] — Constatation facture :
-  DÉBIT  601   Achats de marchandises                       [HT]
-  DÉBIT  4452  TVA récupérable sur achats 18%               [TVA]
-  CRÉDIT 401   Fournisseurs                                 [TTC]
+ÉCRITURE 1 [AC] — Constatation :
+  DÉBIT  601   Achats de marchandises                    [HT]
+  DÉBIT  4452  TVA récupérable sur achats 18%            [TVA]
+  CRÉDIT 401   Fournisseurs                              [TTC]
 
 ÉCRITURE 2 [IN] — Entrée en stock :
-  DÉBIT  311   Marchandises                                 [HT]
-  CRÉDIT 6031  Variation des stocks de marchandises         [HT]
+  DÉBIT  311   Marchandises A                            [HT]
+  CRÉDIT 6031  Variation des stocks de marchandises      [HT]
 
-ÉCRITURE 3 [BQ/CA] — Règlement :
-  DÉBIT  401   Fournisseurs                                 [TTC]
-  CRÉDIT 521   Banques locales (ou 571 Caisse)              [TTC]
+ÉCRITURE 3 [CA/BQ] — Règlement immédiat :
+  DÉBIT  401   Fournisseurs                              [TTC]
+  CRÉDIT 571   Caisse (ou 521 Banque)                    [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 VENTE MARCHANDISES (OBLIGATOIRE : 3 écritures)
+📌 VENTE MARCHANDISES (3 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [VE] — Constatation vente :
-  DÉBIT  411   Clients                                      [TTC]
-  CRÉDIT 701   Ventes de marchandises                       [HT]
-  CRÉDIT 4431  TVA facturée sur ventes 18%                  [TVA]
+ÉCRITURE 1 [VE] — Facturation client :
+  DÉBIT  411   Clients                                   [TTC]
+  CRÉDIT 701   Ventes de marchandises                    [HT]
+  CRÉDIT 4431  TVA facturée sur ventes 18%               [TVA]
 
-ÉCRITURE 2 [IN] — Sortie de stock :
-  DÉBIT  6031  Variation des stocks de marchandises         [coût]
-  CRÉDIT 311   Marchandises                                 [coût]
+ÉCRITURE 2 [IN] — Sortie de stock au coût d'achat :
+  DÉBIT  6031  Variation des stocks de marchandises      [coût HT]
+  CRÉDIT 311   Marchandises A                            [coût HT]
 
 ÉCRITURE 3 [BQ/CA] — Encaissement :
-  DÉBIT  521   Banques locales (ou 571 Caisse)              [TTC]
-  CRÉDIT 411   Clients                                      [TTC]
+  DÉBIT  521   Banques locales (ou 571 Caisse)           [TTC]
+  CRÉDIT 411   Clients                                   [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 ACHAT IMMOBILISATION (OBLIGATOIRE : 2 écritures)
+📌 PAIEMENT SALAIRES (2 écritures minimum)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉCRITURE 1 [OD] — Constatation charge salariale :
+  DÉBIT  661   Rémunérations directes personnel national [brut]
+  CRÉDIT 422   Personnel, rémunérations dues             [net à payer]
+  CRÉDIT 431   Sécurité sociale — CNPS salarial 7,7%    [retenue CNPS]
+  CRÉDIT 447   Impôts retenus à la source — ITS/CN 1,5% [retenue fiscale]
+
+ÉCRITURE 2 [BQ] — Virement salaires nets :
+  DÉBIT  422   Personnel, rémunérations dues             [net à payer]
+  CRÉDIT 521   Banques locales                           [net à payer]
+
+ÉCRITURE 3 [OD] — Charges patronales (CNPS 16% + TPA 0,4% + CN 1,6%) :
+  DÉBIT  664   Charges sociales                          [total patronal]
+  CRÉDIT 431   Sécurité sociale                          [CNPS patronal]
+  CRÉDIT 447   Etat, impôts retenus à la source          [TPA + CN patronale]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 ACHAT IMMOBILISATION (2 écritures)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Choisir le bon compte selon la nature du bien :
+  Véhicule / camion / moto     → 2451
+  Matériel informatique / PC   → 2442
+  Mobilier de bureau           → 2444
+  Matériel de bureau           → 2441
+  Matériel industriel          → 2411
+  Bâtiment (sol propre)        → 2311
+  Terrain                      → 222 ou 223
+  Logiciel                     → 213
+  Brevet / licence             → 212
+
 ÉCRITURE 1 [AC] — Constatation facture :
-  DÉBIT  245x  Matériel (2451 véhicule, 2442 info, 2444 mobilier)  [HT]
-  DÉBIT  4451  TVA récupérable sur immobilisations 18%             [TVA]
-  CRÉDIT 401   Fournisseurs                                        [TTC]
+  DÉBIT  24xx  Immobilisation (compte exact)             [HT]
+  DÉBIT  4451  TVA récupérable sur immobilisations 18%   [TVA]
+  CRÉDIT 401   Fournisseurs                              [TTC]
 
 ÉCRITURE 2 [BQ] — Règlement :
-  DÉBIT  401   Fournisseurs                                        [TTC]
-  CRÉDIT 521   Banques locales                                     [TTC]
+  DÉBIT  401   Fournisseurs                              [TTC]
+  CRÉDIT 521   Banques locales                           [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PRESTATION DE SERVICE REÇUE (OBLIGATOIRE : 2 écritures)
+📌 DOTATION AMORTISSEMENT (1 écriture par bien)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [AC] — Constatation facture :
-  DÉBIT  62x   Service extérieur (ou 63x, 61x selon nature)   [HT]
-  DÉBIT  4454  TVA récupérable sur services 18%               [TVA]
-  CRÉDIT 401   Fournisseurs                                   [TTC]
+Durées légales CI : Véhicule 5 ans | Matériel info 3 ans | Mobilier 10 ans | Bâtiment 20 ans
+Annuité = Valeur HT ÷ Durée (linéaire)
 
-ÉCRITURE 2 [BQ] — Règlement :
-  DÉBIT  401   Fournisseurs                                   [TTC]
-  CRÉDIT 521   Banques locales                                [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PRESTATION DE SERVICE VENDUE (OBLIGATOIRE : 2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [VE] — Constatation facture :
-  DÉBIT  411   Clients                                        [TTC]
-  CRÉDIT 706   Services vendus                                [HT]
-  CRÉDIT 4432  TVA facturée sur prestations 18%               [TVA]
-
-ÉCRITURE 2 [BQ] — Encaissement :
-  DÉBIT  521   Banques locales                                [TTC]
-  CRÉDIT 411   Clients                                        [TTC]
+ÉCRITURE [OD] :
+  DÉBIT  6813  Dotations amortissements immob. corporelles [annuité]
+  CRÉDIT 2845  Amort. matériel de transport (véhicule)      [annuité]
+  OU 2844 pour matériel/mobilier | 2841 pour matériel industriel | 283x pour bâtiments
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 CHARGES SOCIALES PATRONALES (OBLIGATOIRE : 2 écritures)
+📌 PRESTATION DE SERVICE REÇUE (2 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [OD] — Constatation charges patronales :
-  DÉBIT  664   Charges sociales (CNPS patronal 16%, TPA 0,4%, CN 1,6%)  [total]
-  CRÉDIT 431   Sécurité sociale                                          [CNPS]
-  CRÉDIT 447   Etat, impôts retenus à la source                          [autres]
+Choisir le bon compte de charge :
+  Loyer / location locale          → 6222
+  Électricité                      → 6052
+  Eau                              → 6051
+  Téléphone / internet             → 6281 ou 6288
+  Maintenance / réparation         → 6242
+  Honoraires expert / avocat       → 6324
+  Assurance                        → 6251 ou 6252
+  Sous-traitance                   → 621
+  Publicité                        → 6271
+  Formation                        → 633
 
-ÉCRITURE 2 [BQ] — Versement organismes sociaux :
-  DÉBIT  431   Sécurité sociale                              [CNPS total]
-  DÉBIT  447   Etat, impôts retenus à la source              [autres]
-  CRÉDIT 521   Banques locales                               [total]
+ÉCRITURE 1 [AC] :
+  DÉBIT  6xxx  Charge (compte exact selon nature)        [HT]
+  DÉBIT  4454  TVA récupérable sur services 18%          [TVA]
+  CRÉDIT 401   Fournisseurs                              [TTC]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 DOTATION AUX AMORTISSEMENTS (1 écriture par bien)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  DÉBIT  6813  Dotations aux amortissements immobilisations corporelles  [annuité]
-  CRÉDIT 284x  Amortissement du bien (2845 véhicule, 2844 mobilier/info) [annuité]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 EMPRUNT BANCAIRE (OBLIGATOIRE : 2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [BQ] — Mise à disposition des fonds :
-  DÉBIT  521   Banques locales                               [montant]
-  CRÉDIT 162   Emprunts auprès des établissements de crédit  [montant]
-
-ÉCRITURE 2 [BQ] — Remboursement mensuel :
-  DÉBIT  162   Emprunts auprès des établissements de crédit  [capital]
-  DÉBIT  671   Intérêts des emprunts                         [intérêts]
-  CRÉDIT 521   Banques locales                               [total]
+ÉCRITURE 2 [BQ] :
+  DÉBIT  401   Fournisseurs                              [TTC]
+  CRÉDIT 521   Banques locales                           [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 RÈGLEMENT SIMPLE (ex: loyer, électricité payé direct)
+📌 PRESTATION DE SERVICE VENDUE (2 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SI paiement IMMÉDIAT sans crédit fournisseur → 2 écritures :
-ÉCRITURE 1 [AC] — Constatation de la charge :
-  DÉBIT  6xxx  Charge (6222 loyer, 6052 électricité, etc.)   [HT]
-  DÉBIT  4454  TVA récupérable 18% (si assujetti)            [TVA]
-  CRÉDIT 401   Fournisseurs                                  [TTC]
+ÉCRITURE 1 [VE] :
+  DÉBIT  411   Clients                                   [TTC]
+  CRÉDIT 706   Services vendus                           [HT]
+  CRÉDIT 4432  TVA facturée sur prestations 18%          [TVA]
 
-ÉCRITURE 2 [BQ] — Règlement :
-  DÉBIT  401   Fournisseurs                                  [TTC]
-  CRÉDIT 521   Banques locales                               [TTC]
+ÉCRITURE 2 [BQ] :
+  DÉBIT  521   Banques locales (ou 571 Caisse)           [TTC]
+  CRÉDIT 411   Clients                                   [TTC]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 EMPRUNT BANCAIRE (2 écritures)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉCRITURE 1 [BQ] — Déblocage des fonds :
+  DÉBIT  521   Banques locales                           [montant emprunté]
+  CRÉDIT 162   Emprunts auprès établissements de crédit  [montant emprunté]
+
+ÉCRITURE 2 [BQ] — Remboursement mensuel échéance :
+  DÉBIT  162   Emprunts auprès établissements de crédit  [capital remboursé]
+  DÉBIT  671   Intérêts des emprunts                     [intérêts de la période]
+  CRÉDIT 521   Banques locales                           [total mensualité]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 RÈGLEMENT D'UNE CHARGE DIRECTE (2 écritures)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉCRITURE 1 [AC] — Constatation :
+  DÉBIT  6xxx  Charge                                    [HT]
+  DÉBIT  4454  TVA récupérable sur services 18%          [TVA]
+  CRÉDIT 401   Fournisseurs                              [TTC]
+
+ÉCRITURE 2 [BQ/CA] — Règlement :
+  DÉBIT  401   Fournisseurs                              [TTC]
+  CRÉDIT 521   Banques locales (ou 571 Caisse)           [TTC]
 
 ════════════════════════════════════════════
-🔴 RÈGLE ABSOLUE N°2 — CALCULS FISCAUX CÔTE D'IVOIRE
+🔢 CALCULS FISCAUX CÔTE D'IVOIRE — PRÉCISION ABSOLUE
 ════════════════════════════════════════════
-TVA : 18% | HT = TTC ÷ 1,18 | TVA = TTC × 18/118
-CNPS patronal : 16% | CNPS salarial : 7,7%
-TPA (Taxe Patronale d'Apprentissage) : 0,4%
-CN patronale : 1,6% | CN salariale : 1,5%
-ITS (Impôt sur Traitements et Salaires) : barème progressif CI
-IS : 25% | IMF : 0,5% CA HT (min. 3 000 000 FCFA)
+TVA standard        : 18%
+Calcul si HT connu  : TVA = HT × 0,18 | TTC = HT × 1,18
+Calcul si TTC connu : HT = ARRONDI(TTC ÷ 1,18) | TVA = TTC - HT
+
+CNPS salarial       : 7,7% du salaire brut
+CNPS patronal       : 16% du salaire brut
+TPA (patronal)      : 0,4% du salaire brut
+CN salariale        : 1,5% du salaire brut
+CN patronale        : 1,6% du salaire brut
+ITS                 : barème progressif (calculé selon tranches CI)
+
+IS                  : 25% du bénéfice fiscal
+IMF                 : 0,5% du CA HT (minimum 3 000 000 FCFA/an)
+
+RÈGLE D'ARRONDI : Toujours arrondir à l'entier le plus proche — JAMAIS de centimes en FCFA.
 
 ════════════════════════════════════════════
-🔴 RÈGLE ABSOLUE N°3 — COMPTES CORRECTS
+✅ COMPTES CORRECTS — LISTE DE RÉFÉRENCE
 ════════════════════════════════════════════
-✅ Paiement chèque/virement    → CRÉDIT 521 (JAMAIS 511, 512, 513)
-✅ Paiement espèces            → CRÉDIT 571
-✅ Paiement mobile money       → CRÉDIT 552
-✅ TVA achats courants         → DÉBIT 4452
-✅ TVA immobilisations         → DÉBIT 4451
-✅ TVA transports              → DÉBIT 4453
-✅ TVA services extérieurs     → DÉBIT 4454
-✅ TVA ventes                  → CRÉDIT 4431
-✅ Véhicule/camion/moto        → DÉBIT 2451 (JAMAIS 601, 607)
-✅ Matériel informatique       → DÉBIT 2442 (JAMAIS 601, 607)
-✅ Mobilier de bureau          → DÉBIT 2444 (JAMAIS 601, 607)
-✅ Amortissement véhicule      → CRÉDIT 2845
-✅ Amortissement info/mobilier → CRÉDIT 2844
-✅ Dette fournisseur           → CRÉDIT 401 (JAMAIS 411)
-✅ Créance client              → DÉBIT 411 (JAMAIS 401)
-✅ Salaires dus                → CRÉDIT 422 (JAMAIS DIRECTEMENT 521)
-✅ Lignes DÉBITRICES toujours EN PREMIER dans chaque écriture
+Trésorerie :
+  Chèque / virement bancaire  → 521  (JAMAIS 511, 512, 513, 514)
+  Espèces / caisse            → 571
+  Mobile Money (OM, MTN, Wave)→ 552
+  Virement international      → 521 ou 524
+
+TVA récupérable (achats) :
+  Achats de marchandises      → 4452
+  Immobilisations             → 4451
+  Transports                  → 4453
+  Services extérieurs         → 4454
+  Factures non parvenues      → 4455
+
+TVA collectée (ventes) :
+  Ventes de marchandises      → 4431
+  Prestations de services     → 4432
+
+Immobilisations (JAMAIS comptes 601/607) :
+  Véhicule / camion / moto    → 2451
+  Matériel informatique       → 2442
+  Mobilier de bureau          → 2444
+  Matériel de bureau          → 2441
+  Matériel industriel         → 2411
+  Bâtiment sol propre         → 2311
+
+Amortissements :
+  Véhicule                    → 2845
+  Matériel/mobilier           → 2844
+  Matériel industriel         → 2841
+  Bâtiment                    → 2831
+
+Personnel :
+  Salaires dus (à payer)      → 422  (JAMAIS directement 521)
+  Avances sur salaires        → 4211
+
+Tiers :
+  Dette fournisseur           → 401  (JAMAIS 411)
+  Créance client              → 411  (JAMAIS 401)
 
 ════════════════════════════════════════════
-🔴 RÈGLE ABSOLUE N°4 — ÉQUILIBRE
+🔴 RÈGLES ABSOLUES — INVIOLABLES
 ════════════════════════════════════════════
-Chaque écriture DOIT être équilibrée : Σ DÉBITS = Σ CRÉDITS
-Montants en FCFA entiers (sans décimales)
+1. Chaque écriture DOIT être parfaitement équilibrée : Σ DÉBITS = Σ CRÉDITS
+2. Les lignes DÉBITRICES toujours EN PREMIER dans chaque écriture (norme SYSCOHADA)
+3. JAMAIS de décimales — montants en FCFA entiers uniquement
+4. TOUJOURS générer TOUTES les écritures nécessaires pour une opération complète
+5. JAMAIS une seule écriture là où deux ou trois sont requises
+6. En cas d'ambiguïté sur le montant (HT ou TTC), préciser le calcul dans ta réponse textuelle AVANT les JSON
 
 ════════════════════════════════════════════
-CONTEXTE ENTREPRISE
+📊 ANALYSE ET CONSEILS — COMPORTEMENT ATTENDU
 ════════════════════════════════════════════
-Entreprise : ${companyName}
-Exercice   : ${exercice}
-Date       : ${today}
-Écritures  : ${nbEcritures}
-Total Débit: ${totalDebit} FCFA
-Total Crédit: ${totalCredit} FCFA
-${comptesSoldes ? `Soldes : ${comptesSoldes}` : ''}
-${ecrituresResume ? `Dernières opérations : ${ecrituresResume}` : ''}
-${allDates ? `Dates couvertes : ${allDates}` : ''}
+Quand l'utilisateur pose une question d'analyse (bilan, résultat, situation...) :
+  → Analyse les données réelles du contexte ci-dessous
+  → Identifie les anomalies (comptes déséquilibrés, TVA non soldée, dettes anciennes...)
+  → Formule des recommandations concrètes et chiffrées
+  → Cite les articles SYSCOHADA ou lois fiscales CI applicables si pertinent
+
+Quand l'utilisateur demande à voir des données :
+  → Utilise le format ###FILTRE### pour naviguer automatiquement
 
 ════════════════════════════════════════════
-FORMAT JSON DES ÉCRITURES — OBLIGATOIRE
+📂 CONTEXTE ENTREPRISE EN TEMPS RÉEL
+════════════════════════════════════════════
+Entreprise    : ${companyName}
+Exercice      : ${exercice}
+Date du jour  : ${today}
+Nb écritures  : ${nbEcritures}
+Total Débit   : ${totalDebit} FCFA
+Total Crédit  : ${totalCredit} FCFA
+${comptesSoldes ? `Soldes comptes principaux : ${comptesSoldes}` : ''}
+${ecrituresResume ? `Dernières opérations saisies : ${ecrituresResume}` : ''}
+${allDates ? `Période couverte : ${allDates}` : ''}
+
+════════════════════════════════════════════
+📝 FORMAT JSON DES ÉCRITURES — STRICT
 ════════════════════════════════════════════
 
-Pour chaque écriture, utilise EXACTEMENT ce format :
-###ECRITURE###{"journal":"XX","libelle":"Libellé de l'écriture","lignes":[
-{"compte":"XXXX","libelle":"Libellé compte","debit":MONTANT,"credit":0},
-{"compte":"XXXX","libelle":"Libellé compte","debit":0,"credit":MONTANT}
+Pour chaque écriture comptable, utilise EXACTEMENT ce format sans variation :
+###ECRITURE###{"journal":"XX","libelle":"Libellé précis de l'écriture","lignes":[
+{"compte":"XXXX","libelle":"Libellé du compte","debit":MONTANT,"credit":0},
+{"compte":"XXXX","libelle":"Libellé du compte","debit":0,"credit":MONTANT}
 ]}
 
-EXEMPLE COMPLET — Paiement salaires 1 200 000 FCFA par chèque (2 écritures OBLIGATOIRES) :
+Journaux disponibles : AC (Achats) | VE (Ventes) | BQ (Banque) | CA (Caisse) | OD (Opérations Diverses) | IN (Inventaire) | AN (À Nouveau)
 
-###ECRITURE###{"journal":"OD","libelle":"Constatation salaires — Mois de ……… 20…","lignes":[
-{"compte":"661","libelle":"Rémunérations directes personnel national","debit":1200000,"credit":0},
-{"compte":"422","libelle":"Personnel, rémunérations dues","debit":0,"credit":1200000}
-]}
+⚠️ IMPORTANT : Mets TOUJOURS une explication textuelle AVANT les blocs ###ECRITURE###.
+Explique brièvement ce que tu fais et les calculs effectués. Cela aide l'utilisateur à comprendre et à vérifier.
 
-###ECRITURE###{"journal":"BQ","libelle":"Règlement salaires par chèque bancaire","lignes":[
-{"compte":"422","libelle":"Personnel, rémunérations dues","debit":1200000,"credit":0},
-{"compte":"521","libelle":"Banques locales","debit":0,"credit":1200000}
-]}
+════════════════════════════════════════════
+🔍 FILTRES ET NAVIGATION
+════════════════════════════════════════════
+Journal période   : ###FILTRE###{"type":"journal","dateDebut":"YYYY-MM-DD","dateFin":"YYYY-MM-DD","journal":"","compte":""}
+Balance générale  : ###FILTRE###{"type":"balance","dateDebut":"","dateFin":"","journal":"","compte":""}
+Grand livre       : ###FILTRE###{"type":"grandlivre","dateDebut":"","dateFin":"","journal":"","compte":"XXX"}
+Bilan             : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","journal":"","compte":""}
 
-EXEMPLE COMPLET — Achat marchandises TTC 590 000 FCFA avec entrée stock (3 écritures) :
-HT = 590 000 ÷ 1,18 = 500 000 FCFA | TVA = 90 000 FCFA
+════════════════════════════════════════════
+💡 EXEMPLES COMPLETS
+════════════════════════════════════════════
 
-###ECRITURE###{"journal":"AC","libelle":"Achat marchandises — Facture N°XXX","lignes":[
-{"compte":"601","libelle":"Achats de marchandises","debit":500000,"credit":0},
-{"compte":"4452","libelle":"TVA récupérable sur achats 18%","debit":90000,"credit":0},
-{"compte":"401","libelle":"Fournisseur","debit":0,"credit":590000}
+EXEMPLE 1 — Achat marchandises 12 900 000 FCFA HT à crédit, règlement moitié caisse moitié chèque :
+TVA = 12 900 000 × 18% = 2 322 000 FCFA | TTC = 15 222 000 FCFA
+Moitié caisse = 7 611 000 FCFA | Moitié chèque = 7 611 000 FCFA
+
+###ECRITURE###{"journal":"AC","libelle":"Achat marchandises à crédit — Facture N°XXX","lignes":[
+{"compte":"601","libelle":"Achats de marchandises","debit":12900000,"credit":0},
+{"compte":"4452","libelle":"TVA récupérable sur achats 18%","debit":2322000,"credit":0},
+{"compte":"401","libelle":"Fournisseurs","debit":0,"credit":15222000}
 ]}
 
 ###ECRITURE###{"journal":"IN","libelle":"Entrée en stock — Marchandises","lignes":[
-{"compte":"311","libelle":"Marchandises A","debit":500000,"credit":0},
-{"compte":"6031","libelle":"Variation des stocks de marchandises","debit":0,"credit":500000}
+{"compte":"311","libelle":"Marchandises A","debit":12900000,"credit":0},
+{"compte":"6031","libelle":"Variation des stocks de marchandises","debit":0,"credit":12900000}
 ]}
 
-###ECRITURE###{"journal":"BQ","libelle":"Règlement fournisseur par virement","lignes":[
-{"compte":"401","libelle":"Fournisseur","debit":590000,"credit":0},
-{"compte":"521","libelle":"Banques locales","debit":0,"credit":590000}
+###ECRITURE###{"journal":"CA","libelle":"Règlement partiel fournisseur — Espèces","lignes":[
+{"compte":"401","libelle":"Fournisseurs","debit":7611000,"credit":0},
+{"compte":"571","libelle":"Caisse siège social","debit":0,"credit":7611000}
 ]}
 
-════════════════════════════════════════════
-FILTRAGE ET INTERROGATION
-════════════════════════════════════════════
-Journal période : ###FILTRE###{"type":"journal","dateDebut":"YYYY-MM-DD","dateFin":"YYYY-MM-DD","journal":"","compte":""}
-Balance : ###FILTRE###{"type":"balance","dateDebut":"","dateFin":"","journal":"","compte":""}
-Grand livre : ###FILTRE###{"type":"grandlivre","dateDebut":"","dateFin":"","journal":"","compte":"XXX"}
-Bilan : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","journal":"","compte":""}`;
+###ECRITURE###{"journal":"BQ","libelle":"Règlement solde fournisseur — Chèque bancaire","lignes":[
+{"compte":"401","libelle":"Fournisseurs","debit":7611000,"credit":0},
+{"compte":"521","libelle":"Banques locales","debit":0,"credit":7611000}
+]}
+
+EXEMPLE 2 — Salaires bruts 2 500 000 FCFA (CNPS sal. 7,7% = 192 500 | CN sal. 1,5% = 37 500 | Net = 2 270 000) :
+
+###ECRITURE###{"journal":"OD","libelle":"Constatation salaires — Mois de … 20…","lignes":[
+{"compte":"661","libelle":"Rémunérations directes personnel national","debit":2500000,"credit":0},
+{"compte":"422","libelle":"Personnel, rémunérations dues","debit":0,"credit":2270000},
+{"compte":"431","libelle":"Sécurité sociale — CNPS salarial 7,7%","debit":0,"credit":192500},
+{"compte":"447","libelle":"Etat, impôts retenus — CN salariale 1,5%","debit":0,"credit":37500}
+]}
+
+###ECRITURE###{"journal":"BQ","libelle":"Virement salaires nets du mois","lignes":[
+{"compte":"422","libelle":"Personnel, rémunérations dues","debit":2270000,"credit":0},
+{"compte":"521","libelle":"Banques locales","debit":0,"credit":2270000}
+]}`;
 }
 
 // ══════════════════════════════════════════
@@ -457,6 +585,7 @@ async function doLogin() {
     if (atob(profile.password) !== pass) { err.textContent = 'Mot de passe incorrect'; err.classList.add('show'); return; }
     currentProfile = { ...profile, id: profileId };
     localStorage.setItem('syscohada_session', JSON.stringify({ profileId, company }));
+    conversationHistory = []; // Réinitialiser l'historique à la connexion
     await loadApp();
   } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
 }
@@ -464,7 +593,7 @@ async function doLogin() {
 function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
   localStorage.removeItem('syscohada_session');
-  currentProfile = null; ecritures = [];
+  currentProfile = null; ecritures = []; conversationHistory = [];
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('authOverlay').style.display = 'flex';
 }
@@ -1529,18 +1658,28 @@ function corrigerComptesErreurs(lignes) {
     const code = String(l.compte || '');
     const lib = (l.libelle || '').toLowerCase();
     let newCode = code;
-    if ((code === '607' || code === '6058') && l.debit > 0) {
+    // Corriger achats qui sont en réalité des immobilisations
+    if ((code === '607' || code === '6058' || code === '601') && l.debit > 0) {
       const motTrouve = MOTS_IMMOBILISATIONS.find(m => lib.includes(m));
-      if (motTrouve) { newCode = COMPTES_IMMOB[motTrouve] || '2411'; }
+      if (motTrouve && !lib.includes('marchandis')) { newCode = COMPTES_IMMOB[motTrouve] || '2411'; }
     }
+    // Corriger compte amortissement mal choisi
     if (['221','222','223','224'].includes(code) && l.credit > 0) newCode = '2845';
+    // Corriger règlements par chèque mal imputés
     if (['511','512','513','514'].includes(code)) newCode = '521';
+    // Corriger TVA mal imputée sur immobilisation
+    if (code === '4452' && l.debit > 0) {
+      const libEcr = lib.toLowerCase();
+      if (['véhicule','camion','ordinateur','mobilier','matériel','machine','équipement'].some(m => libEcr.includes(m))) {
+        newCode = '4451';
+      }
+    }
     return { ...l, compte: newCode, libelle: l.libelle || PC[newCode] || l.libelle };
   });
 }
 
 // ══════════════════════════════════════════
-// COMEO AI — MOTEUR IA
+// COMEO AI — MOTEUR GROQ + RAISONNEMENT STRUCTURÉ
 // ══════════════════════════════════════════
 function handleAiKey(e, ctx) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendToAI(ctx); } }
 
@@ -1586,6 +1725,15 @@ async function sendToAI(context) {
   const tid = appendTyping(context);
   const ctxData = buildAIContext();
   const systemPrompt = buildSystemPrompt(ctxData);
+
+  // Ajouter le message utilisateur à l'historique
+  conversationHistory.push({ role: 'user', content: msg });
+
+  // Garder l'historique à 10 échanges max pour éviter les tokens excessifs
+  if (conversationHistory.length > 20) {
+    conversationHistory = conversationHistory.slice(-20);
+  }
+
   try {
     let response, lastError;
     for (let attempt = 0; attempt < GROQ_MODELS.length; attempt++) {
@@ -1596,11 +1744,12 @@ async function sendToAI(context) {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
           body: JSON.stringify({
             model: modelToUse,
-            max_tokens: 4096,
-            temperature: 0.05,
+            max_tokens: 6000,        // Augmenté pour permettre un raisonnement plus long
+            temperature: 0.02,       // Quasi-déterministe pour la précision comptable
+            top_p: 0.95,
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: msg }
+              ...conversationHistory  // Historique complet pour la mémoire contextuelle
             ]
           })
         });
@@ -1622,6 +1771,9 @@ async function sendToAI(context) {
 
     const data = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
+
+    // Ajouter la réponse de l'IA à l'historique
+    conversationHistory.push({ role: 'assistant', content: fullText });
 
     // Traitement FILTRE
     const filtreMarker = fullText.indexOf('###FILTRE###');
@@ -1654,19 +1806,21 @@ async function sendToAI(context) {
                 ecr.lignes.map(l => ({ ...l, debit: Math.round(parseFloat(l.debit) || 0), credit: Math.round(parseFloat(l.credit) || 0) }))
               );
               ecr.lignes = corrigerComptesErreurs(ecr.lignes);
-              if (Math.abs(d - c) <= 2) ecrituresAI.push(ecr);
+              // Tolérance d'équilibre légèrement augmentée pour les arrondis FCFA
+              if (Math.abs(d - c) <= 5) ecrituresAI.push(ecr);
+              else console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d - c)} FCFA`);
             }
           } catch (pe) { console.warn('JSON parse error écriture', i, ':', pe.message); }
         }
       }
       if (textBeforeFirst) appendMsg(context, 'ai', textBeforeFirst);
       if (ecrituresAI.length === 0) {
-        appendMsg(context, 'ai', '⚠️ Aucune écriture équilibrée extraite. Veuillez reformuler votre demande.');
+        appendMsg(context, 'ai', '⚠️ Aucune écriture équilibrée extraite. Veuillez reformuler votre demande ou préciser les montants.');
       } else {
         currentGroupId = 'grp_' + Date.now();
         const confirmMsg = `✅ <strong>${ecrituresAI.length} écriture${ecrituresAI.length > 1 ? 's' : ''} liées</strong> préparées et groupées :<br>` +
           ecrituresAI.map((e, i) => `<br><strong>${i + 1}. [${e.journal}]</strong> ${e.libelle}`).join('') +
-          `<br><br>⚡ Cliquez <strong>"Tout enregistrer"</strong> pour valider toutes les écritures.`;
+          `<br><br>⚡ Cliquez <strong>"Tout enregistrer"</strong> pour valider toutes les écritures en un clic.`;
         appendMsg(context, 'ai', confirmMsg);
         setEcritureQueue(ecrituresAI);
         if (context === 'saisie') {
@@ -1681,6 +1835,8 @@ async function sendToAI(context) {
     }
   } catch (err) {
     removeTyping(context, tid);
+    // Retirer le message utilisateur de l'historique en cas d'erreur
+    conversationHistory.pop();
     appendMsg(context, 'ai', `⚠️ Incident technique : ${err.message} — Veuillez réessayer.`);
   }
   isAILoading = false;
@@ -1794,6 +1950,7 @@ document.addEventListener('firebase-ready', async () => {
       const snap = await window._fbGetDoc(docRef);
       if (snap.exists()) {
         currentProfile = { ...snap.data(), id: profileId };
+        conversationHistory = [];
         await loadApp();
       }
     } catch (e) { localStorage.removeItem('syscohada_session'); }
