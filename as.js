@@ -139,7 +139,7 @@ let currentGroupId = null;
 // Historique de conversation pour maintenir le contexte avec le modèle
 let conversationHistory = [];
 
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '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';
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
   'qwen/qwen3-32b',
