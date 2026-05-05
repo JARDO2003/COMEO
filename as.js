@@ -21,6 +21,51 @@ window._fbGetDoc = getDoc; window._fbReady = true;
 document.dispatchEvent(new Event('firebase-ready'));
 
 // ══════════════════════════════════════════
+// CONFIGURATION SERVEUR — Chargée depuis Firestore (server_config)
+// Les clés API Groq et l'ordre des modèles sont gérés via server.html
+// JAMAIS de clé API en dur dans ce fichier
+// ══════════════════════════════════════════
+let GROQ_API_KEYS  = [];   // Chargées depuis server_config/groq_keys
+let GROQ_MODELS    = [];   // Chargées depuis server_config/models
+let groqKeyIdx     = 0;    // Index rotation clés
+let groqModelIdx   = 0;    // Index rotation modèles
+let serverConfigLoaded = false;
+
+async function loadServerConfig() {
+  try {
+    const [keysSnap, modelsSnap] = await Promise.all([
+      getDoc(doc(db, 'server_config', 'groq_keys')),
+      getDoc(doc(db, 'server_config', 'models'))
+    ]);
+
+    if (keysSnap.exists()) {
+      const rawKeys = keysSnap.data().keys || [];
+      GROQ_API_KEYS = rawKeys.map(k => k.value).filter(Boolean);
+    }
+
+    if (modelsSnap.exists()) {
+      GROQ_MODELS = modelsSnap.data().list || [];
+    }
+
+    // Valeurs par défaut si Firestore vide
+    if (GROQ_MODELS.length === 0) {
+      GROQ_MODELS = [
+        'llama-3.3-70b-versatile',
+        'qwen/qwen3-32b',
+        'meta-llama/llama-4-scout-17b-16e-instruct'
+      ];
+    }
+
+    serverConfigLoaded = true;
+    console.log(`[COMEO] Config chargée — ${GROQ_API_KEYS.length} clé(s) Groq, ${GROQ_MODELS.length} modèle(s)`);
+  } catch (e) {
+    console.warn('[COMEO] Erreur chargement config serveur :', e.message);
+    // Fallback modèles uniquement (sans clé — l'IA sera désactivée)
+    GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+  }
+}
+
+// ══════════════════════════════════════════
 // PLAN COMPTABLE SYSCOHADA RÉVISÉ 2017
 // ══════════════════════════════════════════
 const PC = {
@@ -136,16 +181,7 @@ let ecritures = [], lignes = [], pieceCounter = 1, currentProfile = null, isAILo
 let exportFormat = 'pdf';
 let ecrQueue = [], ecrQueueIdx = 0;
 let currentGroupId = null;
-// Historique de conversation pour maintenir le contexte avec le modèle
 let conversationHistory = [];
-
-const GROQ_API_KEY = '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';
-const GROQ_MODELS = [
-  'llama-3.3-70b-versatile',
-  'qwen/qwen3-32b',
-  'meta-llama/llama-4-scout-17b-16e-instruct'
-];
-let groqModelIdx = 0;
 
 // ══════════════════════════════════════════
 // MOBILE SIDEBAR
@@ -204,36 +240,7 @@ Avant de produire TOUTE écriture, tu DOIS raisonner en silence selon ces étape
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 ACHAT MARCHANDISES À CRÉDIT (3 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Calcul : HT = montant annoncé (si HT) | TVA = HT × 18% | TTC = HT + TVA
-Si montant TTC donné : HT = TTC ÷ 1,18 (arrondi) | TVA = TTC - HT
-
-ÉCRITURE 1 [AC] — Constatation facture fournisseur :
-  DÉBIT  601   Achats de marchandises                    [HT]
-  DÉBIT  4452  TVA récupérable sur achats 18%            [TVA]
-  CRÉDIT 401   Fournisseurs                              [TTC]
-
-ÉCRITURE 2 [IN] — Entrée en stock (principe de l'inventaire permanent) :
-  DÉBIT  311   Marchandises A                            [HT]
-  CRÉDIT 6031  Variation des stocks de marchandises      [HT]
-
-ÉCRITURE 3 [BQ ou CA] — Règlement :
-  DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 521   Banques locales (chèque/virement)         [TTC]
-  OU
-  CRÉDIT 571   Caisse (espèces)                          [TTC]
-
-Si règlement MIXTE (une partie au comptant + reste par chèque) :
-  ÉCRITURE 3a [CA] → Règlement partiel espèces :
-    DÉBIT  401   Fournisseurs                            [montant espèces TTC]
-    CRÉDIT 571   Caisse                                  [montant espèces TTC]
-  ÉCRITURE 3b [BQ] → Règlement solde par chèque :
-    DÉBIT  401   Fournisseurs                            [montant chèque TTC]
-    CRÉDIT 521   Banques locales                         [montant chèque TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 ACHAT MARCHANDISES AU COMPTANT IMMÉDIAT (2 ou 3 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [AC] — Constatation :
+ÉCRITURE 1 [AC] — Constatation facture :
   DÉBIT  601   Achats de marchandises                    [HT]
   DÉBIT  4452  TVA récupérable sur achats 18%            [TVA]
   CRÉDIT 401   Fournisseurs                              [TTC]
@@ -242,9 +249,9 @@ Si règlement MIXTE (une partie au comptant + reste par chèque) :
   DÉBIT  311   Marchandises A                            [HT]
   CRÉDIT 6031  Variation des stocks de marchandises      [HT]
 
-ÉCRITURE 3 [CA/BQ] — Règlement immédiat :
+ÉCRITURE 3 [BQ ou CA] — Règlement :
   DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 571   Caisse (ou 521 Banque)                    [TTC]
+  CRÉDIT 521   Banques locales                           [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 VENTE MARCHANDISES (3 écritures)
@@ -265,197 +272,71 @@ Si règlement MIXTE (une partie au comptant + reste par chèque) :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 PAIEMENT SALAIRES (2 écritures minimum)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [OD] — Constatation charge salariale :
+ÉCRITURE 1 [OD] :
   DÉBIT  661   Rémunérations directes personnel national [brut]
   CRÉDIT 422   Personnel, rémunérations dues             [net à payer]
   CRÉDIT 431   Sécurité sociale — CNPS salarial 7,7%    [retenue CNPS]
-  CRÉDIT 447   Impôts retenus à la source — ITS/CN 1,5% [retenue fiscale]
+  CRÉDIT 447   Impôts retenus à la source                [retenue fiscale]
 
-ÉCRITURE 2 [BQ] — Virement salaires nets :
+ÉCRITURE 2 [BQ] :
   DÉBIT  422   Personnel, rémunérations dues             [net à payer]
   CRÉDIT 521   Banques locales                           [net à payer]
-
-ÉCRITURE 3 [OD] — Charges patronales (CNPS 16% + TPA 0,4% + CN 1,6%) :
-  DÉBIT  664   Charges sociales                          [total patronal]
-  CRÉDIT 431   Sécurité sociale                          [CNPS patronal]
-  CRÉDIT 447   Etat, impôts retenus à la source          [TPA + CN patronale]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 ACHAT IMMOBILISATION (2 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Choisir le bon compte selon la nature du bien :
-  Véhicule / camion / moto     → 2451
-  Matériel informatique / PC   → 2442
-  Mobilier de bureau           → 2444
-  Matériel de bureau           → 2441
-  Matériel industriel          → 2411
-  Bâtiment (sol propre)        → 2311
-  Terrain                      → 222 ou 223
-  Logiciel                     → 213
-  Brevet / licence             → 212
+  Véhicule → 2451 | Informatique → 2442 | Mobilier → 2444 | Matériel → 2441
 
-ÉCRITURE 1 [AC] — Constatation facture :
-  DÉBIT  24xx  Immobilisation (compte exact)             [HT]
+ÉCRITURE 1 [AC] :
+  DÉBIT  24xx  Immobilisation                            [HT]
   DÉBIT  4451  TVA récupérable sur immobilisations 18%   [TVA]
   CRÉDIT 401   Fournisseurs                              [TTC]
 
-ÉCRITURE 2 [BQ] — Règlement :
-  DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 521   Banques locales                           [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 DOTATION AMORTISSEMENT (1 écriture par bien)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Durées légales CI : Véhicule 5 ans | Matériel info 3 ans | Mobilier 10 ans | Bâtiment 20 ans
-Annuité = Valeur HT ÷ Durée (linéaire)
-
-ÉCRITURE [OD] :
-  DÉBIT  6813  Dotations amortissements immob. corporelles [annuité]
-  CRÉDIT 2845  Amort. matériel de transport (véhicule)      [annuité]
-  OU 2844 pour matériel/mobilier | 2841 pour matériel industriel | 283x pour bâtiments
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PRESTATION DE SERVICE REÇUE (2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Choisir le bon compte de charge :
-  Loyer / location locale          → 6222
-  Électricité                      → 6052
-  Eau                              → 6051
-  Téléphone / internet             → 6281 ou 6288
-  Maintenance / réparation         → 6242
-  Honoraires expert / avocat       → 6324
-  Assurance                        → 6251 ou 6252
-  Sous-traitance                   → 621
-  Publicité                        → 6271
-  Formation                        → 633
-
-ÉCRITURE 1 [AC] :
-  DÉBIT  6xxx  Charge (compte exact selon nature)        [HT]
-  DÉBIT  4454  TVA récupérable sur services 18%          [TVA]
-  CRÉDIT 401   Fournisseurs                              [TTC]
-
 ÉCRITURE 2 [BQ] :
   DÉBIT  401   Fournisseurs                              [TTC]
   CRÉDIT 521   Banques locales                           [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PRESTATION DE SERVICE VENDUE (2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [VE] :
-  DÉBIT  411   Clients                                   [TTC]
-  CRÉDIT 706   Services vendus                           [HT]
-  CRÉDIT 4432  TVA facturée sur prestations 18%          [TVA]
-
-ÉCRITURE 2 [BQ] :
-  DÉBIT  521   Banques locales (ou 571 Caisse)           [TTC]
-  CRÉDIT 411   Clients                                   [TTC]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 EMPRUNT BANCAIRE (2 écritures)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [BQ] — Déblocage des fonds :
+ÉCRITURE 1 [BQ] :
   DÉBIT  521   Banques locales                           [montant emprunté]
   CRÉDIT 162   Emprunts auprès établissements de crédit  [montant emprunté]
 
-ÉCRITURE 2 [BQ] — Remboursement mensuel échéance :
-  DÉBIT  162   Emprunts auprès établissements de crédit  [capital remboursé]
-  DÉBIT  671   Intérêts des emprunts                     [intérêts de la période]
-  CRÉDIT 521   Banques locales                           [total mensualité]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 RÈGLEMENT D'UNE CHARGE DIRECTE (2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [AC] — Constatation :
-  DÉBIT  6xxx  Charge                                    [HT]
-  DÉBIT  4454  TVA récupérable sur services 18%          [TVA]
-  CRÉDIT 401   Fournisseurs                              [TTC]
-
-ÉCRITURE 2 [BQ/CA] — Règlement :
-  DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 521   Banques locales (ou 571 Caisse)           [TTC]
+ÉCRITURE 2 [BQ] — Remboursement :
+  DÉBIT  162   Emprunts                                  [capital]
+  DÉBIT  671   Intérêts des emprunts                     [intérêts]
+  CRÉDIT 521   Banques locales                           [mensualité]
 
 ════════════════════════════════════════════
-🔢 CALCULS FISCAUX CÔTE D'IVOIRE — PRÉCISION ABSOLUE
+🔢 CALCULS FISCAUX — CÔTE D'IVOIRE
 ════════════════════════════════════════════
-TVA standard        : 18%
-Calcul si HT connu  : TVA = HT × 0,18 | TTC = HT × 1,18
-Calcul si TTC connu : HT = ARRONDI(TTC ÷ 1,18) | TVA = TTC - HT
-
-CNPS salarial       : 7,7% du salaire brut
-CNPS patronal       : 16% du salaire brut
-TPA (patronal)      : 0,4% du salaire brut
-CN salariale        : 1,5% du salaire brut
-CN patronale        : 1,6% du salaire brut
-ITS                 : barème progressif (calculé selon tranches CI)
-
-IS                  : 25% du bénéfice fiscal
-IMF                 : 0,5% du CA HT (minimum 3 000 000 FCFA/an)
-
-RÈGLE D'ARRONDI : Toujours arrondir à l'entier le plus proche — JAMAIS de centimes en FCFA.
+TVA standard       : 18%
+HT connu           : TVA = HT × 0,18 | TTC = HT × 1,18
+TTC connu          : HT = ARRONDI(TTC ÷ 1,18) | TVA = TTC - HT
+CNPS salarial      : 7,7% | CNPS patronal : 16% | TPA : 0,4% | CN : 1,5%/1,6%
+IS                 : 25% | IMF : 0,5% CA HT (min 3 000 000 FCFA/an)
+RÈGLE : Toujours arrondir à l'entier — JAMAIS de centimes en FCFA.
 
 ════════════════════════════════════════════
-✅ COMPTES CORRECTS — LISTE DE RÉFÉRENCE
+✅ COMPTES CORRECTS — RÉFÉRENCE
 ════════════════════════════════════════════
-Trésorerie :
-  Chèque / virement bancaire  → 521  (JAMAIS 511, 512, 513, 514)
-  Espèces / caisse            → 571
-  Mobile Money (OM, MTN, Wave)→ 552
-  Virement international      → 521 ou 524
-
-TVA récupérable (achats) :
-  Achats de marchandises      → 4452
-  Immobilisations             → 4451
-  Transports                  → 4453
-  Services extérieurs         → 4454
-  Factures non parvenues      → 4455
-
-TVA collectée (ventes) :
-  Ventes de marchandises      → 4431
-  Prestations de services     → 4432
-
-Immobilisations (JAMAIS comptes 601/607) :
-  Véhicule / camion / moto    → 2451
-  Matériel informatique       → 2442
-  Mobilier de bureau          → 2444
-  Matériel de bureau          → 2441
-  Matériel industriel         → 2411
-  Bâtiment sol propre         → 2311
-
-Amortissements :
-  Véhicule                    → 2845
-  Matériel/mobilier           → 2844
-  Matériel industriel         → 2841
-  Bâtiment                    → 2831
-
-Personnel :
-  Salaires dus (à payer)      → 422  (JAMAIS directement 521)
-  Avances sur salaires        → 4211
-
-Tiers :
-  Dette fournisseur           → 401  (JAMAIS 411)
-  Créance client              → 411  (JAMAIS 401)
+Chèque/virement → 521 (JAMAIS 511/512/513) | Espèces → 571 | Mobile Money → 552
+TVA achats → 4452 | TVA immob → 4451 | TVA transport → 4453 | TVA services → 4454
+TVA ventes → 4431 | TVA services vendus → 4432
+Véhicule → 2451 | Informatique → 2442 | Mobilier → 2444 | Matériel → 2441
+Amort véhicule → 2845 | Amort mobilier → 2844 | Amort industriel → 2841
+Salaires dus → 422 | Avances salaires → 4211
+Dette fournisseur → 401 | Créance client → 411
 
 ════════════════════════════════════════════
-🔴 RÈGLES ABSOLUES — INVIOLABLES
+🔴 RÈGLES ABSOLUES
 ════════════════════════════════════════════
 1. Chaque écriture DOIT être parfaitement équilibrée : Σ DÉBITS = Σ CRÉDITS
-2. Les lignes DÉBITRICES toujours EN PREMIER dans chaque écriture (norme SYSCOHADA)
-3. JAMAIS de décimales — montants en FCFA entiers uniquement
-4. TOUJOURS générer TOUTES les écritures nécessaires pour une opération complète
-5. JAMAIS une seule écriture là où deux ou trois sont requises
-6. En cas d'ambiguïté sur le montant (HT ou TTC), préciser le calcul dans ta réponse textuelle AVANT les JSON
-
-════════════════════════════════════════════
-📊 ANALYSE ET CONSEILS — COMPORTEMENT ATTENDU
-════════════════════════════════════════════
-Quand l'utilisateur pose une question d'analyse (bilan, résultat, situation...) :
-  → Analyse les données réelles du contexte ci-dessous
-  → Identifie les anomalies (comptes déséquilibrés, TVA non soldée, dettes anciennes...)
-  → Formule des recommandations concrètes et chiffrées
-  → Cite les articles SYSCOHADA ou lois fiscales CI applicables si pertinent
-
-Quand l'utilisateur demande à voir des données :
-  → Utilise le format ###FILTRE### pour naviguer automatiquement
+2. Lignes DÉBITRICES toujours EN PREMIER (norme SYSCOHADA)
+3. JAMAIS de décimales — FCFA entiers uniquement
+4. TOUJOURS générer TOUTES les écritures nécessaires
+5. Explication textuelle AVANT les blocs ###ECRITURE###
 
 ════════════════════════════════════════════
 📂 CONTEXTE ENTREPRISE EN TEMPS RÉEL
@@ -467,74 +348,26 @@ Nb écritures  : ${nbEcritures}
 Total Débit   : ${totalDebit} FCFA
 Total Crédit  : ${totalCredit} FCFA
 ${comptesSoldes ? `Soldes comptes principaux : ${comptesSoldes}` : ''}
-${ecrituresResume ? `Dernières opérations saisies : ${ecrituresResume}` : ''}
+${ecrituresResume ? `Dernières opérations : ${ecrituresResume}` : ''}
 ${allDates ? `Période couverte : ${allDates}` : ''}
 
 ════════════════════════════════════════════
-📝 FORMAT JSON DES ÉCRITURES — STRICT
+📝 FORMAT JSON — STRICT
 ════════════════════════════════════════════
-
-Pour chaque écriture comptable, utilise EXACTEMENT ce format sans variation :
-###ECRITURE###{"journal":"XX","libelle":"Libellé précis de l'écriture","lignes":[
+###ECRITURE###{"journal":"XX","libelle":"Libellé précis","lignes":[
 {"compte":"XXXX","libelle":"Libellé du compte","debit":MONTANT,"credit":0},
 {"compte":"XXXX","libelle":"Libellé du compte","debit":0,"credit":MONTANT}
 ]}
 
-Journaux disponibles : AC (Achats) | VE (Ventes) | BQ (Banque) | CA (Caisse) | OD (Opérations Diverses) | IN (Inventaire) | AN (À Nouveau)
-
-⚠️ IMPORTANT : Mets TOUJOURS une explication textuelle AVANT les blocs ###ECRITURE###.
-Explique brièvement ce que tu fais et les calculs effectués. Cela aide l'utilisateur à comprendre et à vérifier.
+Journaux : AC | VE | BQ | CA | OD | IN | AN
 
 ════════════════════════════════════════════
 🔍 FILTRES ET NAVIGATION
 ════════════════════════════════════════════
-Journal période   : ###FILTRE###{"type":"journal","dateDebut":"YYYY-MM-DD","dateFin":"YYYY-MM-DD","journal":"","compte":""}
-Balance générale  : ###FILTRE###{"type":"balance","dateDebut":"","dateFin":"","journal":"","compte":""}
-Grand livre       : ###FILTRE###{"type":"grandlivre","dateDebut":"","dateFin":"","journal":"","compte":"XXX"}
-Bilan             : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","journal":"","compte":""}
-
-════════════════════════════════════════════
-💡 EXEMPLES COMPLETS
-════════════════════════════════════════════
-
-EXEMPLE 1 — Achat marchandises 12 900 000 FCFA HT à crédit, règlement moitié caisse moitié chèque :
-TVA = 12 900 000 × 18% = 2 322 000 FCFA | TTC = 15 222 000 FCFA
-Moitié caisse = 7 611 000 FCFA | Moitié chèque = 7 611 000 FCFA
-
-###ECRITURE###{"journal":"AC","libelle":"Achat marchandises à crédit — Facture N°XXX","lignes":[
-{"compte":"601","libelle":"Achats de marchandises","debit":12900000,"credit":0},
-{"compte":"4452","libelle":"TVA récupérable sur achats 18%","debit":2322000,"credit":0},
-{"compte":"401","libelle":"Fournisseurs","debit":0,"credit":15222000}
-]}
-
-###ECRITURE###{"journal":"IN","libelle":"Entrée en stock — Marchandises","lignes":[
-{"compte":"311","libelle":"Marchandises A","debit":12900000,"credit":0},
-{"compte":"6031","libelle":"Variation des stocks de marchandises","debit":0,"credit":12900000}
-]}
-
-###ECRITURE###{"journal":"CA","libelle":"Règlement partiel fournisseur — Espèces","lignes":[
-{"compte":"401","libelle":"Fournisseurs","debit":7611000,"credit":0},
-{"compte":"571","libelle":"Caisse siège social","debit":0,"credit":7611000}
-]}
-
-###ECRITURE###{"journal":"BQ","libelle":"Règlement solde fournisseur — Chèque bancaire","lignes":[
-{"compte":"401","libelle":"Fournisseurs","debit":7611000,"credit":0},
-{"compte":"521","libelle":"Banques locales","debit":0,"credit":7611000}
-]}
-
-EXEMPLE 2 — Salaires bruts 2 500 000 FCFA (CNPS sal. 7,7% = 192 500 | CN sal. 1,5% = 37 500 | Net = 2 270 000) :
-
-###ECRITURE###{"journal":"OD","libelle":"Constatation salaires — Mois de … 20…","lignes":[
-{"compte":"661","libelle":"Rémunérations directes personnel national","debit":2500000,"credit":0},
-{"compte":"422","libelle":"Personnel, rémunérations dues","debit":0,"credit":2270000},
-{"compte":"431","libelle":"Sécurité sociale — CNPS salarial 7,7%","debit":0,"credit":192500},
-{"compte":"447","libelle":"Etat, impôts retenus — CN salariale 1,5%","debit":0,"credit":37500}
-]}
-
-###ECRITURE###{"journal":"BQ","libelle":"Virement salaires nets du mois","lignes":[
-{"compte":"422","libelle":"Personnel, rémunérations dues","debit":2270000,"credit":0},
-{"compte":"521","libelle":"Banques locales","debit":0,"credit":2270000}
-]}`;
+Journal   : ###FILTRE###{"type":"journal","dateDebut":"YYYY-MM-DD","dateFin":"YYYY-MM-DD","journal":"","compte":""}
+Balance   : ###FILTRE###{"type":"balance","dateDebut":"","dateFin":"","journal":"","compte":""}
+Grand livre : ###FILTRE###{"type":"grandlivre","dateDebut":"","dateFin":"","journal":"","compte":"XXX"}
+Bilan     : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","journal":"","compte":""}`;
 }
 
 // ══════════════════════════════════════════
@@ -585,7 +418,7 @@ async function doLogin() {
     if (atob(profile.password) !== pass) { err.textContent = 'Mot de passe incorrect'; err.classList.add('show'); return; }
     currentProfile = { ...profile, id: profileId };
     localStorage.setItem('syscohada_session', JSON.stringify({ profileId, company }));
-    conversationHistory = []; // Réinitialiser l'historique à la connexion
+    conversationHistory = [];
     await loadApp();
   } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
 }
@@ -610,6 +443,8 @@ async function loadApp() {
   document.getElementById('appShell').style.display = 'grid';
   document.getElementById('topCompanyName').textContent = currentProfile.company;
   document.getElementById('exerciceYear').value = currentProfile.exercice || '2024';
+  // Charger la config serveur (clés API) si pas encore fait
+  if (!serverConfigLoaded) await loadServerConfig();
   await loadEcrituresFromFirestore();
   updateStats(); renderPlanComptable(); initSaisie();
 }
@@ -775,7 +610,7 @@ async function autoSaveAllEcritures() {
   if (errors.length > 0) {
     toast(`⚠️ ${saved}/${total} écritures enregistrées — ${errors.length} erreur(s)`, 'error');
   } else {
-    toast(`✅ ${saved} écriture${saved > 1 ? 's' : ''} enregistrée${saved > 1 ? 's' : ''} et groupée${saved > 1 ? 's' : ''} !`, 'success');
+    toast(`✅ ${saved} écriture${saved > 1 ? 's' : ''} enregistrée${saved > 1 ? 's' : ''} !`, 'success');
   }
   setTimeout(() => { navigate('journal'); renderJournal(); }, 500);
   initSaisie();
@@ -1658,16 +1493,12 @@ function corrigerComptesErreurs(lignes) {
     const code = String(l.compte || '');
     const lib = (l.libelle || '').toLowerCase();
     let newCode = code;
-    // Corriger achats qui sont en réalité des immobilisations
     if ((code === '607' || code === '6058' || code === '601') && l.debit > 0) {
       const motTrouve = MOTS_IMMOBILISATIONS.find(m => lib.includes(m));
       if (motTrouve && !lib.includes('marchandis')) { newCode = COMPTES_IMMOB[motTrouve] || '2411'; }
     }
-    // Corriger compte amortissement mal choisi
     if (['221','222','223','224'].includes(code) && l.credit > 0) newCode = '2845';
-    // Corriger règlements par chèque mal imputés
     if (['511','512','513','514'].includes(code)) newCode = '521';
-    // Corriger TVA mal imputée sur immobilisation
     if (code === '4452' && l.debit > 0) {
       const libEcr = lib.toLowerCase();
       if (['véhicule','camion','ordinateur','mobilier','matériel','machine','équipement'].some(m => libEcr.includes(m))) {
@@ -1679,7 +1510,7 @@ function corrigerComptesErreurs(lignes) {
 }
 
 // ══════════════════════════════════════════
-// COMEO AI — MOTEUR GROQ + RAISONNEMENT STRUCTURÉ
+// COMEO AI — Clés chargées depuis Firestore
 // ══════════════════════════════════════════
 function handleAiKey(e, ctx) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendToAI(ctx); } }
 
@@ -1714,6 +1545,16 @@ function buildAIContext() {
 
 async function sendToAI(context) {
   if (isAILoading) return;
+
+  // ── Vérification clés disponibles ──
+  if (GROQ_API_KEYS.length === 0) {
+    appendMsg(context, 'ai',
+      '⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. ' +
+      'Rendez-vous sur <strong>server.html</strong> (interface administrateur) pour ajouter vos clés API Groq.'
+    );
+    return;
+  }
+
   const inputId = context === 'dashboard' ? 'aiInput' : `aiInput-${context}`;
   const input = document.getElementById(inputId);
   const msg = input?.value?.trim();
@@ -1726,53 +1567,53 @@ async function sendToAI(context) {
   const ctxData = buildAIContext();
   const systemPrompt = buildSystemPrompt(ctxData);
 
-  // Ajouter le message utilisateur à l'historique
   conversationHistory.push({ role: 'user', content: msg });
-
-  // Garder l'historique à 10 échanges max pour éviter les tokens excessifs
-  if (conversationHistory.length > 20) {
-    conversationHistory = conversationHistory.slice(-20);
-  }
+  if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
 
   try {
     let response, lastError;
-    for (let attempt = 0; attempt < GROQ_MODELS.length; attempt++) {
-      const modelToUse = GROQ_MODELS[(groqModelIdx + attempt) % GROQ_MODELS.length];
+
+    // Rotation clés × rotation modèles
+    const totalAttempts = GROQ_API_KEYS.length * GROQ_MODELS.length;
+    for (let attempt = 0; attempt < Math.min(totalAttempts, 6); attempt++) {
+      const keyToUse   = GROQ_API_KEYS[(groqKeyIdx + attempt) % GROQ_API_KEYS.length];
+      const modelToUse = GROQ_MODELS[(groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length];
       try {
         response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${keyToUse}` },
           body: JSON.stringify({
             model: modelToUse,
-            max_tokens: 6000,        // Augmenté pour permettre un raisonnement plus long
-            temperature: 0.02,       // Quasi-déterministe pour la précision comptable
+            max_tokens: 6000,
+            temperature: 0.02,
             top_p: 0.95,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...conversationHistory  // Historique complet pour la mémoire contextuelle
+              ...conversationHistory
             ]
           })
         });
         if (response.ok) {
-          groqModelIdx = (groqModelIdx + attempt) % GROQ_MODELS.length;
+          groqKeyIdx   = (groqKeyIdx + attempt) % GROQ_API_KEYS.length;
+          groqModelIdx = (groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length;
           break;
         }
         const errData = await response.json().catch(() => ({}));
         lastError = errData.error?.message || 'Erreur ' + response.status;
         if (lastError.includes('decommissioned') || lastError.includes('deprecated') || response.status === 404) {
-          toast(`⚠️ Modèle ${modelToUse} indisponible → bascule...`, 'info');
+          toast(`⚠️ Modèle/clé ${attempt + 1} indisponible → bascule...`, 'info');
           continue;
         }
         break;
       } catch (e) { lastError = e.message; }
     }
+
     removeTyping(context, tid);
-    if (!response || !response.ok) throw new Error(lastError || 'Tous les modèles sont indisponibles');
+    if (!response || !response.ok) throw new Error(lastError || 'Toutes les clés/modèles sont indisponibles');
 
     const data = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
 
-    // Ajouter la réponse de l'IA à l'historique
     conversationHistory.push({ role: 'assistant', content: fullText });
 
     // Traitement FILTRE
@@ -1806,7 +1647,6 @@ async function sendToAI(context) {
                 ecr.lignes.map(l => ({ ...l, debit: Math.round(parseFloat(l.debit) || 0), credit: Math.round(parseFloat(l.credit) || 0) }))
               );
               ecr.lignes = corrigerComptesErreurs(ecr.lignes);
-              // Tolérance d'équilibre légèrement augmentée pour les arrondis FCFA
               if (Math.abs(d - c) <= 5) ecrituresAI.push(ecr);
               else console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d - c)} FCFA`);
             }
@@ -1824,7 +1664,7 @@ async function sendToAI(context) {
         appendMsg(context, 'ai', confirmMsg);
         setEcritureQueue(ecrituresAI);
         if (context === 'saisie') {
-          toast(`✨ ${ecrituresAI.length} écriture${ecrituresAI.length > 1 ? 's' : ''} préparée${ecrituresAI.length > 1 ? 's' : ''} et liées`, 'info');
+          toast(`✨ ${ecrituresAI.length} écriture${ecrituresAI.length > 1 ? 's' : ''} préparée${ecrituresAI.length > 1 ? 's' : ''}`, 'info');
         } else {
           showMultiEcrBanner(ecrituresAI);
           showSaisieNotif(ecrituresAI[0]?.libelle || msg.substring(0, 40), ecrituresAI.length);
@@ -1835,7 +1675,6 @@ async function sendToAI(context) {
     }
   } catch (err) {
     removeTyping(context, tid);
-    // Retirer le message utilisateur de l'historique en cas d'erreur
     conversationHistory.pop();
     appendMsg(context, 'ai', `⚠️ Incident technique : ${err.message} — Veuillez réessayer.`);
   }
@@ -1942,6 +1781,8 @@ function toast(message, type = 'info') {
 // INIT SESSION
 // ══════════════════════════════════════════
 document.addEventListener('firebase-ready', async () => {
+  // Charger la config serveur dès le démarrage (avant même le login)
+  await loadServerConfig();
   const session = localStorage.getItem('syscohada_session');
   if (session) {
     try {
