@@ -523,7 +523,7 @@ document.addEventListener('aella-config-ready', () => {
 setTimeout(() => {
   if (!_configReady) {
     const txt = document.getElementById('aiStatusText');
-    if (txt) txt.textContent = '⏳ Chargement de la configuration…';
+    if (txt) txt.textContent = '⏳';
   }
 }, 3000);
 
@@ -532,7 +532,7 @@ setTimeout(() => {
 // ════════════════════════════════════════════
 async function callGroqAI(prompt) {
   const keys   = window._AELLA_KEYS   || [];
-  const models = window._AELLA_MODELS || ['llama-3.3-70b-versatile'];
+  const models = window._AELLA_MODELS || ['marcioAI'];
 
   if (keys.length === 0) throw new Error('Aucune clé API configurée. Rendez-vous sur server.html.');
 
