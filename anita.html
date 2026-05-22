@@ -406,50 +406,73 @@
   <span class="robot-fab-label">Assistant Vocal</span>
 </button>
 
-<!-- PANNEAU ROBOT PLEIN ÉCRAN -->
 <div id="robotPanel" class="robot-panel">
-  <!-- Fond décoratif -->
-  <div class="robot-bg" id="robotBg"></div>
+  <div class="robot-canvas">
+    <div class="r-grid"></div>
+    <div class="r-orb r-orb1"></div>
+    <div class="r-orb r-orb2"></div>
+    <div class="r-orb r-orb3"></div>
+  </div>
 
-  <!-- Topbar -->
   <div class="robot-topbar">
     <div class="robot-topbar-left">
-      <div style="width:8px;height:8px;border-radius:50%;background:var(--warm);box-shadow:0 0 8px var(--warm);animation:comeo-pulse 2.4s infinite"></div>
-      <span class="robot-name">COMEO AI — Assistant Vocal</span>
+      <div class="r-pulse-dot"></div>
+      <span class="robot-name">COMEO AI</span>
+      <span class="robot-version">v4 · MarcioAI dev</span>
       <span class="robot-status-pill" id="robotStatusPill">En ligne</span>
     </div>
     <button class="robot-close" onclick="closeRobot()">✕ Fermer</button>
   </div>
 
-  <!-- Zone centrale -->
-  <div class="robot-avatar-zone">
-    <div class="robot-avatar" id="robotAvatar">
-      <div class="robot-avatar-rings"></div>
-      <div class="robot-avatar-inner" style="overflow:hidden;padding:0;border:none;">
-  <img src="comeo-avatar.png" id="robotAvatarImg"
-    style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-    onerror="this.style.display='none';document.getElementById('robotAvatarFallback').style.display='flex'">
-  <div id="robotAvatarFallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--warm)">CA</div>
-</div>
+  <div class="robot-body">
+    <div class="avatar-rings-wrap">
+      <div class="r-ring r3"></div>
+      <div class="r-ring r2"><div class="r-ring-dot"></div></div>
+      <div class="r-ring r1"><div class="r-ring-dot"></div></div>
+      <div class="robot-avatar-main" id="robotAvatar">
+        <div class="robot-avatar-halo"></div>
+        <img src="comeo-avatar.png" class="robot-avatar-img"
+          onerror="this.style.display='none';document.getElementById('robotAFb').style.display='flex'">
+        <div class="robot-avatar-fallback" id="robotAFb" style="display:none">CA</div>
+        <div class="robot-avatar-badge">AI</div>
+      </div>
     </div>
 
-    <!-- Visualiseur barres -->
-    <div class="robot-visualizer" id="robotVisualizer"></div>
+    <div class="robot-viz" id="robotViz"></div>
 
-    <!-- Bulle texte réponse -->
+    <div class="robot-meta">
+      <div class="robot-meta-name">COMEO AI</div>
+      <div class="robot-meta-role">Expert-Comptable SYSCOHADA · MarcioAI dev · Concepteur : Marcio Jardel ZINZINDOHOUE</div>
+    </div>
+
     <div class="robot-bubble" id="robotBubble">
-      Bonjour ! Je suis <strong style="color:var(--warm)">COMEO AI</strong>, votre expert-comptable vocal.<br>
-      Appuyez sur le micro et parlez-moi de votre comptabilité.
+      <div class="robot-bubble-text" id="robotBubbleText">
+        Bonjour ! Je suis <strong>COMEO AI</strong>, prêt à vous aider.<span class="blink-cur"></span>
+      </div>
     </div>
-  </div>
 
-  <!-- Bouton micro -->
-  <div class="robot-controls">
-    <button class="robot-mic-btn" id="robotMicBtn" onclick="toggleRobotMic()">
-      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 014 4v6a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v6a2 2 0 004 0V5a2 2 0 00-2-2zm-6 9a6 6 0 0012 0h2a8 8 0 01-7 7.93V22h-2v-2.07A8 8 0 014 12H6z"/></svg>
-    </button>
+    <div class="robot-controls">
+      <button class="rctrl-btn" title="Paramètres vocaux" onclick="toast('Paramètres vocaux bientôt disponibles','info')">
+        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zm7.94-2.06l1.06-.61a1 1 0 000-1.72l-1.06-.6c.04-.34.06-.67.06-1.01s-.02-.68-.06-1.01l1.06-.6a1 1 0 000-1.73l-1.06-.6A8 8 0 0017.6 3.7l-.26-1.2A1 1 0 0016.37 2h-8.74a1 1 0 00-.97.76l-.26 1.19A8 8 0 003.06 6.06L2 6.66a1 1 0 000 1.73l1.06.6C3.02 9.32 3 9.65 3 10s.02.68.06 1.01L2 11.61a1 1 0 000 1.73l1.06.6A8 8 0 006.4 16.3l.26 1.19a1 1 0 00.97.76h8.74a1 1 0 00.97-.76l.26-1.19A8 8 0 0019.94 13z"/></svg>
+      </button>
+      <button class="robot-mic-btn" id="robotMicBtn" onclick="toggleRobotMic()">
+        <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 014 4v6a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v6a2 2 0 004 0V5a2 2 0 00-2-2zm-6 9a6 6 0 0012 0h2a8 8 0 01-7 7.93V22h-2v-2.07A8 8 0 014 12z"/></svg>
+      </button>
+      <button class="rctrl-btn" title="Effacer l'historique" onclick="robotConvHistory=[];toast('Conversation réinitialisée','info')">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 2a8 8 0 100 16A8 8 0 0012 4zm-2 5h4a1 1 0 010 2h-1v4a1 1 0 01-2 0v-4h-1a1 1 0 010-2z"/></svg>
+      </button>
+    </div>
+
     <div class="robot-hint" id="robotHint">Appuyez pour parler</div>
   </div>
+
+  <div class="robot-stats-bar">
+    <div class="rstat"><div class="rstat-dot" style="background:#22c55e"></div><span>Connexion</span><span class="rstat-val">Stable</span></div>
+    <div class="rstat"><div class="rstat-dot" style="background:#d4a853"></div><span>Modèle</span><span class="rstat-val" id="rstatModel">Groq · LLaMA 3.3</span></div>
+    <div class="rstat"><div class="rstat-dot" style="background:#3b82f6"></div><span>Latence</span><span class="rstat-val">&lt; 400ms</span></div>
+    <div class="rstat"><div class="rstat-dot" style="background:#8b5cf6"></div><span>Langue</span><span class="rstat-val">Français</span></div>
+  </div>
+</div>
 </div>
 <div class="toast-container" id="toastContainer"></div>
  <script type="module" src="as.js"></script>
