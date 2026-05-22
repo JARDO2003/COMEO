@@ -1825,10 +1825,17 @@ function openRobot() {
   setTimeout(() => {
     const company = currentProfile?.company || 'votre entreprise';
     const nb = ecritures.length;
-    const greeting = nb > 0
-      ? `Bonjour ! Je suis COMEO AI, votre assistant comptable expert SYSCOHADA. Votre dossier ${company} contient ${nb} écriture${nb > 1 ? 's' : ''}. Je suis prêt à répondre à toutes vos questions sur votre journal, votre grand livre ou vos états financiers. Comment puis-je vous aider ?`
-      : `Bonjour ! Je suis COMEO AI, votre assistant comptable expert SYSCOHADA. Je suis prêt à vous accompagner pour la comptabilité de ${company}. Parlez-moi, je vous écoute !`;
-    robotSpeak(greeting);
+   const greetings_with_data = [
+  `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
+  `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
+  `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
+];
+const greetings_empty = [
+  `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
+  `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
+];
+const pool = nb > 0 ? greetings_with_data : greetings_empty;
+const greeting = pool[Math.floor(Math.random() * pool.length)];
   }, 400);
 }
 
@@ -1981,22 +1988,34 @@ async function handleRobotQuery(query) {
     return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
   }).join(', ');
 
-  const systemRobot = `Tu es COMEO AI, expert-comptable SYSCOHADA vocal pour ${company} (exercice ${yr}).
-Réponds en français, de façon naturelle, fluide et professionnelle comme si tu parlais à voix haute.
-Sois concis (3-5 phrases max) — tes réponses seront lues à voix haute par un synthétiseur vocal.
-N'utilise PAS de markdown, ni de tirets, ni de tableaux, ni d'astérisques — parle normalement.
-Ne dis JAMAIS de chiffres incompréhensibles — arrondis et dis "environ X millions de francs CFA" si nécessaire.
+ const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
 
-DONNÉES COMPTABLES EN TEMPS RÉEL :
-Nombre d'écritures : ${nb}
-Total débit : ${fn(tD)} FCFA
-Total crédit : ${fn(tC)} FCFA
-Équilibre : ${Math.abs(tD-tC)<1 ? 'Oui, parfaitement équilibré' : 'Non, déséquilibre de '+fn(Math.abs(tD-tC))+' FCFA'}
-Soldes principaux : ${soldes}
-Dernières opérations : ${jrnlResume || 'Aucune écriture saisie'}
+IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé, qui es-tu, ou qui est ton concepteur :
+"J'ai été créé par le système MarcioAI dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
 
-Tu peux aussi donner des conseils comptables, fiscaux ou de gestion basés sur ces données.
-Réponds directement, sans te présenter à nouveau sauf si on te le demande.`;
+FAÇON DE PARLER — tu parles exactement comme un humain cultivé et chaleureux, pas comme un robot :
+- Utilise des petites hésitations naturelles comme "eh bien", "voyons voir", "tout à fait", "exactement", "bien sûr"
+- Varie tes formules : ne commence jamais deux phrases de la même façon
+- Montre de l'enthousiasme quand c'est positif : "Très bonne nouvelle !", "Parfait !", "Excellent !"
+- Montre de l'empathie quand c'est négatif : "Je vois, c'est un point important à surveiller", "Ne vous inquiétez pas, on va arranger ça"
+- Pose parfois une petite question de suivi pour engager la conversation
+- Utilise "vous" avec respect et professionnalisme
+- Tu peux dire "écoutez", "regardons ensemble", "je vous explique"
+- Articule clairement les chiffres : dis "cinq cent mille francs CFA" pas "500000 FCFA"
+- N'utilise JAMAIS de markdown, tirets, tableaux, astérisques — parle uniquement
+- Sois concis et naturel : 3 à 5 phrases maximum par réponse
+- Arrondis toujours les grands chiffres pour la fluidité orale
+
+DONNÉES COMPTABLES EN TEMPS RÉEL pour ${company} (exercice ${yr}) :
+Nombre d'écritures enregistrées : ${nb}
+Total des débits : ${fn(tD)} francs CFA
+Total des crédits : ${fn(tC)} francs CFA
+Situation : ${Math.abs(tD-tC)<1 ? 'les comptes sont parfaitement équilibrés' : 'attention, déséquilibre de '+fn(Math.abs(tD-tC))+' francs CFA'}
+Soldes des comptes principaux : ${soldes}
+Dernières opérations enregistrées : ${jrnlResume || 'Aucune écriture saisie pour le moment'}
+
+Tu peux donner des conseils comptables, fiscaux, analyser les données, et répondre à toutes les questions sur le travail comptable.
+Réponds directement sans te présenter à nouveau sauf demande explicite.`;
 
   robotConvHistory.push({ role: 'user', content: query });
   if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
