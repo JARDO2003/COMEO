@@ -1761,6 +1761,280 @@ function fmt(text) {
     .replace(/&lt;br&gt;/gi, '<br>').replace(/&lt;br\/&gt;/gi, '<br>');
 }
 
+// ══════════════════════════════════════════════════════════
+// COMEO ROBOT — Assistant Vocal IA
+// STT (Web Speech API) → Groq LLM → TTS (Web Speech API)
+// ══════════════════════════════════════════════════════════
+
+let robotOpen       = false;
+let robotListening  = false;
+let robotSpeaking   = false;
+let robotRecog      = null;
+let robotSynth      = window.speechSynthesis;
+let robotVoice      = null;
+let robotConvHistory = [];
+
+// ── Initialiser les barres visualiseur ──
+function initRobotVisualizer() {
+  const viz = document.getElementById('robotVisualizer');
+  if (!viz || viz.children.length > 0) return;
+  const heights = [8,14,20,26,32,26,20,14,8,14,20,28,20,14,8];
+  heights.forEach((h, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'robot-bar';
+    bar.style.cssText = `height:4px;--max:${h}px;--dur:${0.5 + Math.random()*0.6}s;animation-delay:${i*0.05}s`;
+    viz.appendChild(bar);
+  });
+}
+
+// ── Fond particules ──
+function initRobotBg() {
+  const bg = document.getElementById('robotBg');
+  if (!bg || bg.children.length > 0) return;
+  for (let i = 0; i < 14; i++) {
+    const d = document.createElement('div');
+    const sz = 40 + Math.random() * 120;
+    d.className = 'robot-bg-dot';
+    d.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--spd:${8+Math.random()*14}s;animation-delay:${Math.random()*8}s`;
+    bg.appendChild(d);
+  }
+}
+
+// ── Choisir meilleure voix française ──
+function pickRobotVoice() {
+  const voices = robotSynth.getVoices();
+  const pref = ['Google français', 'Microsoft Paul', 'Thomas', 'Amelie', 'fr-FR', 'fr-BE', 'fr'];
+  for (const p of pref) {
+    const v = voices.find(v => v.name.includes(p) || v.lang.startsWith('fr'));
+    if (v) { robotVoice = v; return; }
+  }
+  robotVoice = voices[0] || null;
+}
+speechSynthesis.addEventListener('voiceschanged', pickRobotVoice);
+pickRobotVoice();
+
+// ── Ouvrir / Fermer le robot ──
+function openRobot() {
+  const panel = document.getElementById('robotPanel');
+  if (!panel) return;
+  panel.classList.add('open');
+  robotOpen = true;
+  initRobotVisualizer();
+  initRobotBg();
+  // Message de bienvenue vocal avec données contextuelles
+  setTimeout(() => {
+    const company = currentProfile?.company || 'votre entreprise';
+    const nb = ecritures.length;
+    const greeting = nb > 0
+      ? `Bonjour ! Je suis COMEO AI, votre assistant comptable expert SYSCOHADA. Votre dossier ${company} contient ${nb} écriture${nb > 1 ? 's' : ''}. Je suis prêt à répondre à toutes vos questions sur votre journal, votre grand livre ou vos états financiers. Comment puis-je vous aider ?`
+      : `Bonjour ! Je suis COMEO AI, votre assistant comptable expert SYSCOHADA. Je suis prêt à vous accompagner pour la comptabilité de ${company}. Parlez-moi, je vous écoute !`;
+    robotSpeak(greeting);
+  }, 400);
+}
+
+function closeRobot() {
+  const panel = document.getElementById('robotPanel');
+  if (!panel) return;
+  stopRobotListening();
+  robotSynth.cancel();
+  panel.classList.remove('open');
+  robotOpen = false;
+  robotSpeaking = false;
+  setRobotStatus('online');
+}
+
+// ── Statuts visuels ──
+function setRobotStatus(state) {
+  const pill = document.getElementById('robotStatusPill');
+  const avatar = document.getElementById('robotAvatar');
+  const hint = document.getElementById('robotHint');
+  const mic = document.getElementById('robotMicBtn');
+  if (!pill) return;
+  const states = {
+    online:    { text: 'En ligne',      cls: '',           hint: 'Appuyez pour parler' },
+    listening: { text: '🎙 Écoute…',    cls: 'listening',  hint: 'Je vous écoute…' },
+    thinking:  { text: '⚡ Réflexion…', cls: 'thinking',   hint: 'Analyse en cours…' },
+    speaking:  { text: '🔊 Répond…',    cls: 'speaking',   hint: 'Cliquez pour interrompre' }
+  };
+  const s = states[state] || states.online;
+  pill.textContent = s.text;
+  pill.className = 'robot-status-pill ' + s.cls;
+  if (avatar) {
+    avatar.className = 'robot-avatar ' + (state !== 'online' ? state : '');
+  }
+  if (hint) hint.textContent = s.hint;
+  if (mic) mic.classList.toggle('active', state === 'listening');
+}
+
+function setRobotBubble(text) {
+  const b = document.getElementById('robotBubble');
+  if (!b) return;
+  b.classList.add('fading');
+  setTimeout(() => {
+    b.innerHTML = text;
+    b.classList.remove('fading');
+  }, 200);
+}
+
+// ── Synthèse vocale (TTS) ──
+function robotSpeak(text) {
+  robotSynth.cancel();
+  robotSpeaking = true;
+  setRobotStatus('speaking');
+  // Afficher le texte dans la bulle
+  setRobotBubble(text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>').replace(/\n/g, '<br>'));
+  const clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/[\[\]#]/g, '').replace(/FCFA/g, 'francs CFA');
+  const utter = new SpeechSynthesisUtterance(clean);
+  if (robotVoice) utter.voice = robotVoice;
+  utter.lang  = 'fr-FR';
+  utter.rate  = 1.05;
+  utter.pitch = 1.0;
+  utter.volume = 1;
+  utter.onend = () => {
+    robotSpeaking = false;
+    setRobotStatus('online');
+    // Relancer l'écoute automatiquement après la réponse
+    setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 600);
+  };
+  utter.onerror = () => { robotSpeaking = false; setRobotStatus('online'); };
+  robotSynth.speak(utter);
+}
+
+// ── Reconnaissance vocale (STT) ──
+function initRobotSTT() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const recog = new SpeechRecognition();
+  recog.lang = 'fr-FR';
+  recog.continuous = false;
+  recog.interimResults = false;
+  recog.maxAlternatives = 1;
+  recog.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.trim();
+    if (transcript.length > 1) { robotListening = false; handleRobotQuery(transcript); }
+  };
+  recog.onerror = (e) => {
+    robotListening = false;
+    setRobotStatus('online');
+    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
+    } else { setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000); }
+  };
+  recog.onend = () => {
+    if (robotListening) { robotListening = false; setRobotStatus('online'); }
+  };
+  return recog;
+}
+
+function startRobotListening() {
+  if (robotSpeaking || robotListening) return;
+  if (!robotRecog) robotRecog = initRobotSTT();
+  if (!robotRecog) { setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.'); return; }
+  try {
+    robotRecog.start();
+    robotListening = true;
+    setRobotStatus('listening');
+  } catch(e) { robotListening = false; }
+}
+
+function stopRobotListening() {
+  if (robotRecog && robotListening) {
+    try { robotRecog.stop(); } catch(e) {}
+    robotListening = false;
+  }
+}
+
+function toggleRobotMic() {
+  if (robotSpeaking) { robotSynth.cancel(); robotSpeaking = false; setRobotStatus('online'); return; }
+  if (robotListening) { stopRobotListening(); setRobotStatus('online'); }
+  else { startRobotListening(); }
+}
+
+// ── Envoi à Groq avec contexte comptable ──
+async function handleRobotQuery(query) {
+  if (!query) return;
+  setRobotStatus('thinking');
+  setRobotBubble('Je réfléchis…');
+
+  if (GROQ_API_KEYS.length === 0) {
+    robotSpeak('Les clés API ne sont pas configurées. Veuillez contacter l\'administrateur.');
+    return;
+  }
+
+  // Construire un résumé rapide des données
+  let tD = 0, tC = 0;
+  ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
+  const map = getMap();
+  const nb = ecritures.length;
+  const company = currentProfile?.company || 'Entreprise';
+  const yr = document.getElementById('exerciceYear')?.value || '2024';
+
+  // Résumé journal — 10 dernières opérations
+  const jrnlResume = ecritures.slice(-10).map(e => {
+    let d=0,c=0; e.lignes.forEach(l=>{d+=l.debit||0;c+=l.credit||0;});
+    return `[${e.date}][${e.journal}] ${e.libelle||'—'} — Débit:${fn(d)} Crédit:${fn(c)}`;
+  }).join('\n');
+
+  // Soldes des comptes principaux
+  const soldes = Object.entries(map).slice(0, 20).map(([code, acc]) => {
+    const s = acc.debit - acc.credit;
+    return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
+  }).join(', ');
+
+  const systemRobot = `Tu es COMEO AI, expert-comptable SYSCOHADA vocal pour ${company} (exercice ${yr}).
+Réponds en français, de façon naturelle, fluide et professionnelle comme si tu parlais à voix haute.
+Sois concis (3-5 phrases max) — tes réponses seront lues à voix haute par un synthétiseur vocal.
+N'utilise PAS de markdown, ni de tirets, ni de tableaux, ni d'astérisques — parle normalement.
+Ne dis JAMAIS de chiffres incompréhensibles — arrondis et dis "environ X millions de francs CFA" si nécessaire.
+
+DONNÉES COMPTABLES EN TEMPS RÉEL :
+Nombre d'écritures : ${nb}
+Total débit : ${fn(tD)} FCFA
+Total crédit : ${fn(tC)} FCFA
+Équilibre : ${Math.abs(tD-tC)<1 ? 'Oui, parfaitement équilibré' : 'Non, déséquilibre de '+fn(Math.abs(tD-tC))+' FCFA'}
+Soldes principaux : ${soldes}
+Dernières opérations : ${jrnlResume || 'Aucune écriture saisie'}
+
+Tu peux aussi donner des conseils comptables, fiscaux ou de gestion basés sur ces données.
+Réponds directement, sans te présenter à nouveau sauf si on te le demande.`;
+
+  robotConvHistory.push({ role: 'user', content: query });
+  if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
+
+  try {
+    let response;
+    for (let i = 0; i < Math.min(GROQ_API_KEYS.length, 3); i++) {
+      const key   = GROQ_API_KEYS[(groqKeyIdx + i) % GROQ_API_KEYS.length];
+      const model = GROQ_MODELS[groqModelIdx % GROQ_MODELS.length];
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          max_tokens: 280,
+          temperature: 0.3,
+          messages: [
+            { role: 'system', content: systemRobot },
+            ...robotConvHistory
+          ]
+        })
+      });
+      if (response.ok) break;
+    }
+    if (!response || !response.ok) throw new Error('Erreur API');
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu générer de réponse.';
+    robotConvHistory.push({ role: 'assistant', content: reply });
+    robotSpeak(reply);
+  } catch(err) {
+    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion et réessayez.');
+  }
+}
+
+// Exposer
+window.openRobot        = openRobot;
+window.closeRobot       = closeRobot;
+window.toggleRobotMic   = toggleRobotMic;
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
