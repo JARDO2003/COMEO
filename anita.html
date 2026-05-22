@@ -396,6 +396,55 @@
 
   </div>
 </div>
+<!-- ═══════════════════════════════════
+     COMEO ROBOT — Bouton flottant
+     ═══════════════════════════════════ -->
+<button class="robot-fab" onclick="openRobot()" aria-label="Ouvrir l'assistant vocal COMEO AI">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2a2 2 0 012 2v1h1a3 3 0 013 3v7a3 3 0 01-3 3H9a3 3 0 01-3-3V8a3 3 0 013-3h1V4a2 2 0 012-2zm0 5H9a1 1 0 00-1 1v7a1 1 0 001 1h6a1 1 0 001-1V8a1 1 0 00-1-1h-3zm-2 3a1 1 0 110 2 1 1 0 010-2zm4 0a1 1 0 110 2 1 1 0 010-2zm-2 3c1.1 0 2 .45 2 1H10c0-.55.9-1 2-1z"/>
+  </svg>
+  <span class="robot-fab-label">Assistant Vocal</span>
+</button>
 
+<!-- PANNEAU ROBOT PLEIN ÉCRAN -->
+<div id="robotPanel" class="robot-panel">
+  <!-- Fond décoratif -->
+  <div class="robot-bg" id="robotBg"></div>
+
+  <!-- Topbar -->
+  <div class="robot-topbar">
+    <div class="robot-topbar-left">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--warm);box-shadow:0 0 8px var(--warm);animation:comeo-pulse 2.4s infinite"></div>
+      <span class="robot-name">COMEO AI — Assistant Vocal</span>
+      <span class="robot-status-pill" id="robotStatusPill">En ligne</span>
+    </div>
+    <button class="robot-close" onclick="closeRobot()">✕ Fermer</button>
+  </div>
+
+  <!-- Zone centrale -->
+  <div class="robot-avatar-zone">
+    <div class="robot-avatar" id="robotAvatar">
+      <div class="robot-avatar-rings"></div>
+      <div class="robot-avatar-inner">CA</div>
+    </div>
+
+    <!-- Visualiseur barres -->
+    <div class="robot-visualizer" id="robotVisualizer"></div>
+
+    <!-- Bulle texte réponse -->
+    <div class="robot-bubble" id="robotBubble">
+      Bonjour ! Je suis <strong style="color:var(--warm)">COMEO AI</strong>, votre expert-comptable vocal.<br>
+      Appuyez sur le micro et parlez-moi de votre comptabilité.
+    </div>
+  </div>
+
+  <!-- Bouton micro -->
+  <div class="robot-controls">
+    <button class="robot-mic-btn" id="robotMicBtn" onclick="toggleRobotMic()">
+      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 014 4v6a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v6a2 2 0 004 0V5a2 2 0 00-2-2zm-6 9a6 6 0 0012 0h2a8 8 0 01-7 7.93V22h-2v-2.07A8 8 0 014 12H6z"/></svg>
+    </button>
+    <div class="robot-hint" id="robotHint">Appuyez pour parler</div>
+  </div>
+</div>
 <div class="toast-container" id="toastContainer"></div>
  <script type="module" src="as.js"></script>
