@@ -1776,15 +1776,32 @@ let robotConvHistory = [];
 
 // ── Initialiser les barres visualiseur ──
 function initRobotVisualizer() {
-  const viz = document.getElementById('robotVisualizer');
+  const viz = document.getElementById('robotViz');
   if (!viz || viz.children.length > 0) return;
-  const heights = [8,14,20,26,32,26,20,14,8,14,20,28,20,14,8];
-  heights.forEach((h, i) => {
-    const bar = document.createElement('div');
-    bar.className = 'robot-bar';
-    bar.style.cssText = `height:4px;--max:${h}px;--dur:${0.5 + Math.random()*0.6}s;animation-delay:${i*0.05}s`;
-    viz.appendChild(bar);
-  });
+  const count = 24;
+  const peaks = [4,8,14,20,28,34,38,40,38,34,30,26,30,34,38,40,38,34,28,20,14,8,6,4];
+  for (let i = 0; i < count; i++) {
+    const b = document.createElement('div');
+    b.className = 'rv-bar';
+    b.style.cssText = `--max:${peaks[i]||20}px;--spd:${0.4 + Math.random()*0.5}s;animation-delay:${i*0.04}s`;
+    viz.appendChild(b);
+  }
+
+  // Animation JS des barres (remplace les keyframes CSS)
+  let animId;
+  function animBars() {
+    const avatar = document.getElementById('robotAvatar');
+    const active = avatar && (avatar.classList.contains('speaking') || avatar.classList.contains('listening'));
+    document.querySelectorAll('.rv-bar').forEach((bar, i) => {
+      const max = peaks[i] || 20;
+      const state = avatar?.classList.contains('speaking') ? 'speaking' : avatar?.classList.contains('listening') ? 'listening' : 'idle';
+      const amplitude = state === 'speaking' ? max : state === 'listening' ? max * 0.6 : 4;
+      const wave = amplitude * (0.4 + 0.6 * Math.abs(Math.sin(Date.now() / 130 + i * 0.55)));
+      bar.style.height = Math.max(4, active ? wave : 4) + 'px';
+    });
+    animId = requestAnimationFrame(animBars);
+  }
+  animBars();
 }
 
 // ── Fond particules ──
@@ -1803,14 +1820,40 @@ function initRobotBg() {
 // ── Choisir meilleure voix française ──
 function pickRobotVoice() {
   const voices = robotSynth.getVoices();
-  const pref = ['Google français', 'Microsoft Paul', 'Thomas', 'Amelie', 'fr-FR', 'fr-BE', 'fr'];
-  for (const p of pref) {
-    const v = voices.find(v => v.name.includes(p) || v.lang.startsWith('fr'));
+  if (!voices.length) return;
+
+  // Priorité 1 — Voix Google masculines françaises (qualité Gemini)
+  const googleMale = voices.find(v =>
+    v.name === 'Google français' && v.lang.startsWith('fr')
+  );
+  if (googleMale) { robotVoice = googleMale; return; }
+
+  // Priorité 2 — Microsoft masculines françaises (Windows / Edge)
+  const msPref = ['Microsoft Paul', 'Microsoft Guillaume', 'Microsoft Henri', 'Microsoft Remy'];
+  for (const name of msPref) {
+    const v = voices.find(v => v.name.includes(name));
     if (v) { robotVoice = v; return; }
   }
+
+  // Priorité 3 — Voix systèmes masculines françaises connues
+  const maleFrNames = ['Thomas', 'Nicolas', 'Remy', 'Guillaume', 'Henri', 'Pierre'];
+  for (const name of maleFrNames) {
+    const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('fr'));
+    if (v) { robotVoice = v; return; }
+  }
+
+  // Priorité 4 — N'importe quelle voix française disponible
+  const anyFr = voices.find(v => v.lang.startsWith('fr'));
+  if (anyFr) { robotVoice = anyFr; return; }
+
+  // Fallback ultime
   robotVoice = voices[0] || null;
 }
+
+// Recharger dès que les voix sont disponibles (délai navigateur)
 speechSynthesis.addEventListener('voiceschanged', pickRobotVoice);
+setTimeout(pickRobotVoice, 200);
+setTimeout(pickRobotVoice, 800);
 pickRobotVoice();
 
 // ── Ouvrir / Fermer le robot ──
@@ -1852,25 +1895,32 @@ function closeRobot() {
 
 // ── Statuts visuels ──
 function setRobotStatus(state) {
-  const pill = document.getElementById('robotStatusPill');
-  const avatar = document.getElementById('robotAvatar');
-  const hint = document.getElementById('robotHint');
-  const mic = document.getElementById('robotMicBtn');
+  const pill    = document.getElementById('robotStatusPill');
+  const avatar  = document.getElementById('robotAvatar');
+  const hint    = document.getElementById('robotHint');
+  const mic     = document.getElementById('robotMicBtn');
+  const bars    = document.querySelectorAll('.rv-bar');
   if (!pill) return;
-  const states = {
-    online:    { text: 'En ligne',      cls: '',           hint: 'Appuyez pour parler' },
-    listening: { text: '🎙 Écoute…',    cls: 'listening',  hint: 'Je vous écoute…' },
-    thinking:  { text: '⚡ Réflexion…', cls: 'thinking',   hint: 'Analyse en cours…' },
-    speaking:  { text: '🔊 Répond…',    cls: 'speaking',   hint: 'Cliquez pour interrompre' }
+
+  const cfg = {
+    online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
+    listening: { text:'Écoute…',       cls:'listening', hint:'Je vous écoute…',        micOn:true  },
+    thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
+    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Je vous réponds…',       micOn:false }
   };
-  const s = states[state] || states.online;
+  const s = cfg[state] || cfg.online;
   pill.textContent = s.text;
-  pill.className = 'robot-status-pill ' + s.cls;
-  if (avatar) {
-    avatar.className = 'robot-avatar ' + (state !== 'online' ? state : '');
+  pill.className   = 'robot-status-pill ' + s.cls;
+  if (avatar) avatar.className = 'robot-avatar-main ' + (state !== 'online' ? state : '');
+  if (hint)   hint.textContent = s.hint;
+  if (mic)    mic.classList.toggle('active', s.micOn);
+
+  // Animer les barres
+  if (bars.length) {
+    bars.forEach(b => {
+      b.style.opacity = (state === 'online') ? '.3' : '.85';
+    });
   }
-  if (hint) hint.textContent = s.hint;
-  if (mic) mic.classList.toggle('active', state === 'listening');
 }
 
 function setRobotBubble(text) {
@@ -1888,23 +1938,66 @@ function robotSpeak(text) {
   robotSynth.cancel();
   robotSpeaking = true;
   setRobotStatus('speaking');
-  // Afficher le texte dans la bulle
-  setRobotBubble(text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>').replace(/\n/g, '<br>'));
-  const clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/[\[\]#]/g, '').replace(/FCFA/g, 'francs CFA');
-  const utter = new SpeechSynthesisUtterance(clean);
-  if (robotVoice) utter.voice = robotVoice;
-  utter.lang  = 'fr-FR';
-  utter.rate  = 1.05;
-  utter.pitch = 1.0;
-  utter.volume = 1;
-  utter.onend = () => {
-    robotSpeaking = false;
-    setRobotStatus('online');
-    // Relancer l'écoute automatiquement après la réponse
-    setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 600);
-  };
-  utter.onerror = () => { robotSpeaking = false; setRobotStatus('online'); };
-  robotSynth.speak(utter);
+
+  // Affichage bulle
+  setRobotBubble(
+    text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
+        .replace(/\n/g, '<br>')
+  );
+
+  // Nettoyage texte pour la synthèse
+  const clean = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/[\[\]#*_~`]/g, '')
+    .replace(/FCFA/g, 'francs CFA')
+    .replace(/\bXA\b/g, 'marge commerciale')
+    .replace(/\bXB\b/g, 'chiffre d\'affaires')
+    .replace(/\bXC\b/g, 'valeur ajoutée')
+    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
+    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
+    .replace(/\bDAP\b/g, 'dotations aux amortissements')
+    .replace(/\bTVA\b/g, 'T.V.A')
+    .replace(/\n/g, ' . ');
+
+  // Découper en phrases pour un débit naturel (comme Gemini)
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+
+  let idx = 0;
+
+  function speakNext() {
+    if (idx >= sentences.length || !robotSpeaking) {
+      robotSpeaking = false;
+      setRobotStatus('online');
+      setTimeout(() => {
+        if (robotOpen && !robotListening) startRobotListening();
+      }, 700);
+      return;
+    }
+
+    const chunk = sentences[idx].trim();
+    if (!chunk) { idx++; speakNext(); return; }
+
+    const utter = new SpeechSynthesisUtterance(chunk);
+
+    // Voix masculine
+    if (robotVoice) utter.voice = robotVoice;
+    utter.lang   = 'fr-FR';
+
+    // Réglages clés pour sonner comme Gemini :
+    // - rate 0.92  → légèrement plus lent qu'un robot, plus humain
+    // - pitch 0.88 → voix grave et posée (masculin)
+    // - volume 1   → plein volume
+    utter.rate   = 0.92;
+    utter.pitch  = 0.88;
+    utter.volume = 1;
+
+    utter.onend   = () => { idx++; speakNext(); };
+    utter.onerror = () => { idx++; speakNext(); };
+
+    robotSynth.speak(utter);
+  }
+
+  speakNext();
 }
 
 // ── Reconnaissance vocale (STT) ──
