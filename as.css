@@ -734,3 +734,162 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 ::-webkit-scrollbar { width:4px; height:4px; }
 ::-webkit-scrollbar-track { background:var(--surface2); }
 ::-webkit-scrollbar-thumb { background:var(--line2); border-radius:2px; }
+
+
+/* ═══════════════════════════════════════
+   COMEO ROBOT — Assistant Vocal IA
+   ═══════════════════════════════════════ */
+
+.robot-fab {
+  position: fixed; bottom: 28px; left: 28px; z-index: 800;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--warm), #b8912e);
+  border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(212,168,83,.45);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; animation: robot-pulse-fab 3s infinite;
+}
+.robot-fab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(212,168,83,.6); }
+@keyframes robot-pulse-fab {
+  0%,100%{ box-shadow: 0 4px 20px rgba(212,168,83,.45); }
+  50%{ box-shadow: 0 4px 28px rgba(212,168,83,.75), 0 0 0 8px rgba(212,168,83,.08); }
+}
+.robot-fab svg { width: 28px; height: 28px; fill: #0a0b10; }
+.robot-fab-label {
+  position: absolute; left: 68px; top: 50%; transform: translateY(-50%);
+  background: var(--ink); color: var(--warm); font-size: 10px; font-weight: 700;
+  padding: 4px 10px; border-radius: 4px; white-space: nowrap;
+  font-family: var(--font-mono); letter-spacing: .08em;
+  border: 1px solid rgba(212,168,83,.2); pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+}
+.robot-fab:hover .robot-fab-label { opacity: 1; }
+
+/* PANNEAU ROBOT PLEIN ÉCRAN */
+.robot-panel {
+  position: fixed; inset: 0; z-index: 9000;
+  background: #060710;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  animation: robot-open .35s cubic-bezier(.4,0,.2,1);
+}
+.robot-panel.open { display: flex; }
+@keyframes robot-open {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* En-tête */
+.robot-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(212,168,83,.1);
+}
+.robot-topbar-left { display: flex; align-items: center; gap: 10px; }
+.robot-name { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--warm); }
+.robot-status-pill {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  padding: 3px 10px; border-radius: 3px; letter-spacing: .1em;
+  background: rgba(22,163,74,.12); color: #4ade80; border: 1px solid rgba(22,163,74,.25);
+  transition: all .3s;
+}
+.robot-status-pill.listening { background: rgba(212,168,83,.15); color: var(--warm); border-color: rgba(212,168,83,.35); }
+.robot-status-pill.thinking { background: rgba(139,92,246,.12); color: #c4b5fd; border-color: rgba(139,92,246,.25); }
+.robot-status-pill.speaking { background: rgba(34,197,94,.12); color: #4ade80; border-color: rgba(34,197,94,.25); }
+.robot-close {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.5); border-radius: 6px; padding: 8px 14px;
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+  transition: all .15s;
+}
+.robot-close:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.9); }
+
+/* AVATAR ROBOT */
+.robot-avatar-zone {
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+  margin-bottom: 36px;
+}
+.robot-avatar {
+  width: 140px; height: 140px; border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 35%, rgba(212,168,83,.18), rgba(212,168,83,.04) 65%, transparent);
+  border: 2px solid rgba(212,168,83,.25);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; transition: all .3s;
+}
+.robot-avatar.speaking { border-color: rgba(212,168,83,.7); }
+.robot-avatar.listening { border-color: rgba(74,222,128,.5); }
+.robot-avatar-inner {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a1c28, #0a0b10);
+  border: 1.5px solid rgba(212,168,83,.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 32px; font-weight: 700;
+  color: var(--warm);
+}
+.robot-avatar-rings {
+  position: absolute; inset: -14px; border-radius: 50%;
+  border: 1px solid rgba(212,168,83,.08);
+  animation: none;
+}
+.robot-avatar.speaking .robot-avatar-rings { animation: ring-pulse 1.2s ease-in-out infinite; }
+.robot-avatar.listening .robot-avatar-rings { animation: ring-pulse 0.8s ease-in-out infinite; border-color: rgba(74,222,128,.15); }
+@keyframes ring-pulse {
+  0%,100% { transform: scale(1); opacity: .5; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+/* VISUALISEUR AUDIO */
+.robot-visualizer {
+  display: flex; align-items: center; gap: 3px; height: 36px;
+}
+.robot-bar {
+  width: 3px; background: var(--warm); border-radius: 2px;
+  transition: height .1s ease; opacity: .6;
+  animation: none;
+}
+.robot-avatar.speaking .robot-bar,
+.robot-avatar.listening .robot-bar { animation: bar-dance var(--dur, .8s) ease-in-out infinite alternate; }
+@keyframes bar-dance { from { height: 4px; } to { height: var(--max, 24px); } }
+
+/* BULLE DE TEXTE IA */
+.robot-bubble {
+  max-width: 560px; text-align: center;
+  font-size: 16px; line-height: 1.75; color: rgba(255,255,255,.82);
+  min-height: 54px; font-family: var(--font-body);
+  transition: opacity .3s;
+}
+.robot-bubble.fading { opacity: 0; }
+
+/* CONTRÔLES */
+.robot-controls {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.robot-mic-btn {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(255,255,255,.04); border: 2px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.5); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; position: relative;
+}
+.robot-mic-btn:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.9); }
+.robot-mic-btn.active { background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.5); color: #4ade80; }
+.robot-mic-btn.active::after {
+  content: ''; position: absolute; inset: -8px; border-radius: 50%;
+  border: 1.5px solid rgba(74,222,128,.25); animation: mic-ring 1.2s ease-in-out infinite;
+}
+@keyframes mic-ring { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.06);opacity:1} }
+.robot-mic-btn svg { width: 28px; height: 28px; fill: currentColor; }
+.robot-hint {
+  font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,.22);
+  letter-spacing: .1em; text-align: center;
+}
+
+/* FOND PARTICULES */
+.robot-bg {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+.robot-bg-dot {
+  position: absolute; border-radius: 50%;
+  background: rgba(212,168,83,.06);
+  animation: float-dot var(--spd, 12s) ease-in-out infinite alternate;
+}
+@keyframes float-dot { from{transform:translateY(0)} to{transform:translateY(-18px)} }
