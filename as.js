@@ -1924,15 +1924,17 @@ function setRobotStatus(state) {
 }
 
 function setRobotBubble(text) {
-  const b = document.getElementById('robotBubble');
-  if (!b) return;
-  b.classList.add('fading');
+  const bubble = document.getElementById('robotBubble');
+  const inner  = document.getElementById('robotBubbleText');
+  const target = inner || bubble;
+  if (!target) return;
+  if (bubble) bubble.classList.add('fading');
   setTimeout(() => {
-    b.innerHTML = text;
-    b.classList.remove('fading');
-  }, 200);
+    target.innerHTML = text + '<span class="blink-cur"></span>';
+    if (bubble) bubble.classList.remove('fading');
+    if (bubble) bubble.scrollTop = bubble.scrollHeight;
+  }, 180);
 }
-
 // ── Synthèse vocale (TTS) ──
 function robotSpeak(text) {
   robotSynth.cancel();
