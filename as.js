@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
@@ -11,6 +12,7 @@ const firebaseConfig = {
   appId: "1:276904640935:web:9cd805aeba6c34c767f682",
   measurementId: "G-FYQCWY5G4S"
 };
+const auth = getAuth(app);
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -382,55 +384,68 @@ function switchTab(t) {
 
 async function doRegister() {
   const company = document.getElementById('r-company').value.trim();
+  const email   = document.getElementById('r-email').value.trim();
   const compte701 = document.getElementById('r-compte701').value.trim() || '701';
-  const exercice = document.getElementById('r-exercice').value.trim() || '2024';
+  const exercice  = document.getElementById('r-exercice').value.trim() || '2024';
   const pass = document.getElementById('r-pass').value;
-  const err = document.getElementById('r-err');
+  const err  = document.getElementById('r-err');
   err.classList.remove('show');
   if (!company) { err.textContent = "Nom d'entreprise requis"; err.classList.add('show'); return; }
-  if (pass.length < 4) { err.textContent = 'Mot de passe trop court (4 caractères min.)'; err.classList.add('show'); return; }
-  const profileId = company.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  if (!email)   { err.textContent = "Email requis"; err.classList.add('show'); return; }
+  if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min.)'; err.classList.add('show'); return; }
   try {
     await waitForFirebase();
-    const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
-    if (snap.exists()) { err.textContent = "Ce nom d'entreprise existe déjà."; err.classList.add('show'); return; }
-    await window._fbSetDoc(docRef, { company, compte701, exercice, password: btoa(pass), createdAt: new Date().toISOString() });
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const uid  = cred.user.uid;
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', uid), {
+      company, compte701, exercice, email, createdAt: new Date().toISOString()
+    });
     toast('Profil créé avec succès ! Connectez-vous.', 'success');
     switchTab('login');
-    document.getElementById('l-company').value = company;
-  } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
+    document.getElementById('l-email').value = email;
+  } catch (e) {
+    const msgs = {
+      'auth/email-already-in-use': 'Cet email est déjà utilisé.',
+      'auth/invalid-email': 'Email invalide.',
+      'auth/weak-password': 'Mot de passe trop faible.'
+    };
+    err.textContent = msgs[e.code] || e.message;
+    err.classList.add('show');
+  }
 }
-
 async function doLogin() {
-  const company = document.getElementById('l-company').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  const err = document.getElementById('l-err');
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const err   = document.getElementById('l-err');
   err.classList.remove('show');
-  if (!company || !pass) { err.textContent = 'Remplissez tous les champs'; err.classList.add('show'); return; }
-  const profileId = company.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  if (!email || !pass) { err.textContent = 'Remplissez tous les champs'; err.classList.add('show'); return; }
   try {
     await waitForFirebase();
-    const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
-    if (!snap.exists()) { err.textContent = 'Entreprise introuvable.'; err.classList.add('show'); return; }
-    const profile = snap.data();
-    if (atob(profile.password) !== pass) { err.textContent = 'Mot de passe incorrect'; err.classList.add('show'); return; }
-    currentProfile = { ...profile, id: profileId };
-    localStorage.setItem('syscohada_session', JSON.stringify({ profileId, company }));
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const uid  = cred.user.uid;
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, 'profiles', uid));
+    if (!snap.exists()) { err.textContent = 'Profil introuvable.'; err.classList.add('show'); return; }
+    currentProfile = { ...snap.data(), id: uid };
     conversationHistory = [];
     await loadApp();
-  } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
+  } catch (e) {
+    const msgs = {
+      'auth/user-not-found': 'Aucun compte avec cet email.',
+      'auth/wrong-password': 'Mot de passe incorrect.',
+      'auth/invalid-email': 'Email invalide.',
+      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.'
+    };
+    err.textContent = msgs[e.code] || e.message;
+    err.classList.add('show');
+  }
 }
-
-function doLogout() {
+async function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
-  localStorage.removeItem('syscohada_session');
+  await signOut(auth);
   currentProfile = null; ecritures = []; conversationHistory = [];
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('authOverlay').style.display = 'flex';
 }
-
 function waitForFirebase() {
   return new Promise(r => {
     if (window._fbReady) { r(); return; }
@@ -2172,23 +2187,29 @@ function toast(message, type = 'info') {
 // INIT SESSION
 // ══════════════════════════════════════════
 document.addEventListener('firebase-ready', async () => {
-  // Charger la config serveur dès le démarrage (avant même le login)
   await loadServerConfig();
-  const session = localStorage.getItem('syscohada_session');
-  if (session) {
-    try {
-      const { profileId } = JSON.parse(session);
-      const docRef = window._fbDoc(window._db, 'profiles', profileId);
-      const snap = await window._fbGetDoc(docRef);
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const snap = await window._fbGetDoc(window._fbDoc(window._db, 'profiles', user.uid));
       if (snap.exists()) {
-        currentProfile = { ...snap.data(), id: profileId };
+        currentProfile = { ...snap.data(), id: user.uid };
         conversationHistory = [];
         await loadApp();
       }
-    } catch (e) { localStorage.removeItem('syscohada_session'); }
-  }
+    }
+  });
 });
 
+async function doForgotPassword() {
+  const email = document.getElementById('l-email').value.trim();
+  if (!email) { toast('Entrez votre email puis cliquez sur ce lien', 'error'); return; }
+  try {
+    const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    await sendPasswordResetEmail(auth, email);
+    toast('Email de réinitialisation envoyé à ' + email, 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+window.doForgotPassword = doForgotPassword;
 // ══════════════════════════════════════════
 // EXPOSITION GLOBALE
 // ══════════════════════════════════════════
