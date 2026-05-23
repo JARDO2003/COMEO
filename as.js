@@ -1,6 +1,19 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ══════════════════════════════════════════
+// 🔐 FIREBASE AUTH — Import des méthodes
+// ══════════════════════════════════════════
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
   authDomain: "data-com-a94a8.firebaseapp.com",
@@ -13,22 +26,29 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-window._db = db; window._fbCollection = collection; window._fbAddDoc = addDoc;
-window._fbGetDocs = getDocs; window._fbDeleteDoc = deleteDoc; window._fbDoc = doc;
-window._fbQuery = query; window._fbOrderBy = orderBy; window._fbSetDoc = setDoc;
-window._fbGetDoc = getDoc; window._fbReady = true;
+const db  = getFirestore(app);
+
+// ══════════════════════════════════════════
+// 🔐 INITIALISATION AUTH
+// ══════════════════════════════════════════
+const auth = getAuth(app);
+
+window._db         = db;
+window._auth       = auth;
+window._fbCollection = collection; window._fbAddDoc    = addDoc;
+window._fbGetDocs  = getDocs;      window._fbDeleteDoc = deleteDoc;
+window._fbDoc      = doc;          window._fbQuery     = query;
+window._fbOrderBy  = orderBy;      window._fbSetDoc    = setDoc;
+window._fbGetDoc   = getDoc;       window._fbReady     = true;
 document.dispatchEvent(new Event('firebase-ready'));
 
 // ══════════════════════════════════════════
 // CONFIGURATION SERVEUR — Chargée depuis Firestore (server_config)
-// Les clés API Groq et l'ordre des modèles sont gérés via server.html
-// JAMAIS de clé API en dur dans ce fichier
 // ══════════════════════════════════════════
-let GROQ_API_KEYS  = [];   // Chargées depuis server_config/groq_keys
-let GROQ_MODELS    = [];   // Chargées depuis server_config/models
-let groqKeyIdx     = 0;    // Index rotation clés
-let groqModelIdx   = 0;    // Index rotation modèles
+let GROQ_API_KEYS      = [];
+let GROQ_MODELS        = [];
+let groqKeyIdx         = 0;
+let groqModelIdx       = 0;
 let serverConfigLoaded = false;
 
 async function loadServerConfig() {
@@ -37,31 +57,16 @@ async function loadServerConfig() {
       getDoc(doc(db, 'server_config', 'groq_keys')),
       getDoc(doc(db, 'server_config', 'models'))
     ]);
-
-    if (keysSnap.exists()) {
-      const rawKeys = keysSnap.data().keys || [];
-      GROQ_API_KEYS = rawKeys.map(k => k.value).filter(Boolean);
-    }
-
-    if (modelsSnap.exists()) {
-      GROQ_MODELS = modelsSnap.data().list || [];
-    }
-
-    // Valeurs par défaut si Firestore vide
+    if (keysSnap.exists())   GROQ_API_KEYS = (keysSnap.data().keys || []).map(k => k.value).filter(Boolean);
+    if (modelsSnap.exists()) GROQ_MODELS   = modelsSnap.data().list || [];
     if (GROQ_MODELS.length === 0) {
-      GROQ_MODELS = [
-        'llama-3.3-70b-versatile',
-        'qwen/qwen3-32b',
-        'meta-llama/llama-4-scout-17b-16e-instruct'
-      ];
+      GROQ_MODELS = ['llama-3.3-70b-versatile','qwen/qwen3-32b','meta-llama/llama-4-scout-17b-16e-instruct'];
     }
-
     serverConfigLoaded = true;
     console.log(`[COMEO] Config chargée — ${GROQ_API_KEYS.length} clé(s) Groq, ${GROQ_MODELS.length} modèle(s)`);
   } catch (e) {
     console.warn('[COMEO] Erreur chargement config serveur :', e.message);
-    // Fallback modèles uniquement (sans clé — l'IA sera désactivée)
-    GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+    GROQ_MODELS = ['llama-3.3-70b-versatile','qwen/qwen3-32b','meta-llama/llama-4-scout-17b-16e-instruct'];
   }
 }
 
@@ -146,20 +151,17 @@ const PC = {
   "90":"ENGAGEMENTS OBTENUS ET ENGAGEMENTS ACCORDES","901":"ENGAGEMENTS DE FINANCEMENT OBTENUS","902":"ENGAGEMENTS DE GARANTIE OBTENUS","903":"ENGAGEMENTS RECIPROQUES","904":"AUTRES ENGAGEMENTS OBTENUS","905":"ENGAGEMENTS DE FINANCEMENT ACCORDES","906":"ENGAGEMENTS DE GARANTIE ACCORDES","907":"ENGAGEMENTS RECIPROQUES","908":"AUTRES ENGAGEMENTS ACCORDES"
 };
 
-const CLASS_NAMES = { '1':'Capitaux','2':'Immobilisations','3':'Stocks','4':'Tiers','5':'Trésorerie','6':'Charges','7':'Produits','8':'Spéciaux' };
-const NATURE_MAP  = { '1':'Passif','2':'Actif','3':'Actif','4':'Mixte','5':'Actif','6':'Charge','7':'Produit','8':'Spécial' };
+const CLASS_NAMES  = { '1':'Capitaux','2':'Immobilisations','3':'Stocks','4':'Tiers','5':'Trésorerie','6':'Charges','7':'Produits','8':'Spéciaux' };
+const NATURE_MAP   = { '1':'Passif','2':'Actif','3':'Actif','4':'Mixte','5':'Actif','6':'Charge','7':'Produit','8':'Spécial' };
 const JOURNAL_NAMES = { 'AC':'Achats','VE':'Ventes','BQ':'Banque','CA':'Caisse','OD':'Opérations Diverses','IN':'Inventaire','AN':'À Nouveau' };
 const JOURNAL_ICONS = { 'AC':'🛒','VE':'💰','BQ':'🏦','CA':'💵','OD':'📋','IN':'📦','AN':'📂' };
 
-// ══════════════════════════════════════════
-// TRI DÉBIT AVANT CRÉDIT — NORME SYSCOHADA
-// ══════════════════════════════════════════
 function sortLignesDebitAvantCredit(lignes) {
   return [...lignes].sort((a, b) => {
-    const aIsDebit = (parseFloat(a.debit) || 0) > 0;
-    const bIsDebit = (parseFloat(b.debit) || 0) > 0;
-    if (aIsDebit && !bIsDebit) return -1;
-    if (!aIsDebit && bIsDebit) return 1;
+    const aD = (parseFloat(a.debit) || 0) > 0;
+    const bD = (parseFloat(b.debit) || 0) > 0;
+    if (aD && !bD) return -1;
+    if (!aD && bD) return 1;
     return 0;
   });
 }
@@ -371,64 +373,226 @@ Bilan     : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","j
 }
 
 // ══════════════════════════════════════════
-// AUTH
+// 🔐 AUTH — FIREBASE AUTH (remplace btoa)
 // ══════════════════════════════════════════
+
+/**
+ * INSCRIPTION
+ * - Crée un compte Firebase Auth (email + password)
+ * - Stocke le profil entreprise dans Firestore sous profiles/{uid}
+ * - L'UID Firebase est utilisé comme identifiant du profil (plus sécurisé)
+ */
 function switchTab(t) {
   document.getElementById('tab-login').classList.toggle('active', t === 'login');
   document.getElementById('tab-register').classList.toggle('active', t === 'register');
-  document.getElementById('form-login').style.display = t === 'login' ? 'flex' : 'none';
+  document.getElementById('form-login').style.display  = t === 'login'    ? 'flex' : 'none';
   document.getElementById('form-register').style.display = t === 'register' ? 'flex' : 'none';
+  // Masquer le formulaire de réinitialisation si on change d'onglet
+  const resetForm = document.getElementById('form-reset');
+  if (resetForm) resetForm.style.display = 'none';
+}
+
+// ── Afficher / masquer le mot de passe ──
+function togglePasswordVisibility(fieldId, btnId) {
+  const field = document.getElementById(fieldId);
+  const btn   = document.getElementById(btnId);
+  if (!field) return;
+  if (field.type === 'password') {
+    field.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    field.type = 'password';
+    if (btn) btn.textContent = '👁️';
+  }
 }
 
 async function doRegister() {
-  const company = document.getElementById('r-company').value.trim();
-  const compte701 = document.getElementById('r-compte701').value.trim() || '701';
+  const company  = document.getElementById('r-company').value.trim();
+  const email    = document.getElementById('r-email').value.trim().toLowerCase();
   const exercice = document.getElementById('r-exercice').value.trim() || '2024';
-  const pass = document.getElementById('r-pass').value;
-  const err = document.getElementById('r-err');
+  const pass     = document.getElementById('r-pass').value;
+  const passConf = document.getElementById('r-pass-confirm')?.value;
+  const err      = document.getElementById('r-err');
   err.classList.remove('show');
-  if (!company) { err.textContent = "Nom d'entreprise requis"; err.classList.add('show'); return; }
-  if (pass.length < 4) { err.textContent = 'Mot de passe trop court (4 caractères min.)'; err.classList.add('show'); return; }
-  const profileId = company.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+  // Validations locales
+  if (!company)  { err.textContent = "Nom d'entreprise requis";     err.classList.add('show'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    err.textContent = 'Adresse email invalide'; err.classList.add('show'); return;
+  }
+  if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min.)'; err.classList.add('show'); return; }
+  if (passConf !== undefined && pass !== passConf) {
+    err.textContent = 'Les mots de passe ne correspondent pas'; err.classList.add('show'); return;
+  }
+
   try {
-    await waitForFirebase();
-    const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
-    if (snap.exists()) { err.textContent = "Ce nom d'entreprise existe déjà."; err.classList.add('show'); return; }
-    await window._fbSetDoc(docRef, { company, compte701, exercice, password: btoa(pass), createdAt: new Date().toISOString() });
-    toast('Profil créé avec succès ! Connectez-vous.', 'success');
+    // 1. Créer le compte Firebase Auth
+    const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+    const user     = userCred.user;
+
+    // 2. Mettre à jour le displayName avec le nom d'entreprise
+    await updateProfile(user, { displayName: company });
+
+    // 3. Sauvegarder le profil dans Firestore (clé = UID Firebase)
+    await setDoc(doc(db, 'profiles', user.uid), {
+      company,
+      exercice,
+      email,
+      uid: user.uid,
+      createdAt: new Date().toISOString()
+      // ✅ Plus de mot de passe stocké en clair / btoa — Firebase gère tout
+    });
+
+    toast('✅ Compte créé avec succès ! Connectez-vous.', 'success');
     switchTab('login');
-    document.getElementById('l-company').value = company;
-  } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
+    document.getElementById('l-email').value = email;
+  } catch (e) {
+    err.textContent = translateAuthError(e.code);
+    err.classList.add('show');
+  }
 }
 
 async function doLogin() {
-  const company = document.getElementById('l-company').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  const err = document.getElementById('l-err');
+  const email = document.getElementById('l-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('l-pass').value;
+  const err   = document.getElementById('l-err');
   err.classList.remove('show');
-  if (!company || !pass) { err.textContent = 'Remplissez tous les champs'; err.classList.add('show'); return; }
-  const profileId = company.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+  if (!email || !pass) { err.textContent = 'Remplissez tous les champs'; err.classList.add('show'); return; }
+
+  // Bouton loading
+  const btn = document.getElementById('btn-login');
+  if (btn) { btn.disabled = true; btn.textContent = 'Connexion…'; }
+
   try {
-    await waitForFirebase();
-    const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
-    if (!snap.exists()) { err.textContent = 'Entreprise introuvable.'; err.classList.add('show'); return; }
-    const profile = snap.data();
-    if (atob(profile.password) !== pass) { err.textContent = 'Mot de passe incorrect'; err.classList.add('show'); return; }
-    currentProfile = { ...profile, id: profileId };
-    localStorage.setItem('syscohada_session', JSON.stringify({ profileId, company }));
+    // 1. Connexion Firebase Auth
+    const userCred = await signInWithEmailAndPassword(auth, email, pass);
+    const user     = userCred.user;
+
+    // 2. Charger le profil depuis Firestore (clé = UID)
+    const snap = await getDoc(doc(db, 'profiles', user.uid));
+    if (!snap.exists()) {
+      // Profil manquant — créer un profil minimal depuis le Auth displayName
+      const company = user.displayName || email.split('@')[0];
+      await setDoc(doc(db, 'profiles', user.uid), {
+        company, exercice: '2024', email, uid: user.uid, createdAt: new Date().toISOString()
+      });
+      currentProfile = { company, exercice: '2024', email, id: user.uid };
+    } else {
+      currentProfile = { ...snap.data(), id: user.uid };
+    }
+
     conversationHistory = [];
     await loadApp();
-  } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
+  } catch (e) {
+    err.textContent = translateAuthError(e.code);
+    err.classList.add('show');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Se connecter'; }
+  }
 }
 
-function doLogout() {
+async function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
-  localStorage.removeItem('syscohada_session');
-  currentProfile = null; ecritures = []; conversationHistory = [];
-  document.getElementById('appShell').style.display = 'none';
+  try {
+    await signOut(auth);
+  } catch (e) { console.warn('signOut error:', e); }
+  currentProfile = null;
+  ecritures      = [];
+  conversationHistory = [];
+  document.getElementById('appShell').style.display   = 'none';
   document.getElementById('authOverlay').style.display = 'flex';
+}
+
+// ── Réinitialisation du mot de passe ──
+function showResetForm() {
+  const loginForm = document.getElementById('form-login');
+  const resetForm = document.getElementById('form-reset');
+  if (loginForm) loginForm.style.display = 'none';
+  if (resetForm) resetForm.style.display = 'flex';
+}
+
+function hideResetForm() {
+  const loginForm = document.getElementById('form-login');
+  const resetForm = document.getElementById('form-reset');
+  if (loginForm) loginForm.style.display = 'flex';
+  if (resetForm) resetForm.style.display = 'none';
+}
+
+async function doResetPassword() {
+  const emailInput = document.getElementById('reset-email');
+  const err        = document.getElementById('reset-err');
+  const success    = document.getElementById('reset-success');
+  const email      = emailInput?.value?.trim().toLowerCase();
+
+  if (err)     err.classList.remove('show');
+  if (success) success.classList.remove('show');
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (err) { err.textContent = 'Adresse email invalide'; err.classList.add('show'); }
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+    if (success) {
+      success.textContent = `Un email de réinitialisation a été envoyé à ${email}`;
+      success.classList.add('show');
+    }
+    setTimeout(hideResetForm, 4000);
+  } catch (e) {
+    if (err) { err.textContent = translateAuthError(e.code); err.classList.add('show'); }
+  }
+}
+
+// ── Traduction des codes erreurs Firebase Auth en français ──
+function translateAuthError(code) {
+  const map = {
+    'auth/email-already-in-use':    'Cette adresse email est déjà utilisée.',
+    'auth/invalid-email':           'Adresse email invalide.',
+    'auth/weak-password':           'Mot de passe trop faible (6 caractères minimum).',
+    'auth/user-not-found':          'Aucun compte trouvé avec cet email.',
+    'auth/wrong-password':          'Mot de passe incorrect.',
+    'auth/invalid-credential':      'Email ou mot de passe incorrect.',
+    'auth/too-many-requests':       'Trop de tentatives. Réessayez dans quelques minutes.',
+    'auth/network-request-failed':  'Erreur réseau. Vérifiez votre connexion.',
+    'auth/user-disabled':           'Ce compte a été désactivé.',
+    'auth/operation-not-allowed':   'Opération non autorisée.',
+    'auth/popup-closed-by-user':    'La fenêtre d\'authentification a été fermée.',
+  };
+  return map[code] || `Erreur d'authentification (${code})`;
+}
+
+// ── Restauration de session via onAuthStateChanged ──
+// Firebase Auth gère automatiquement la persistance de session
+// (plus besoin de localStorage manuel)
+function initAuthListener() {
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Utilisateur connecté — charger le profil
+      try {
+        const snap = await getDoc(doc(db, 'profiles', user.uid));
+        if (snap.exists()) {
+          currentProfile = { ...snap.data(), id: user.uid };
+        } else {
+          const company = user.displayName || user.email.split('@')[0];
+          await setDoc(doc(db, 'profiles', user.uid), {
+            company, exercice: '2024', email: user.email, uid: user.uid, createdAt: new Date().toISOString()
+          });
+          currentProfile = { company, exercice: '2024', email: user.email, id: user.uid };
+        }
+        conversationHistory = [];
+        if (!serverConfigLoaded) await loadServerConfig();
+        await loadApp();
+      } catch (e) {
+        console.error('Erreur chargement profil :', e);
+      }
+    } else {
+      // Non connecté — afficher l'écran de connexion
+      document.getElementById('appShell').style.display   = 'none';
+      document.getElementById('authOverlay').style.display = 'flex';
+    }
+  });
 }
 
 function waitForFirebase() {
@@ -440,23 +604,23 @@ function waitForFirebase() {
 
 async function loadApp() {
   document.getElementById('authOverlay').style.display = 'none';
-  document.getElementById('appShell').style.display = 'grid';
+  document.getElementById('appShell').style.display   = 'grid';
   document.getElementById('topCompanyName').textContent = currentProfile.company;
-  document.getElementById('exerciceYear').value = currentProfile.exercice || '2024';
-  // Charger la config serveur (clés API) si pas encore fait
+  document.getElementById('exerciceYear').value         = currentProfile.exercice || '2024';
   if (!serverConfigLoaded) await loadServerConfig();
   await loadEcrituresFromFirestore();
   updateStats(); renderPlanComptable(); initSaisie();
 }
 
 // ══════════════════════════════════════════
-// FIRESTORE
+// FIRESTORE — Données comptables
+// L'UID Firebase remplace l'ancien profileId basé sur le nom
 // ══════════════════════════════════════════
 async function loadEcrituresFromFirestore() {
   try {
-    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
-    const q = window._fbQuery(col, window._fbOrderBy('date', 'asc'));
-    const snap = await window._fbGetDocs(q);
+    const col = collection(db, 'profiles', currentProfile.id, 'ecritures');
+    const q   = query(col, orderBy('date', 'asc'));
+    const snap = await getDocs(q);
     ecritures = [];
     snap.forEach(d => ecritures.push({ ...d.data(), _docId: d.id }));
     pieceCounter = ecritures.length + 1;
@@ -465,8 +629,8 @@ async function loadEcrituresFromFirestore() {
 
 async function saveEcritureToFirestore(ecriture) {
   try {
-    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
-    const docRef = await window._fbAddDoc(col, ecriture);
+    const col    = collection(db, 'profiles', currentProfile.id, 'ecritures');
+    const docRef = await addDoc(col, ecriture);
     ecriture._docId = docRef.id;
     return docRef.id;
   } catch (e) { toast('Erreur sauvegarde : ' + e.message, 'error'); return null; }
@@ -474,7 +638,7 @@ async function saveEcritureToFirestore(ecriture) {
 
 async function deleteEcritureFromFirestore(docId) {
   try {
-    await window._fbDeleteDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'ecritures', docId));
+    await deleteDoc(doc(db, 'profiles', currentProfile.id, 'ecritures', docId));
   } catch (e) { toast('Erreur suppression : ' + e.message, 'error'); }
 }
 
@@ -509,26 +673,26 @@ function navigate(view) {
 function updateStats() {
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const all = ecritures.flatMap(e => e.lignes);
+  const all  = ecritures.flatMap(e => e.lignes);
   const prod = all.filter(l => l.compte?.[0] === '7').reduce((s, l) => s + (l.credit || 0), 0);
-  const chg = all.filter(l => l.compte?.[0] === '6').reduce((s, l) => s + (l.debit || 0), 0);
-  const res = prod - chg;
-  const eq = Math.abs(tD - tC) < 0.01;
+  const chg  = all.filter(l => l.compte?.[0] === '6').reduce((s, l) => s + (l.debit  || 0), 0);
+  const res  = prod - chg;
+  const eq   = Math.abs(tD - tC) < 0.01;
   document.getElementById('s-ecritures').textContent = ecritures.length;
-  document.getElementById('s-debit').textContent = fn(tD);
-  document.getElementById('s-credit').textContent = fn(tC);
+  document.getElementById('s-debit').textContent     = fn(tD);
+  document.getElementById('s-credit').textContent    = fn(tC);
   const eqEl = document.getElementById('s-equil');
   eqEl.textContent = eq ? '✓ Équilibré' : '✗ Déséquilibré';
-  eqEl.className = 'val ' + (eq ? 'g' : 'r');
-  document.getElementById('dash-nb').textContent = ecritures.length;
-  document.getElementById('dash-debit').textContent = fs(tD);
+  eqEl.className   = 'val ' + (eq ? 'g' : 'r');
+  document.getElementById('dash-nb').textContent     = ecritures.length;
+  document.getElementById('dash-debit').textContent  = fs(tD);
   document.getElementById('dash-credit').textContent = fs(tC);
   const re = document.getElementById('dash-res');
   re.textContent = fs(res);
-  re.style.color = res >= 0 ? 'var(--green)' : 'var(--red)';
-  const yr = document.getElementById('exerciceYear').value;
-  const bd = document.getElementById('bilanDate');
-  const ry = document.getElementById('resultatYear');
+  re.style.color  = res >= 0 ? 'var(--green)' : 'var(--red)';
+  const yr  = document.getElementById('exerciceYear').value;
+  const bd  = document.getElementById('bilanDate');
+  const ry  = document.getElementById('resultatYear');
   if (bd) bd.textContent = '31/12/' + yr;
   if (ry) ry.textContent = yr;
 }
@@ -563,18 +727,18 @@ function removeLigne(i) { lignes.splice(i, 1); renderLignes(); }
 async function autoSaveAllEcritures() {
   if (ecrQueue.length === 0) { toast("Aucune écriture en file d'attente", 'error'); return; }
   const total = ecrQueue.length;
-  const bar = document.getElementById('autoSaveBar');
-  const msg = document.getElementById('autoSaveMsg');
-  const prog = document.getElementById('autoSaveProgress');
+  const bar   = document.getElementById('autoSaveBar');
+  const msg   = document.getElementById('autoSaveMsg');
+  const prog  = document.getElementById('autoSaveProgress');
   bar.classList.add('show');
-  const date = document.getElementById('ecr-date').value || new Date().toISOString().split('T')[0];
+  const date    = document.getElementById('ecr-date').value || new Date().toISOString().split('T')[0];
   const groupId = 'grp_' + Date.now();
   const groupLib = ecrQueue[0]?.libelle || 'Opération ' + new Date().toLocaleDateString('fr-FR');
   let saved = 0;
   const errors = [];
 
   for (let i = 0; i < ecrQueue.length; i++) {
-    const ecr = ecrQueue[i];
+    const ecr   = ecrQueue[i];
     msg.innerHTML = `<strong>Enregistrement ${i + 1}/${total}</strong> — [${ecr.journal}] ${ecr.libelle || 'Écriture ' + (i + 1)}`;
     prog.style.width = ((i / total) * 100) + '%';
     const valid = (ecr.lignes || []).filter(l => l.compte && (l.debit || l.credit));
@@ -582,7 +746,7 @@ async function autoSaveAllEcritures() {
     let d = 0, c = 0;
     valid.forEach(l => { d += Math.round(parseFloat(l.debit) || 0); c += Math.round(parseFloat(l.credit) || 0); });
     if (Math.abs(d - c) > 2) { errors.push(`Écriture ${i + 1} [${ecr.journal}] : non équilibrée (Δ ${Math.abs(d - c)} FCFA)`); continue; }
-    const piece = 'N°' + String(pieceCounter).padStart(5, '0');
+    const piece       = 'N°' + String(pieceCounter).padStart(5, '0');
     const lignesSorted = sortLignesDebitAvantCredit(valid);
     const ecriture = {
       id: Date.now() + i, date, journal: ecr.journal || 'OD', piece,
@@ -592,7 +756,7 @@ async function autoSaveAllEcritures() {
       lignes: lignesSorted.map(l => ({
         compte: String(l.compte),
         libelle: l.libelle || PC[String(l.compte)] || '',
-        debit: Math.round(parseFloat(l.debit) || 0),
+        debit:  Math.round(parseFloat(l.debit)  || 0),
         credit: Math.round(parseFloat(l.credit) || 0)
       }))
     };
@@ -625,15 +789,15 @@ function setEcritureQueue(ecritures_ai) {
 
 function loadEcritureFromQueue(idx) {
   if (idx >= ecrQueue.length) return;
-  const ecr = ecrQueue[idx];
+  const ecr          = ecrQueue[idx];
   const lignesSorted = sortLignesDebitAvantCredit(ecr.lignes || []);
   lignes = lignesSorted.map(l => ({
-    compte: String(l.compte || ''),
+    compte:  String(l.compte || ''),
     libelle: l.libelle || PC[String(l.compte)] || '',
-    debit: Math.round(parseFloat(l.debit) || 0),
-    credit: Math.round(parseFloat(l.credit) || 0)
+    debit:   Math.round(parseFloat(l.debit)  || 0),
+    credit:  Math.round(parseFloat(l.credit) || 0)
   }));
-  const jSelect = document.getElementById('ecr-journal');
+  const jSelect  = document.getElementById('ecr-journal');
   if (jSelect && ecr.journal) jSelect.value = ecr.journal;
   const libInput = document.getElementById('ecr-libelle');
   if (libInput && ecr.libelle) libInput.value = ecr.libelle;
@@ -641,8 +805,8 @@ function loadEcritureFromQueue(idx) {
   if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
   renderLignes();
   const banner = document.getElementById('aiFillBanner');
-  const desc = document.getElementById('aiFillDesc');
-  const num = document.getElementById('aiFillNum');
+  const desc   = document.getElementById('aiFillDesc');
+  const num    = document.getElementById('aiFillNum');
   if (banner && desc) {
     desc.textContent = ecr.libelle || 'Écriture préparée par COMEO AI';
     if (num) num.textContent = ecrQueue.length > 1 ? `(${idx + 1}/${ecrQueue.length})` : '';
@@ -651,9 +815,9 @@ function loadEcritureFromQueue(idx) {
 }
 
 function updateQueueBar() {
-  const bar = document.getElementById('saisieQueueBar');
+  const bar       = document.getElementById('saisieQueueBar');
   if (!bar) return;
-  const counter = document.getElementById('sqbCounter');
+  const counter   = document.getElementById('sqbCounter');
   const remaining = ecrQueue.length - ecrQueueIdx;
   if (remaining > 0) {
     bar.classList.add('show');
@@ -674,25 +838,26 @@ function skipToNextEcriture() {
   }
 }
 
-function dismissFillBanner() { const b = document.getElementById('aiFillBanner'); if (b) b.classList.remove('show'); }
+function dismissFillBanner()  { const b = document.getElementById('aiFillBanner');  if (b) b.classList.remove('show'); }
+function hideMultiEcrBanner() { const b = document.getElementById('multiEcrBanner'); if (b) b.classList.remove('show'); }
+function hideSaisieNotif()    { const n = document.getElementById('saisieNotif');    if (n) n.classList.remove('show'); }
 
 function showMultiEcrBanner(ecritures_ai) {
   const banner = document.getElementById('multiEcrBanner');
-  const list = document.getElementById('mebList');
-  const title = document.getElementById('mebTitle');
+  const list   = document.getElementById('mebList');
+  const title  = document.getElementById('mebTitle');
   if (!banner) return;
   title.textContent = `COMEO AI a préparé ${ecritures_ai.length} écriture${ecritures_ai.length > 1 ? 's' : ''} liées`;
-  list.innerHTML = ecritures_ai.map((e, i) =>
+  list.innerHTML    = ecritures_ai.map((e, i) =>
     `<li><span class="meb-n">${i + 1}</span><span class="meb-jnl">${e.journal || 'OD'}</span><span>${e.libelle || 'Écriture ' + (i + 1)}</span></li>`
   ).join('');
   banner.classList.add('show');
   setTimeout(() => banner.classList.remove('show'), 60000);
 }
-function hideMultiEcrBanner() { const b = document.getElementById('multiEcrBanner'); if (b) b.classList.remove('show'); }
 
 function showSaisieNotif(libelle, count) {
   const notif = document.getElementById('saisieNotif');
-  const body = document.getElementById('saisieNotifBody');
+  const body  = document.getElementById('saisieNotifBody');
   if (!notif) return;
   body.textContent = count > 1
     ? `${count} écritures liées préparées. Cliquez "Tout enregistrer" pour les grouper.`
@@ -700,7 +865,6 @@ function showSaisieNotif(libelle, count) {
   notif.classList.add('show');
   setTimeout(() => notif.classList.remove('show'), 15000);
 }
-function hideSaisieNotif() { const n = document.getElementById('saisieNotif'); if (n) n.classList.remove('show'); }
 
 function goToSaisie() {
   hideSaisieNotif(); navigate('saisie');
@@ -778,9 +942,9 @@ function renderLignes() {
 }
 
 function updateAccountSuggest(idx, input, mode) {
-  const q = input.value.toLowerCase().trim();
+  const q      = input.value.toLowerCase().trim();
   const dropId = mode === 'card' ? 'c-' + idx : 't-' + idx;
-  const drop = document.getElementById('drop-' + dropId);
+  const drop   = document.getElementById('drop-' + dropId);
   if (!drop) return;
   if (!q || q.length < 2) { drop.classList.remove('open'); return; }
   const matches = Object.entries(PC)
@@ -795,7 +959,7 @@ function updateAccountSuggest(idx, input, mode) {
 }
 
 function selectAccount(idx, code, lib) {
-  lignes[idx].compte = code;
+  lignes[idx].compte  = code;
   if (!lignes[idx].libelle) lignes[idx].libelle = lib.substring(0, 54);
   renderLignes();
 }
@@ -806,22 +970,22 @@ function hideDropdown(id) {
 function updateBalance() {
   let d = 0, c = 0;
   lignes.forEach(l => { d += parseFloat(l.debit) || 0; c += parseFloat(l.credit) || 0; });
-  const s = d - c;
+  const s   = d - c;
   const tdd = document.getElementById('totalDebitDisplay');
   const tcd = document.getElementById('totalCreditDisplay');
-  const el = document.getElementById('soldeDisplay');
+  const el  = document.getElementById('soldeDisplay');
   if (tdd) tdd.textContent = fn(d);
   if (tcd) tcd.textContent = fn(c);
-  if (el) { el.textContent = fn(Math.abs(s)); el.className = 'val ' + (Math.abs(s) < 0.01 ? 'bok' : 'bbad'); }
+  if (el)  { el.textContent = fn(Math.abs(s)); el.className = 'val ' + (Math.abs(s) < 0.01 ? 'bok' : 'bbad'); }
 }
 
 // ══════════════════════════════════════════
 // VALIDATION MANUELLE
 // ══════════════════════════════════════════
 async function saveEcriture() {
-  const date = document.getElementById('ecr-date').value;
+  const date    = document.getElementById('ecr-date').value;
   const journal = document.getElementById('ecr-journal').value;
-  const piece = document.getElementById('ecr-piece').value || 'N°' + String(pieceCounter).padStart(5, '0');
+  const piece   = document.getElementById('ecr-piece').value || 'N°' + String(pieceCounter).padStart(5, '0');
   const libelle = document.getElementById('ecr-libelle').value;
   if (!date) { toast('Veuillez saisir une date', 'error'); return; }
   const valid = lignes.filter(l => l.compte && (l.debit || l.credit));
@@ -841,10 +1005,10 @@ async function saveEcriture() {
     id: Date.now(), date, journal, piece, libelle, ...groupInfo,
     createdAt: new Date().toISOString(),
     lignes: lignesSorted.map(l => ({
-      compte: String(l.compte),
+      compte:  String(l.compte),
       libelle: l.libelle || PC[String(l.compte)] || '',
-      debit: Math.round(parseFloat(l.debit) || 0),
-      credit: Math.round(parseFloat(l.credit) || 0)
+      debit:   Math.round(parseFloat(l.debit)  || 0),
+      credit:  Math.round(parseFloat(l.credit) || 0)
     }))
   };
   const docId = await saveEcritureToFirestore(ecriture);
@@ -858,7 +1022,7 @@ async function saveEcriture() {
   } else {
     ecrQueue = []; ecrQueueIdx = 0; currentGroupId = null; lignes = []; updateQueueBar();
     document.getElementById('ecr-libelle').value = '';
-    document.getElementById('ecr-piece').value = '';
+    document.getElementById('ecr-piece').value   = '';
     hideSaisieNotif(); initSaisie();
   }
 }
@@ -870,8 +1034,8 @@ function getEcrituresFiltrees(opts = {}) {
   const { dateDebut, dateFin, journal, compte } = opts;
   return ecritures.filter(e => {
     if (dateDebut && e.date < dateDebut) return false;
-    if (dateFin && e.date > dateFin) return false;
-    if (journal && e.journal !== journal) return false;
+    if (dateFin   && e.date > dateFin)   return false;
+    if (journal   && e.journal !== journal) return false;
     if (compte) return e.lignes.some(l => l.compte && l.compte.startsWith(compte));
     return true;
   });
@@ -882,9 +1046,9 @@ function getEcrituresFiltrees(opts = {}) {
 // ══════════════════════════════════════════
 function resetJournalFiltre() {
   document.getElementById('jnl-date-debut').value = '';
-  document.getElementById('jnl-date-fin').value = '';
-  document.getElementById('journalFilter').value = '';
-  document.getElementById('journalSearch').value = '';
+  document.getElementById('jnl-date-fin').value   = '';
+  document.getElementById('journalFilter').value  = '';
+  document.getElementById('journalSearch').value  = '';
   const a = document.getElementById('journal-analyse');
   if (a) a.style.display = 'none';
   renderJournal();
@@ -893,25 +1057,25 @@ function resetJournalFiltre() {
 function formatDateFR(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  const mois = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const mois = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   return `${parseInt(d)} ${mois[parseInt(m)]} ${y}`;
 }
 
 function renderJournal() {
-  const search = (document.getElementById('journalSearch')?.value || '').toLowerCase();
-  const filter = document.getElementById('journalFilter')?.value || '';
+  const search    = (document.getElementById('journalSearch')?.value || '').toLowerCase();
+  const filter    = document.getElementById('journalFilter')?.value  || '';
   const dateDebut = document.getElementById('jnl-date-debut')?.value || '';
-  const dateFin = document.getElementById('jnl-date-fin')?.value || '';
-  const content = document.getElementById('journalContent');
-  const footer = document.getElementById('journal-totaux-footer');
+  const dateFin   = document.getElementById('jnl-date-fin')?.value   || '';
+  const content   = document.getElementById('journalContent');
+  const footer    = document.getElementById('journal-totaux-footer');
   if (!content) return;
 
   const ecFiltrees = getEcrituresFiltrees({ dateDebut, dateFin, journal: filter });
   const ecFiltered = ecFiltrees.filter(e => {
     if (!search) return true;
-    if ((e.libelle || '').toLowerCase().includes(search)) return true;
+    if ((e.libelle     || '').toLowerCase().includes(search)) return true;
     if ((e.groupLibelle || '').toLowerCase().includes(search)) return true;
-    if ((e.piece || '').toLowerCase().includes(search)) return true;
+    if ((e.piece       || '').toLowerCase().includes(search)) return true;
     return e.lignes.some(l =>
       (l.compte || '').includes(search) ||
       (l.libelle || '').toLowerCase().includes(search) ||
@@ -928,21 +1092,17 @@ function renderJournal() {
   const groupMap = {};
   const soloList = [];
   ecFiltered.forEach(e => {
-    if (e.groupId) {
-      if (!groupMap[e.groupId]) groupMap[e.groupId] = [];
-      groupMap[e.groupId].push(e);
-    } else { soloList.push(e); }
+    if (e.groupId) { if (!groupMap[e.groupId]) groupMap[e.groupId] = []; groupMap[e.groupId].push(e); }
+    else soloList.push(e);
   });
 
   const groups = [];
   Object.values(groupMap).forEach(ecrs => {
     const sorted = [...ecrs].sort((a, b) => (a.groupIdx || 0) - (b.groupIdx || 0));
-    groups.push({ type: 'groupe', date: sorted[0].date, ecritures: sorted, libelle: sorted[0].groupLibelle || sorted[0].libelle || 'Opération', isGroupe: true });
+    groups.push({ type:'groupe', date:sorted[0].date, ecritures:sorted, libelle:sorted[0].groupLibelle||sorted[0].libelle||'Opération', isGroupe:true });
   });
-  soloList.forEach(e => {
-    groups.push({ type: 'solo', date: e.date, ecritures: [e], libelle: e.libelle || 'Écriture', isGroupe: false });
-  });
-  groups.sort((a, b) => a.date.localeCompare(b.date) || (a.ecritures[0].createdAt || '').localeCompare(b.ecritures[0].createdAt || ''));
+  soloList.forEach(e => groups.push({ type:'solo', date:e.date, ecritures:[e], libelle:e.libelle||'Écriture', isGroupe:false }));
+  groups.sort((a, b) => a.date.localeCompare(b.date) || (a.ecritures[0].createdAt||'').localeCompare(b.ecritures[0].createdAt||''));
 
   const byDate = {};
   groups.forEach(g => { if (!byDate[g.date]) byDate[g.date] = []; byDate[g.date].push(g); });
@@ -960,12 +1120,12 @@ function renderJournal() {
     byDate[date].forEach(group => {
       let groupD = 0, groupC = 0;
       group.ecritures.forEach(e => {
-        e.lignes.forEach(l => { groupD += l.debit || 0; groupC += l.credit || 0; });
+        e.lignes.forEach(l => { groupD += l.debit||0; groupC += l.credit||0; });
         totalLignes += e.lignes.length; totalEcritures++;
       });
       totalD += groupD; totalC += groupC;
       const mainJournal = group.ecritures[0]?.journal || 'OD';
-      const icon = JOURNAL_ICONS[mainJournal] || '📋';
+      const icon   = JOURNAL_ICONS[mainJournal] || '📋';
       const docIds = group.ecritures.map(e => `'${e._docId}'`).join(',');
       const ecrIds = group.ecritures.map(e => e.id).join(',');
 
@@ -974,32 +1134,31 @@ function renderJournal() {
           <div class="jnl-groupe-header">
             <div class="jnl-groupe-icon">${icon}</div>
             <div class="jnl-groupe-info">
-              <div class="jnl-groupe-libelle" title="${(group.libelle || '').replace(/"/g, '&quot;')}">${group.libelle}</div>
-              <div class="jnl-groupe-meta">${date} · ${group.ecritures.length} écritures liées · ${group.ecritures.map(e => e.piece || '—').join(' · ')}</div>
+              <div class="jnl-groupe-libelle" title="${(group.libelle||'').replace(/"/g,'&quot;')}">${group.libelle}</div>
+              <div class="jnl-groupe-meta">${date} · ${group.ecritures.length} écritures liées · ${group.ecritures.map(e=>e.piece||'—').join(' · ')}</div>
             </div>
             <div class="jnl-groupe-total">
               <div class="jnl-groupe-total-label">Montant total</div>
               <div class="jnl-groupe-total-val">${fn(groupD)} FCFA</div>
             </div>
-            <span class="jnl-groupe-badge-count">${group.ecritures.length} écriture${group.ecritures.length > 1 ? 's' : ''}</span>
+            <span class="jnl-groupe-badge-count">${group.ecritures.length} écriture${group.ecritures.length>1?'s':''}</span>
             <button class="jnl-groupe-del" onclick="deleteGroupe([${docIds}],[${ecrIds}])" title="Supprimer tout le groupe">✕ Tout supprimer</button>
           </div>
           <div class="jnl-groupe-body">
-            ${group.ecritures.map((e, eIdx) => renderEcritureInGroupe(e, eIdx, group.ecritures.length)).join('')}
+            ${group.ecritures.map((e,eIdx)=>renderEcritureInGroupe(e,eIdx,group.ecritures.length)).join('')}
           </div>
         </div>`;
       } else {
         const e = group.ecritures[0];
-        let eD = 0, eC = 0;
-        e.lignes.forEach(l => { eD += l.debit || 0; eC += l.credit || 0; });
-        const equil = Math.abs(eD - eC) < 1;
-        const jnlCls = e.journal || 'OD';
+        let eD=0,eC=0; e.lignes.forEach(l=>{eD+=l.debit||0;eC+=l.credit||0;});
+        const equil  = Math.abs(eD-eC)<1;
+        const jnlCls = e.journal||'OD';
         html += `<div class="jnl-groupe">
           <div class="jnl-groupe-header">
-            <div class="jnl-groupe-icon">${JOURNAL_ICONS[jnlCls] || '📋'}</div>
+            <div class="jnl-groupe-icon">${JOURNAL_ICONS[jnlCls]||'📋'}</div>
             <div class="jnl-groupe-info">
-              <div class="jnl-groupe-libelle">${e.libelle || '<em style="opacity:.4">Sans libellé</em>'}</div>
-              <div class="jnl-groupe-meta">${date} · ${e.piece || '—'} · ${JOURNAL_NAMES[jnlCls] || jnlCls}</div>
+              <div class="jnl-groupe-libelle">${e.libelle||'<em style="opacity:.4">Sans libellé</em>'}</div>
+              <div class="jnl-groupe-meta">${date} · ${e.piece||'—'} · ${JOURNAL_NAMES[jnlCls]||jnlCls}</div>
             </div>
             <div class="jnl-groupe-total">
               <div class="jnl-groupe-total-label">Débit / Crédit</div>
@@ -1007,10 +1166,10 @@ function renderJournal() {
                 <span style="color:#60a5fa">${fn(eD)}</span> / <span style="color:#4ade80">${fn(eC)}</span>
               </div>
             </div>
-            <span class="jnl-step-equil ${equil ? 'ok' : 'nok'}">${equil ? '✓ EQ' : '✗ NEQ'}</span>
+            <span class="jnl-step-equil ${equil?'ok':'nok'}">${equil?'✓ EQ':'✗ NEQ'}</span>
             <button class="jnl-groupe-del" onclick="deleteEcriture('${e._docId}',${e.id})" title="Supprimer">✕</button>
           </div>
-          <div class="jnl-groupe-body">${renderEcritureInGroupe(e, 0, 1)}</div>
+          <div class="jnl-groupe-body">${renderEcritureInGroupe(e,0,1)}</div>
         </div>`;
       }
     });
@@ -1019,57 +1178,55 @@ function renderJournal() {
   content.innerHTML = html;
   if (footer) {
     footer.style.display = 'block';
-    document.getElementById('jnl-nb-groupes').textContent = groups.length;
-    document.getElementById('jnl-nb-ecr').textContent = totalEcritures;
-    document.getElementById('jnl-nb-lignes').textContent = totalLignes;
-    document.getElementById('jnl-total-debit').textContent = fn(totalD) + ' FCFA';
+    document.getElementById('jnl-nb-groupes').textContent  = groups.length;
+    document.getElementById('jnl-nb-ecr').textContent      = totalEcritures;
+    document.getElementById('jnl-nb-lignes').textContent   = totalLignes;
+    document.getElementById('jnl-total-debit').textContent  = fn(totalD) + ' FCFA';
     document.getElementById('jnl-total-credit').textContent = fn(totalC) + ' FCFA';
     const eqEl = document.getElementById('jnl-equil-label');
     if (eqEl) {
-      const balanced = Math.abs(totalD - totalC) < 1;
+      const balanced = Math.abs(totalD-totalC)<1;
       eqEl.textContent = balanced ? '✓ Équilibré' : '✗ Déséquilibré';
-      eqEl.className = 'jnl-footer-val ' + (balanced ? 'eq' : 'neq');
+      eqEl.className   = 'jnl-footer-val ' + (balanced?'eq':'neq');
     }
   }
 }
 
 function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
-  let eD = 0, eC = 0;
-  e.lignes.forEach(l => { eD += l.debit || 0; eC += l.credit || 0; });
-  const equil = Math.abs(eD - eC) < 1;
-  const jnlCls = e.journal || 'OD';
-  const stepLabel = getStepLabel(e);
-  const lignesAffichage = sortLignesDebitAvantCredit(e.lignes);
+  let eD=0,eC=0; e.lignes.forEach(l=>{eD+=l.debit||0;eC+=l.credit||0;});
+  const equil      = Math.abs(eD-eC)<1;
+  const jnlCls     = e.journal||'OD';
+  const stepLabel  = getStepLabel(e);
+  const lignesAff  = sortLignesDebitAvantCredit(e.lignes);
   return `<div class="jnl-ecriture type-${jnlCls}">
     <div class="jnl-ecriture-subheader">
-      ${totalInGroupe > 1 ? `<span class="jnl-step-badge">${eIdx + 1}</span>` : ''}
+      ${totalInGroupe>1?`<span class="jnl-step-badge">${eIdx+1}</span>`:''}
       <span class="jnl-step-jnl-badge ${jnlCls}">${jnlCls}</span>
       <span class="jnl-step-label">${stepLabel}</span>
-      <span class="jnl-step-piece">${e.piece || '—'} · ${JOURNAL_NAMES[jnlCls] || jnlCls}</span>
+      <span class="jnl-step-piece">${e.piece||'—'} · ${JOURNAL_NAMES[jnlCls]||jnlCls}</span>
       <span class="jnl-step-totaux" style="margin-left:auto">
         <span style="color:#60a5fa">${fn(eD)}</span> / <span style="color:#4ade80">${fn(eC)}</span>
       </span>
-      <span class="jnl-step-equil ${equil ? 'ok' : 'nok'}">${equil ? '✓' : '✗'}</span>
+      <span class="jnl-step-equil ${equil?'ok':'nok'}">${equil?'✓':'✗'}</span>
       <button class="jnl-step-del" onclick="deleteEcriture('${e._docId}',${e.id})" title="Supprimer cette écriture">✕</button>
     </div>
     <div class="jnl-ecriture-body">
       <table class="jnl-lignes-table">
         <thead><tr>
-          <th style="width:200px">Compte</th>
-          <th>Libellé</th>
+          <th style="width:200px">Compte</th><th>Libellé</th>
           <th class="right" style="width:140px">Débit (FCFA)</th>
           <th class="right" style="width:140px">Crédit (FCFA)</th>
         </tr></thead>
         <tbody>
-          ${lignesAffichage.map(l => `
+          ${lignesAff.map(l=>`
             <tr>
               <td><div class="jnl-compte-badge">
                 <span class="jnl-compte-code">${l.compte}</span>
-                <span class="jnl-compte-name" title="${PC[l.compte] || ''}">${(PC[l.compte] || '').substring(0, 22)}</span>
+                <span class="jnl-compte-name" title="${PC[l.compte]||''}">${(PC[l.compte]||'').substring(0,22)}</span>
               </div></td>
-              <td><span class="jnl-libelle-ligne">${l.libelle || e.libelle || '—'}</span></td>
-              <td class="jnl-debit-cell">${l.debit ? fn(l.debit) : '<span style="color:var(--line2)">—</span>'}</td>
-              <td class="jnl-credit-cell">${l.credit ? fn(l.credit) : '<span style="color:var(--line2)">—</span>'}</td>
+              <td><span class="jnl-libelle-ligne">${l.libelle||e.libelle||'—'}</span></td>
+              <td class="jnl-debit-cell">${l.debit?fn(l.debit):'<span style="color:var(--line2)">—</span>'}</td>
+              <td class="jnl-credit-cell">${l.credit?fn(l.credit):'<span style="color:var(--line2)">—</span>'}</td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -1078,11 +1235,11 @@ function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
 }
 
 async function deleteGroupe(docIds, ids) {
-  if (!confirm(`Supprimer ce groupe de ${docIds.length} écriture${docIds.length > 1 ? 's' : ''} ?`)) return;
+  if (!confirm(`Supprimer ce groupe de ${docIds.length} écriture${docIds.length>1?'s':''} ?`)) return;
   for (const docId of docIds) await deleteEcritureFromFirestore(docId);
   ids.forEach(id => { ecritures = ecritures.filter(e => e.id !== id); });
   updateStats(); renderJournal();
-  toast(`${docIds.length} écriture${docIds.length > 1 ? 's' : ''} supprimée${docIds.length > 1 ? 's' : ''}`, 'info');
+  toast(`${docIds.length} écriture${docIds.length>1?'s':''} supprimée${docIds.length>1?'s':''}`, 'info');
 }
 
 async function deleteEcriture(docId, id) {
@@ -1100,13 +1257,13 @@ function getMap(opts = {}) {
   const map = {};
   ecFiltrees.forEach(e => e.lignes.forEach(l => {
     if (!l.compte) return;
-    if (!map[l.compte]) map[l.compte] = { debit: 0, credit: 0, mvts: [] };
-    map[l.compte].debit += l.debit || 0;
+    if (!map[l.compte]) map[l.compte] = { debit:0, credit:0, mvts:[] };
+    map[l.compte].debit  += l.debit  || 0;
     map[l.compte].credit += l.credit || 0;
     map[l.compte].mvts.push({
-      date: e.date, piece: e.piece || '', journal: e.journal,
-      libelle: l.libelle || e.libelle || '',
-      debit: l.debit || 0, credit: l.credit || 0
+      date: e.date, piece: e.piece||'', journal: e.journal,
+      libelle: l.libelle||e.libelle||'',
+      debit: l.debit||0, credit: l.credit||0
     });
   }));
   return map;
@@ -1114,30 +1271,30 @@ function getMap(opts = {}) {
 
 function resetGLFiltre() {
   document.getElementById('gl-date-debut').value = '';
-  document.getElementById('gl-date-fin').value = '';
-  document.getElementById('glSearch').value = '';
+  document.getElementById('gl-date-fin').value   = '';
+  document.getElementById('glSearch').value      = '';
   renderGrandLivre();
 }
 
 function renderGrandLivre() {
-  const search = document.getElementById('glSearch')?.value?.toLowerCase() || '';
+  const search    = document.getElementById('glSearch')?.value?.toLowerCase() || '';
   const dateDebut = document.getElementById('gl-date-debut')?.value || '';
-  const dateFin = document.getElementById('gl-date-fin')?.value || '';
-  const opts = (dateDebut || dateFin) ? { filtrer: true, dateDebut, dateFin } : {};
-  const map = getMap(opts);
-  const content = document.getElementById('grandLivreContent');
+  const dateFin   = document.getElementById('gl-date-fin')?.value   || '';
+  const opts      = (dateDebut||dateFin) ? { filtrer:true, dateDebut, dateFin } : {};
+  const map       = getMap(opts);
+  const content   = document.getElementById('grandLivreContent');
   if (!content) return;
-  const comptes = Object.keys(map).sort();
+  const comptes   = Object.keys(map).sort();
   if (!comptes.length) { content.innerHTML = '<div class="empty-state"><div class="icon">⊞</div><p>Aucun mouvement</p></div>'; return; }
-  const filtered = comptes.filter(c => !search || c.includes(search) || (PC[c] || '').toLowerCase().includes(search));
+  const filtered  = comptes.filter(c => !search || c.includes(search) || (PC[c]||'').toLowerCase().includes(search));
   content.innerHTML = filtered.map(code => {
-    const acc = map[code], s = acc.debit - acc.credit, lib = PC[code] || 'Compte ' + code, isD = s >= 0;
+    const acc = map[code], s = acc.debit-acc.credit, lib = PC[code]||'Compte '+code, isD = s>=0;
     return `<div class="gl-account">
       <div class="gl-account-header" onclick="toggleGL('gl-${code}')">
         <span class="gl-code">${code}</span>
-        <span class="gl-name">${lib.substring(0, 46)}</span>
-        <span style="color:rgba(255,255,255,.3);font-size:10px;font-family:var(--font-mono);margin-right:6px">${acc.mvts.length} mvt${acc.mvts.length > 1 ? 's' : ''}</span>
-        <span class="gl-balance ${isD ? 'debit' : 'credit'}">${isD ? 'Sd' : 'Sc'} ${fn(Math.abs(s))} FCFA</span>
+        <span class="gl-name">${lib.substring(0,46)}</span>
+        <span style="color:rgba(255,255,255,.3);font-size:10px;font-family:var(--font-mono);margin-right:6px">${acc.mvts.length} mvt${acc.mvts.length>1?'s':''}</span>
+        <span class="gl-balance ${isD?'debit':'credit'}">${isD?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA</span>
       </div>
       <div id="gl-${code}" style="display:none">
         <div style="overflow-x:auto">
@@ -1145,43 +1302,43 @@ function renderGrandLivre() {
           <thead><tr><th>Date</th><th>Jnl</th><th>Pièce</th><th>Libellé</th>
             <th style="text-align:right">Débit</th><th style="text-align:right">Crédit</th>
             <th style="text-align:right">Solde progressif</th></tr></thead>
-          <tbody>${acc.mvts.map((m, i) => {
-            const rD = acc.mvts.slice(0, i + 1).reduce((s, x) => s + x.debit, 0);
-            const rC = acc.mvts.slice(0, i + 1).reduce((s, x) => s + x.credit, 0);
-            const rs = rD - rC;
+          <tbody>${acc.mvts.map((m,i)=>{
+            const rD=acc.mvts.slice(0,i+1).reduce((s,x)=>s+x.debit,0);
+            const rC=acc.mvts.slice(0,i+1).reduce((s,x)=>s+x.credit,0);
+            const rs=rD-rC;
             return `<tr>
               <td style="font-family:var(--font-mono);font-size:10px">${m.date}</td>
               <td><span class="ct">${m.journal}</span></td>
               <td style="font-family:var(--font-mono);font-size:9.5px;color:var(--muted)">${m.piece}</td>
               <td>${m.libelle}</td>
-              <td class="debit">${m.debit ? fn(m.debit) : ''}</td>
-              <td class="credit">${m.credit ? fn(m.credit) : ''}</td>
-              <td style="text-align:right;font-family:var(--font-mono);font-size:11px;color:${rs >= 0 ? '#60a5fa' : '#4ade80'}">
-                ${rs >= 0 ? 'Sd ' : 'Sc '}${fn(Math.abs(rs))}</td>
+              <td class="debit">${m.debit?fn(m.debit):''}</td>
+              <td class="credit">${m.credit?fn(m.credit):''}</td>
+              <td style="text-align:right;font-family:var(--font-mono);font-size:11px;color:${rs>=0?'#60a5fa':'#4ade80'}">
+                ${rs>=0?'Sd ':'Sc '}${fn(Math.abs(rs))}</td>
             </tr>`;
           }).join('')}
           <tr class="total-row">
             <td colspan="4" style="text-align:right;font-weight:700">TOTAUX</td>
             <td class="debit">${fn(acc.debit)}</td>
             <td class="credit">${fn(acc.credit)}</td>
-            <td style="text-align:right;font-family:var(--font-mono);color:${isD ? '#60a5fa' : '#4ade80'}">
-              ${isD ? 'Sd ' : 'Sc '}${fn(Math.abs(s))}</td>
+            <td style="text-align:right;font-family:var(--font-mono);color:${isD?'#60a5fa':'#4ade80'}">
+              ${isD?'Sd ':'Sc '}${fn(Math.abs(s))}</td>
           </tr></tbody>
         </table></div>
       </div>
     </div>`;
   }).join('');
 }
-function toggleGL(id) { const el = document.getElementById(id); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+function toggleGL(id) { const el=document.getElementById(id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
 
 // ══════════════════════════════════════════
 // BALANCE
 // ══════════════════════════════════════════
 function resetBalanceFiltre() {
   document.getElementById('bal-date-debut').value = '';
-  document.getElementById('bal-date-fin').value = '';
-  document.getElementById('bal-journal').value = '';
-  document.getElementById('bal-classe').value = '';
+  document.getElementById('bal-date-fin').value   = '';
+  document.getElementById('bal-journal').value    = '';
+  document.getElementById('bal-classe').value     = '';
   const a = document.getElementById('balance-analyse');
   if (a) a.style.display = 'none';
   renderBalance();
@@ -1189,30 +1346,27 @@ function resetBalanceFiltre() {
 
 function renderBalance() {
   const dateDebut = document.getElementById('bal-date-debut')?.value || '';
-  const dateFin = document.getElementById('bal-date-fin')?.value || '';
-  const journal = document.getElementById('bal-journal')?.value || '';
-  const classe = document.getElementById('bal-classe')?.value || '';
-  const opts = (dateDebut || dateFin || journal) ? { filtrer: true, dateDebut, dateFin, journal } : {};
-  const map = getMap(opts);
-  const tbody = document.getElementById('balanceBody');
+  const dateFin   = document.getElementById('bal-date-fin')?.value   || '';
+  const journal   = document.getElementById('bal-journal')?.value    || '';
+  const classe    = document.getElementById('bal-classe')?.value     || '';
+  const opts      = (dateDebut||dateFin||journal) ? { filtrer:true, dateDebut, dateFin, journal } : {};
+  const map       = getMap(opts);
+  const tbody     = document.getElementById('balanceBody');
   if (!tbody) return;
   let comptes = Object.keys(map).sort();
   if (classe) comptes = comptes.filter(c => c.startsWith(classe));
-  if (!comptes.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Aucune donnée pour cette sélection</p></div></td></tr>';
-    return;
-  }
-  let tD = 0, tC = 0, tSD = 0, tSC = 0;
-  const rows = comptes.map(code => {
-    const acc = map[code], s = acc.debit - acc.credit, sd = s > 0 ? s : 0, sc = s < 0 ? -s : 0;
-    tD += acc.debit; tC += acc.credit; tSD += sd; tSC += sc;
+  if (!comptes.length) { tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><p>Aucune donnée pour cette sélection</p></div></td></tr>'; return; }
+  let tD=0,tC=0,tSD=0,tSC=0;
+  const rows = comptes.map(code=>{
+    const acc=map[code],s=acc.debit-acc.credit,sd=s>0?s:0,sc=s<0?-s:0;
+    tD+=acc.debit;tC+=acc.credit;tSD+=sd;tSC+=sc;
     return `<tr>
       <td><span class="ct">${code}</span></td>
-      <td style="font-size:11px">${(PC[code] || '').substring(0, 42)}</td>
+      <td style="font-size:11px">${(PC[code]||'').substring(0,42)}</td>
       <td class="debit">${fn(acc.debit)}</td>
       <td class="credit">${fn(acc.credit)}</td>
-      <td style="text-align:right;font-family:var(--font-mono);color:#2563eb">${sd ? fn(sd) : ''}</td>
-      <td style="text-align:right;font-family:var(--font-mono);color:#16a34a">${sc ? fn(sc) : ''}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:#2563eb">${sd?fn(sd):''}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:#16a34a">${sc?fn(sc):''}</td>
     </tr>`;
   });
   rows.push(`<tr class="total-row"><td colspan="2">TOTAUX GÉNÉRAUX</td>
@@ -1228,51 +1382,39 @@ function renderBalance() {
 // ══════════════════════════════════════════
 function renderBilan() {
   const dateArrete = document.getElementById('bilan-date-arrete')?.value;
-  const opts = dateArrete ? { filtrer: true, dateFin: dateArrete } : {};
-  const map = getMap(opts);
-  const content = document.getElementById('bilanContent');
+  const opts       = dateArrete ? { filtrer:true, dateFin:dateArrete } : {};
+  const map        = getMap(opts);
+  const content    = document.getElementById('bilanContent');
   if (!content) return;
   if (!Object.keys(map).length) {
     content.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">⊠</div><p>Saisissez des écritures pour générer le bilan</p></div>';
     return;
   }
-  const actif = {
-    immob: { title: 'ACTIF IMMOBILISÉ', comptes: [] },
-    stocks: { title: 'STOCKS ET EN-COURS', comptes: [] },
-    creances: { title: 'CRÉANCES ET EMPLOIS ASSIMILÉS', comptes: [] },
-    treso: { title: 'TRÉSORERIE-ACTIF', comptes: [] }
-  };
-  const passif = {
-    cap: { title: 'CAPITAUX PROPRES ET RESSOURCES ASSIMILÉES', comptes: [] },
-    df: { title: 'DETTES FINANCIÈRES ET RESSOURCES ASSIMILÉES', comptes: [] },
-    dct: { title: 'PASSIF CIRCULANT', comptes: [] },
-    tp: { title: 'TRÉSORERIE-PASSIF', comptes: [] }
-  };
-  Object.entries(map).forEach(([code, acc]) => {
-    const s = acc.debit - acc.credit;
-    const cl = code[0];
-    const e = { code, lib: (PC[code] || code).substring(0, 40), solde: Math.abs(s) };
-    if (cl === '2') { if (s > 0) actif.immob.comptes.push(e); }
-    else if (cl === '3') { if (s > 0) actif.stocks.comptes.push(e); }
-    else if (cl === '4') { if (s > 0) actif.creances.comptes.push(e); else if (s < 0) passif.dct.comptes.push({ ...e, solde: Math.abs(s) }); }
-    else if (cl === '5') { if (s > 0) actif.treso.comptes.push(e); else passif.tp.comptes.push({ ...e, solde: Math.abs(s) }); }
-    else if (cl === '1') { const n = parseInt(code); (n <= 160 ? passif.cap : passif.df).comptes.push({ code, lib: (PC[code] || code).substring(0, 40), solde: Math.abs(s) }); }
+  const actif  = { immob:{ title:'ACTIF IMMOBILISÉ',comptes:[]},stocks:{title:'STOCKS ET EN-COURS',comptes:[]},creances:{title:'CRÉANCES ET EMPLOIS ASSIMILÉS',comptes:[]},treso:{title:'TRÉSORERIE-ACTIF',comptes:[]} };
+  const passif = { cap:{ title:'CAPITAUX PROPRES ET RESSOURCES ASSIMILÉES',comptes:[]},df:{title:'DETTES FINANCIÈRES ET RESSOURCES ASSIMILÉES',comptes:[]},dct:{title:'PASSIF CIRCULANT',comptes:[]},tp:{title:'TRÉSORERIE-PASSIF',comptes:[]} };
+  Object.entries(map).forEach(([code,acc])=>{
+    const s=acc.debit-acc.credit,cl=code[0],e={code,lib:(PC[code]||code).substring(0,40),solde:Math.abs(s)};
+    if(cl==='2'){if(s>0) actif.immob.comptes.push(e);}
+    else if(cl==='3'){if(s>0) actif.stocks.comptes.push(e);}
+    else if(cl==='4'){if(s>0) actif.creances.comptes.push(e); else if(s<0) passif.dct.comptes.push({...e,solde:Math.abs(s)});}
+    else if(cl==='5'){if(s>0) actif.treso.comptes.push(e); else passif.tp.comptes.push({...e,solde:Math.abs(s)});}
+    else if(cl==='1'){const n=parseInt(code);(n<=160?passif.cap:passif.df).comptes.push({code,lib:(PC[code]||code).substring(0,40),solde:Math.abs(s)});}
   });
-  const rc = sections => sections.map(s => {
-    if (!s.comptes.length) return '';
-    const total = s.comptes.reduce((sum, c) => sum + c.solde, 0);
+  const rc = sections => sections.map(s=>{
+    if(!s.comptes.length) return '';
+    const total=s.comptes.reduce((sum,c)=>sum+c.solde,0);
     return `<div class="bilan-section">
       <div class="bilan-section-title">${s.title}</div>
-      ${s.comptes.map(c => `<div class="bilan-line"><span class="acc-code">${c.code}</span><span class="acc-name">${c.lib}</span><span class="acc-amount">${fn(c.solde)}</span></div>`).join('')}
+      ${s.comptes.map(c=>`<div class="bilan-line"><span class="acc-code">${c.code}</span><span class="acc-name">${c.lib}</span><span class="acc-amount">${fn(c.solde)}</span></div>`).join('')}
       <div class="bilan-line" style="font-weight:700;border-bottom:none;margin-top:3px">
         <span class="acc-code"></span><span class="acc-name" style="color:var(--ink)">Sous-total</span><span class="acc-amount">${fn(total)}</span>
       </div>
     </div>`;
   }).join('');
-  const tA = [...actif.immob.comptes, ...actif.stocks.comptes, ...actif.creances.comptes, ...actif.treso.comptes].reduce((s, c) => s + c.solde, 0);
-  const tP = [...passif.cap.comptes, ...passif.df.comptes, ...passif.dct.comptes, ...passif.tp.comptes].reduce((s, c) => s + c.solde, 0);
-  const label = dateArrete ? `Arrêté au ${dateArrete}` : `Exercice ${document.getElementById('exerciceYear').value}`;
-  content.innerHTML = `
+  const tA=[...actif.immob.comptes,...actif.stocks.comptes,...actif.creances.comptes,...actif.treso.comptes].reduce((s,c)=>s+c.solde,0);
+  const tP=[...passif.cap.comptes,...passif.df.comptes,...passif.dct.comptes,...passif.tp.comptes].reduce((s,c)=>s+c.solde,0);
+  const label=dateArrete?`Arrêté au ${dateArrete}`:`Exercice ${document.getElementById('exerciceYear').value}`;
+  content.innerHTML=`
     <div class="bilan-col"><div class="bilan-col-header actif">ACTIF — ${label}</div>${rc(Object.values(actif))}<div class="bilan-total"><span>TOTAL ACTIF</span><span>${fn(tA)} FCFA</span></div></div>
     <div class="bilan-col"><div class="bilan-col-header passif">PASSIF — ${label}</div>${rc(Object.values(passif))}<div class="bilan-total"><span>TOTAL PASSIF</span><span>${fn(tP)} FCFA</span></div></div>`;
 }
@@ -1285,61 +1427,61 @@ function renderResultat() {
   const content = document.getElementById('resultatContent');
   if (!content) return;
   if (!Object.keys(map).length) { content.innerHTML = '<div class="empty-state"><div class="icon">↗</div><p>Aucune donnée</p></div>'; return; }
-  const gt = pfx => Object.entries(map).filter(([c]) => pfx.some(p => c.startsWith(p))).reduce((s, [, a]) => s + (a.debit - a.credit), 0);
-  const ventes = Math.abs(gt(['701', '702', '703', '704', '705']));
-  const prodsAcc = Math.abs(gt(['707']));
-  const autrProd = Math.abs(gt(['75', '718', '711']));
-  const transports = gt(['612', '614']);
-  const servExt = gt(['621', '622', '624', '625', '626', '627', '628', '631', '632', '634', '635', '638']);
-  const impTaxes = gt(['641', '645']);
-  const autresChg = gt(['651', '654', '658']);
-  const personnel = gt(['661', '662', '663', '664']);
-  const dap = gt(['681', '691', '697']);
-  const revFin = Math.abs(gt(['771', '772', '773', '774', '776', '777']));
-  const chgFin = gt(['671', '673', '674', '676']);
-  const haoP = Math.abs(gt(['821', '822', '841']));
-  const haoC = gt(['811', '812', '831', '834', '839', '851', '852', '854']);
-  const imp = gt(['891', '895']);
-  const mc = ventes - Math.abs(gt(['601'])) - gt(['6031']);
-  const ca = ventes + prodsAcc;
-  const va = ca + autrProd - Math.abs(gt(['601', '602', '604', '605', '608'])) - gt(['6031', '6032']) - transports - servExt - impTaxes - autresChg;
-  const ebe = va - personnel;
-  const re = ebe - dap;
-  const rf = revFin - chgFin;
-  const rao = re + rf;
-  const rhao = haoP - haoC;
-  const res = rao + rhao - imp;
-  const rr = (lbl, val, cls = '') => `<div class="rrow ${cls}"><span>${lbl}</span><span class="amount ${val >= 0 ? 'pos' : 'neg'}">${fn(Math.abs(val))} FCFA${val < 0 ? ' (−)' : ''}</span></div>`;
-  content.innerHTML = `<div class="rlist">
+  const gt = pfx => Object.entries(map).filter(([c])=>pfx.some(p=>c.startsWith(p))).reduce((s,[,a])=>s+(a.debit-a.credit),0);
+  const ventes=Math.abs(gt(['701','702','703','704','705']));
+  const prodsAcc=Math.abs(gt(['707']));
+  const autrProd=Math.abs(gt(['75','718','711']));
+  const transports=gt(['612','614']);
+  const servExt=gt(['621','622','624','625','626','627','628','631','632','634','635','638']);
+  const impTaxes=gt(['641','645']);
+  const autresChg=gt(['651','654','658']);
+  const personnel=gt(['661','662','663','664']);
+  const dap=gt(['681','691','697']);
+  const revFin=Math.abs(gt(['771','772','773','774','776','777']));
+  const chgFin=gt(['671','673','674','676']);
+  const haoP=Math.abs(gt(['821','822','841']));
+  const haoC=gt(['811','812','831','834','839','851','852','854']);
+  const imp=gt(['891','895']);
+  const mc=ventes-Math.abs(gt(['601']))-gt(['6031']);
+  const ca=ventes+prodsAcc;
+  const va=ca+autrProd-Math.abs(gt(['601','602','604','605','608']))-gt(['6031','6032'])-transports-servExt-impTaxes-autresChg;
+  const ebe=va-personnel;
+  const re=ebe-dap;
+  const rf=revFin-chgFin;
+  const rao=re+rf;
+  const rhao=haoP-haoC;
+  const res=rao+rhao-imp;
+  const rr=(lbl,val,cls='')=>`<div class="rrow ${cls}"><span>${lbl}</span><span class="amount ${val>=0?'pos':'neg'}">${fn(Math.abs(val))} FCFA${val<0?' (−)':''}</span></div>`;
+  content.innerHTML=`<div class="rlist">
     <div class="rrow header"><span>COMPTE DE RÉSULTAT — SYSCOHADA Révisé 2017</span><span></span></div>
-    ${rr('Ventes de marchandises (701)', ventes, 'sub')}
-    ${rr('Achats + Var. stocks (601+6031)', -(Math.abs(gt(['601'])) + gt(['6031'])), 'sub')}
-    ${rr('→ Marge commerciale (XA)', mc, 'total')}
-    ${rr('Produits accessoires (707+75)', prodsAcc + autrProd, 'sub')}
-    ${rr('→ CA net et autres produits (XB)', ca, 'total')}
-    ${rr('Transports + Services extérieurs', -(transports + servExt), 'sub')}
-    ${rr('Impôts et taxes (641+645)', -(impTaxes + autresChg), 'sub')}
-    ${rr('→ Valeur ajoutée brute (XC)', va, 'total')}
-    ${rr('Charges de personnel (661–664)', -personnel, 'sub')}
-    ${rr("→ E.B.E. — Excédent Brut d'Exploitation (XD)", ebe, 'total')}
-    ${rr('Dotations amort. et prov. (681+691)', -dap, 'sub')}
-    ${rr("→ Résultat d'exploitation (RE — XE)", re, 'total')}
+    ${rr('Ventes de marchandises (701)',ventes,'sub')}
+    ${rr('Achats + Var. stocks (601+6031)',-(Math.abs(gt(['601']))+gt(['6031'])),'sub')}
+    ${rr('→ Marge commerciale (XA)',mc,'total')}
+    ${rr('Produits accessoires (707+75)',prodsAcc+autrProd,'sub')}
+    ${rr('→ CA net et autres produits (XB)',ca,'total')}
+    ${rr('Transports + Services extérieurs',-(transports+servExt),'sub')}
+    ${rr('Impôts et taxes (641+645)',-(impTaxes+autresChg),'sub')}
+    ${rr('→ Valeur ajoutée brute (XC)',va,'total')}
+    ${rr('Charges de personnel (661–664)',-personnel,'sub')}
+    ${rr("→ E.B.E. — Excédent Brut d'Exploitation (XD)",ebe,'total')}
+    ${rr('Dotations amort. et prov. (681+691)',-dap,'sub')}
+    ${rr("→ Résultat d'exploitation (RE — XE)",re,'total')}
     <div class="divider"></div>
     <div class="rrow header"><span>RÉSULTAT FINANCIER</span><span></span></div>
-    ${rr('Revenus financiers (77)', revFin, 'sub')}
-    ${rr('Charges financières (67)', -chgFin, 'sub')}
-    ${rr('→ Résultat financier (RF — XF)', rf, 'total')}
-    ${rr('→ Résultat des Activités Ordinaires (RAO — XG)', rao, 'total')}
+    ${rr('Revenus financiers (77)',revFin,'sub')}
+    ${rr('Charges financières (67)',-chgFin,'sub')}
+    ${rr('→ Résultat financier (RF — XF)',rf,'total')}
+    ${rr('→ Résultat des Activités Ordinaires (RAO — XG)',rao,'total')}
     <div class="divider"></div>
     <div class="rrow header"><span>RÉSULTAT H.A.O.</span><span></span></div>
-    ${rr('Produits HAO', haoP, 'sub')}
-    ${rr('Charges HAO', -haoC, 'sub')}
-    ${rr('→ RHAO (XH)', rhao, 'total')}
+    ${rr('Produits HAO',haoP,'sub')}
+    ${rr('Charges HAO',-haoC,'sub')}
+    ${rr('→ RHAO (XH)',rhao,'total')}
     <div class="divider"></div>
-    ${rr('IS / IBP — Impôt sur les Bénéfices (891) — Taux CI : 25%', -imp, 'sub')}
+    ${rr('IS / IBP — Impôt sur les Bénéfices (891) — Taux CI : 25%',-imp,'sub')}
     <div class="rrow result">
-      <span>${res >= 0 ? "✓ RÉSULTAT NET DE L'EXERCICE — BÉNÉFICE" : "✗ RÉSULTAT NET DE L'EXERCICE — PERTE"}</span>
-      <span class="amount ${res >= 0 ? 'pos' : 'neg'}">${fn(Math.abs(res))} FCFA</span>
+      <span>${res>=0?"✓ RÉSULTAT NET DE L'EXERCICE — BÉNÉFICE":"✗ RÉSULTAT NET DE L'EXERCICE — PERTE"}</span>
+      <span class="amount ${res>=0?'pos':'neg'}">${fn(Math.abs(res))} FCFA</span>
     </div>
   </div>`;
 }
@@ -1348,20 +1490,20 @@ function renderResultat() {
 // TRÉSORERIE
 // ══════════════════════════════════════════
 function renderTresorerie() {
-  const map = getMap();
+  const map     = getMap();
   const content = document.getElementById('tresorerieContent');
   if (!content) return;
-  const tc = Object.entries(map).filter(([c]) => c.startsWith('5'));
-  if (!tc.length) { content.innerHTML = '<div class="empty-state"><div class="icon">◎</div><p>Aucun mouvement de trésorerie</p></div>'; return; }
-  const total = tc.reduce((s, [, a]) => s + (a.debit - a.credit), 0);
-  content.innerHTML = `<div class="rlist">
+  const tc = Object.entries(map).filter(([c])=>c.startsWith('5'));
+  if (!tc.length) { content.innerHTML='<div class="empty-state"><div class="icon">◎</div><p>Aucun mouvement de trésorerie</p></div>'; return; }
+  const total=tc.reduce((s,[,a])=>s+(a.debit-a.credit),0);
+  content.innerHTML=`<div class="rlist">
     <div class="rrow header"><span>COMPTES DE TRÉSORERIE — CLASSE 5 — SYSCOHADA</span><span></span></div>
     <div class="rrow header" style="font-size:10px;opacity:.5"><span>Mobile Money (Orange Money, MTN MoMo, Wave, Moov) → Compte 552</span><span></span></div>
-    ${tc.map(([code, acc]) => {
-      const s = acc.debit - acc.credit;
-      return `<div class="rrow sub"><span><span class="ct">${code}</span><span style="margin-left:6px">${(PC[code] || '').substring(0, 34)}</span></span><span class="amount ${s >= 0 ? 'pos' : 'neg'}">${fn(Math.abs(s))} FCFA${s < 0 ? ' (Créditeur)' : ''}</span></div>`;
+    ${tc.map(([code,acc])=>{
+      const s=acc.debit-acc.credit;
+      return `<div class="rrow sub"><span><span class="ct">${code}</span><span style="margin-left:6px">${(PC[code]||'').substring(0,34)}</span></span><span class="amount ${s>=0?'pos':'neg'}">${fn(Math.abs(s))} FCFA${s<0?' (Créditeur)':''}</span></div>`;
     }).join('')}
-    <div class="rrow result"><span>Trésorerie nette totale</span><span class="amount ${total >= 0 ? 'pos' : 'neg'}">${fn(Math.abs(total))} FCFA</span></div>
+    <div class="rrow result"><span>Trésorerie nette totale</span><span class="amount ${total>=0?'pos':'neg'}">${fn(Math.abs(total))} FCFA</span></div>
   </div>`;
 }
 
@@ -1370,22 +1512,22 @@ function renderTresorerie() {
 // ══════════════════════════════════════════
 function renderPlanComptable() {
   const search = document.getElementById('pcSearch')?.value?.toLowerCase() || '';
-  const cls = document.getElementById('pcClass')?.value || '';
-  const tbody = document.getElementById('pcBody');
+  const cls    = document.getElementById('pcClass')?.value || '';
+  const tbody  = document.getElementById('pcBody');
   if (!tbody) return;
-  const entries = Object.entries(PC).filter(([code, lib]) => {
+  const entries = Object.entries(PC).filter(([code,lib])=>{
     if (cls && !code.startsWith(cls)) return false;
     if (search && !code.includes(search) && !lib.toLowerCase().includes(search)) return false;
     return true;
-  }).slice(0, 300);
-  if (!entries.length) { tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Aucun compte trouvé</p></div></td></tr>'; return; }
-  tbody.innerHTML = entries.map(([code, lib]) => {
-    const cl = code[0], isH = lib === lib.toUpperCase() && lib.length > 3, pad = (code.length - 1) * 10;
+  }).slice(0,300);
+  if (!entries.length) { tbody.innerHTML='<tr><td colspan="4"><div class="empty-state"><p>Aucun compte trouvé</p></div></td></tr>'; return; }
+  tbody.innerHTML=entries.map(([code,lib])=>{
+    const cl=code[0],isH=lib===lib.toUpperCase()&&lib.length>3,pad=(code.length-1)*10;
     return `<tr>
       <td><span class="ct">${code}</span></td>
-      <td style="padding-left:${Math.min(pad, 30)}px;font-weight:${isH ? '600' : '400'};color:${isH ? 'var(--ink)' : 'var(--slate)'}">${lib.substring(0, 70)}</td>
-      <td style="color:var(--muted);font-size:11px">${CLASS_NAMES[cl] || ''}</td>
-      <td><span style="font-size:10px;padding:2px 7px;border-radius:3px;background:var(--surface3);color:var(--muted)">${NATURE_MAP[cl] || ''}</span></td>
+      <td style="padding-left:${Math.min(pad,30)}px;font-weight:${isH?'600':'400'};color:${isH?'var(--ink)':'var(--slate)'}">${lib.substring(0,70)}</td>
+      <td style="color:var(--muted);font-size:11px">${CLASS_NAMES[cl]||''}</td>
+      <td><span style="font-size:10px;padding:2px 7px;border-radius:3px;background:var(--surface3);color:var(--muted)">${NATURE_MAP[cl]||''}</span></td>
     </tr>`;
   }).join('');
 }
@@ -1393,79 +1535,75 @@ function renderPlanComptable() {
 // ══════════════════════════════════════════
 // EXPORT PDF / WORD
 // ══════════════════════════════════════════
-function openExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'flex'; selectExport('pdf'); }
-function closeExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'none'; }
+function openExportModal()  { const m=document.getElementById('exportModal'); if(m) m.style.display='flex'; selectExport('pdf'); }
+function closeExportModal() { const m=document.getElementById('exportModal'); if(m) m.style.display='none'; }
 function selectExport(fmt) {
-  exportFormat = fmt;
-  document.getElementById('opt-pdf')?.classList.toggle('selected', fmt === 'pdf');
-  document.getElementById('opt-word')?.classList.toggle('selected', fmt === 'word');
+  exportFormat=fmt;
+  document.getElementById('opt-pdf')?.classList.toggle('selected',fmt==='pdf');
+  document.getElementById('opt-word')?.classList.toggle('selected',fmt==='word');
 }
-function doExport() { closeExportModal(); if (exportFormat === 'pdf') exportPDF(); else exportWord(); }
+function doExport() { closeExportModal(); if(exportFormat==='pdf') exportPDF(); else exportWord(); }
 
 function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const yr = document.getElementById('exerciceYear').value;
-  const company = currentProfile?.company || 'Entreprise';
-  const pageW = 210;
-  const now = new Date().toLocaleDateString('fr-FR');
-  doc.setFillColor(10, 11, 16); doc.rect(0, 0, pageW, 22, 'F');
-  doc.setTextColor(212, 168, 83); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-  doc.text('SYSCOHADA Pro v4 — Révisé 2017', 14, 10);
-  doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-  doc.text('COMEO AI — Expert-Comptable Ivoirien | ONECCA-CI', 14, 16);
-  doc.setTextColor(255, 255, 255); doc.setFontSize(8);
-  doc.text(company, pageW - 14, 10, { align: 'right' });
-  doc.text('Exercice ' + yr + ' | Monnaie : FCFA (XOF)', pageW - 14, 16, { align: 'right' });
-  doc.setTextColor(10, 11, 16); doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-  doc.text('JOURNAL GÉNÉRAL', 14, 34);
-  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 128, 112);
-  doc.text('Édité le ' + now, 14, 40);
-  doc.setDrawColor(212, 168, 83); doc.setLineWidth(0.5); doc.line(14, 43, pageW - 14, 43);
-  const tableData = [];
-  let totalD = 0, totalC = 0;
-  ecritures.forEach(e => {
-    const lignesSorted = sortLignesDebitAvantCredit(e.lignes);
-    lignesSorted.forEach(l => {
-      tableData.push([e.date, e.journal, e.piece || '', l.compte, (PC[l.compte] || '').substring(0, 28), l.libelle || e.libelle || '', l.debit ? fn(l.debit) : '', l.credit ? fn(l.credit) : '']);
-      totalD += l.debit || 0; totalC += l.credit || 0;
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const yr=document.getElementById('exerciceYear').value;
+  const company=currentProfile?.company||'Entreprise';
+  const pageW=210;
+  const now=new Date().toLocaleDateString('fr-FR');
+  doc.setFillColor(10,11,16); doc.rect(0,0,pageW,22,'F');
+  doc.setTextColor(212,168,83); doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('SYSCOHADA Pro v4 — Révisé 2017',14,10);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('COMEO AI — Expert-Comptable Ivoirien | ONECCA-CI',14,16);
+  doc.setTextColor(255,255,255); doc.setFontSize(8);
+  doc.text(company,pageW-14,10,{align:'right'});
+  doc.text('Exercice '+yr+' | Monnaie : FCFA (XOF)',pageW-14,16,{align:'right'});
+  doc.setTextColor(10,11,16); doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('JOURNAL GÉNÉRAL',14,34);
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(130,128,112);
+  doc.text('Édité le '+now,14,40);
+  doc.setDrawColor(212,168,83); doc.setLineWidth(0.5); doc.line(14,43,pageW-14,43);
+  const tableData=[];
+  let totalD=0,totalC=0;
+  ecritures.forEach(e=>{
+    const ls=sortLignesDebitAvantCredit(e.lignes);
+    ls.forEach(l=>{
+      tableData.push([e.date,e.journal,e.piece||'',l.compte,(PC[l.compte]||'').substring(0,28),l.libelle||e.libelle||'',l.debit?fn(l.debit):'',l.credit?fn(l.credit):'']);
+      totalD+=l.debit||0; totalC+=l.credit||0;
     });
   });
   doc.autoTable({
-    startY: 48,
-    head: [['Date', 'Jnl', 'N° Pièce', 'Compte', 'Libellé compte', 'Libellé opération', 'Débit FCFA', 'Crédit FCFA']],
-    body: tableData,
-    foot: [['', '', '', '', '', 'TOTAUX', fn(totalD), fn(totalC)]],
-    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2.5 },
-    headStyles: { fillColor: [10, 11, 16], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 7 },
-    footStyles: { fillColor: [30, 34, 54], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: [250, 248, 244] },
-    columnStyles: {
-      0: { cellWidth: 18 }, 1: { cellWidth: 10, halign: 'center' }, 2: { cellWidth: 18 },
-      3: { cellWidth: 16, fontStyle: 'bold' }, 4: { cellWidth: 28 }, 5: { cellWidth: 36 },
-      6: { cellWidth: 22, halign: 'right' }, 7: { cellWidth: 22, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    startY:48,
+    head:[['Date','Jnl','N° Pièce','Compte','Libellé compte','Libellé opération','Débit FCFA','Crédit FCFA']],
+    body:tableData,
+    foot:[['','','','','','TOTAUX',fn(totalD),fn(totalC)]],
+    styles:{font:'helvetica',fontSize:7.5,cellPadding:2.5},
+    headStyles:{fillColor:[10,11,16],textColor:[212,168,83],fontStyle:'bold',fontSize:7},
+    footStyles:{fillColor:[30,34,54],textColor:[212,168,83],fontStyle:'bold',fontSize:8},
+    alternateRowStyles:{fillColor:[250,248,244]},
+    columnStyles:{0:{cellWidth:18},1:{cellWidth:10,halign:'center'},2:{cellWidth:18},3:{cellWidth:16,fontStyle:'bold'},4:{cellWidth:28},5:{cellWidth:36},6:{cellWidth:22,halign:'right'},7:{cellWidth:22,halign:'right'}},
+    margin:{left:14,right:14}
   });
-  doc.save(`SYSCOHADA_v4_${company.replace(/\s+/g, '_')}_${yr}.pdf`);
-  toast('✓ PDF exporté avec succès', 'success');
+  doc.save(`SYSCOHADA_v4_${company.replace(/\s+/g,'_')}_${yr}.pdf`);
+  toast('✓ PDF exporté avec succès','success');
 }
 
 function exportWord() {
-  const yr = document.getElementById('exerciceYear').value;
-  const company = currentProfile?.company || 'Entreprise';
-  const now = new Date().toLocaleDateString('fr-FR');
-  let jRows = '', totalD = 0, totalC = 0;
-  ecritures.forEach(e => {
-    const lignesSorted = sortLignesDebitAvantCredit(e.lignes);
-    lignesSorted.forEach(l => {
-      jRows += `<tr><td>${e.date}</td><td>${e.journal}</td><td>${e.piece || ''}</td><td>${l.compte}</td><td>${(PC[l.compte] || '').substring(0, 28)}</td><td>${l.libelle || e.libelle || ''}</td><td style="text-align:right">${l.debit ? fn(l.debit) : ''}</td><td style="text-align:right">${l.credit ? fn(l.credit) : ''}</td></tr>`;
-      totalD += l.debit || 0; totalC += l.credit || 0;
+  const yr=document.getElementById('exerciceYear').value;
+  const company=currentProfile?.company||'Entreprise';
+  const now=new Date().toLocaleDateString('fr-FR');
+  let jRows='',totalD=0,totalC=0;
+  ecritures.forEach(e=>{
+    const ls=sortLignesDebitAvantCredit(e.lignes);
+    ls.forEach(l=>{
+      jRows+=`<tr><td>${e.date}</td><td>${e.journal}</td><td>${e.piece||''}</td><td>${l.compte}</td><td>${(PC[l.compte]||'').substring(0,28)}</td><td>${l.libelle||e.libelle||''}</td><td style="text-align:right">${l.debit?fn(l.debit):''}</td><td style="text-align:right">${l.credit?fn(l.credit):''}</td></tr>`;
+      totalD+=l.debit||0;totalC+=l.credit||0;
     });
   });
-  const th = 'background:#0a0b10;color:#d4a853;padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase';
-  const td = 'border-bottom:1px solid #e0dbd0;padding:5px 10px';
-  const html = `<html><head><meta charset="utf-8"><style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt}table{width:100%;border-collapse:collapse;margin-bottom:20pt}th{${th}}td{${td}}tr:nth-child(even) td{background:#faf8f4}</style></head>
+  const th='background:#0a0b10;color:#d4a853;padding:6px 10px;text-align:left;font-size:9pt;text-transform:uppercase';
+  const td='border-bottom:1px solid #e0dbd0;padding:5px 10px';
+  const html=`<html><head><meta charset="utf-8"><style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt}table{width:100%;border-collapse:collapse;margin-bottom:20pt}th{${th}}td{${td}}tr:nth-child(even) td{background:#faf8f4}</style></head>
   <body>
   <h1 style="font-family:Georgia,serif;font-size:16pt;color:#0a0b10">SYSCOHADA Pro v4 — ${company} — Exercice ${yr}</h1>
   <p>Édité le ${now} | COMEO AI — Expert-Comptable Ivoirien | Monnaie : FCFA (XOF)</p>
@@ -1474,763 +1612,496 @@ function exportWord() {
   <tbody>${jRows}</tbody>
   <tfoot><tr><td colspan="6" style="font-weight:bold;text-align:right">TOTAUX</td><td style="font-weight:bold;text-align:right">${fn(totalD)}</td><td style="font-weight:bold;text-align:right">${fn(totalC)}</td></tr></tfoot></table>
   </body></html>`;
-  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `SYSCOHADA_v4_${company.replace(/\s+/g, '_')}_${yr}.doc`;
+  const blob=new Blob([html],{type:'application/msword;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`SYSCOHADA_v4_${company.replace(/\s+/g,'_')}_${yr}.doc`;
   a.click(); URL.revokeObjectURL(url);
-  toast('✓ Document Word exporté', 'success');
+  toast('✓ Document Word exporté','success');
 }
 
 // ══════════════════════════════════════════
 // CORRECTEUR AUTOMATIQUE DE COMPTES
 // ══════════════════════════════════════════
-const MOTS_IMMOBILISATIONS = ['véhicule','camion','voiture','moto','transport','automobile','ordinateur','informatique','bureau','mobilier','matériel','machine','équipement','installation','bâtiment','terrain'];
-const COMPTES_IMMOB = { 'véhicule':'2451','camion':'2451','voiture':'2451','moto':'2451','automobile':'2451','transport':'2451','ordinateur':'2442','informatique':'2442','bureau':'2441','mobilier':'2444','matériel':'2441','machine':'2411','équipement':'2411' };
+const MOTS_IMMOBILISATIONS=['véhicule','camion','voiture','moto','transport','automobile','ordinateur','informatique','bureau','mobilier','matériel','machine','équipement','installation','bâtiment','terrain'];
+const COMPTES_IMMOB={'véhicule':'2451','camion':'2451','voiture':'2451','moto':'2451','automobile':'2451','transport':'2451','ordinateur':'2442','informatique':'2442','bureau':'2441','mobilier':'2444','matériel':'2441','machine':'2411','équipement':'2411'};
 
 function corrigerComptesErreurs(lignes) {
-  return lignes.map(l => {
-    const code = String(l.compte || '');
-    const lib = (l.libelle || '').toLowerCase();
-    let newCode = code;
-    if ((code === '607' || code === '6058' || code === '601') && l.debit > 0) {
-      const motTrouve = MOTS_IMMOBILISATIONS.find(m => lib.includes(m));
-      if (motTrouve && !lib.includes('marchandis')) { newCode = COMPTES_IMMOB[motTrouve] || '2411'; }
+  return lignes.map(l=>{
+    const code=String(l.compte||''),lib=(l.libelle||'').toLowerCase();
+    let newCode=code;
+    if((code==='607'||code==='6058'||code==='601')&&l.debit>0){
+      const m=MOTS_IMMOBILISATIONS.find(m=>lib.includes(m));
+      if(m&&!lib.includes('marchandis')) newCode=COMPTES_IMMOB[m]||'2411';
     }
-    if (['221','222','223','224'].includes(code) && l.credit > 0) newCode = '2845';
-    if (['511','512','513','514'].includes(code)) newCode = '521';
-    if (code === '4452' && l.debit > 0) {
-      const libEcr = lib.toLowerCase();
-      if (['véhicule','camion','ordinateur','mobilier','matériel','machine','équipement'].some(m => libEcr.includes(m))) {
-        newCode = '4451';
-      }
+    if(['221','222','223','224'].includes(code)&&l.credit>0) newCode='2845';
+    if(['511','512','513','514'].includes(code)) newCode='521';
+    if(code==='4452'&&l.debit>0){
+      const le=lib.toLowerCase();
+      if(['véhicule','camion','ordinateur','mobilier','matériel','machine','équipement'].some(m=>le.includes(m))) newCode='4451';
     }
-    return { ...l, compte: newCode, libelle: l.libelle || PC[newCode] || l.libelle };
+    return {...l,compte:newCode,libelle:l.libelle||PC[newCode]||l.libelle};
   });
 }
 
 // ══════════════════════════════════════════
-// COMEO AI — Clés chargées depuis Firestore
+// COMEO AI
 // ══════════════════════════════════════════
-function handleAiKey(e, ctx) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendToAI(ctx); } }
+function handleAiKey(e,ctx){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendToAI(ctx); } }
 
 function quickAI(text) {
-  const input = document.getElementById('aiInput');
-  if (input) input.value = text;
+  const input=document.getElementById('aiInput');
+  if(input) input.value=text;
   navigate('dashboard');
   sendToAI('dashboard');
 }
 
 function buildAIContext() {
-  let tD = 0, tC = 0;
-  ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const map = getMap();
-  const comptesSoldes = Object.entries(map).slice(0, 12).map(([c, a]) => {
-    const s = a.debit - a.credit;
-    return `${c}:${s >= 0 ? 'Sd' : 'Sc'}${fn(Math.abs(s))}FCFA`;
+  let tD=0,tC=0;
+  ecritures.forEach(e=>e.lignes.forEach(l=>{tD+=l.debit||0;tC+=l.credit||0;}));
+  const map=getMap();
+  const comptesSoldes=Object.entries(map).slice(0,12).map(([c,a])=>{
+    const s=a.debit-a.credit;
+    return `${c}:${s>=0?'Sd':'Sc'}${fn(Math.abs(s))}FCFA`;
   }).join(' | ');
-  const dernieres = ecritures.slice(-5).map(e => `${e.date}[${e.journal}]${e.libelle || '—'}`).join('; ');
-  const allDates = [...new Set(ecritures.map(e => e.date))].sort().join(', ');
-  return {
-    nbEcritures: ecritures.length,
-    companyName: currentProfile?.company || 'Entreprise',
-    exercice: document.getElementById('exerciceYear')?.value || '2024',
-    totalDebit: fn(tD),
-    totalCredit: fn(tC),
-    comptesSoldes,
-    ecrituresResume: dernieres,
-    allDates
-  };
+  const dernieres=ecritures.slice(-5).map(e=>`${e.date}[${e.journal}]${e.libelle||'—'}`).join('; ');
+  const allDates=[...new Set(ecritures.map(e=>e.date))].sort().join(', ');
+  return { nbEcritures:ecritures.length, companyName:currentProfile?.company||'Entreprise', exercice:document.getElementById('exerciceYear')?.value||'2024', totalDebit:fn(tD), totalCredit:fn(tC), comptesSoldes, ecrituresResume:dernieres, allDates };
 }
 
 async function sendToAI(context) {
-  if (isAILoading) return;
-
-  // ── Vérification clés disponibles ──
-  if (GROQ_API_KEYS.length === 0) {
-    appendMsg(context, 'ai',
-      '⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. ' +
-      'Rendez-vous sur <strong>server.html</strong> (interface administrateur) pour ajouter vos clés API Groq.'
-    );
+  if(isAILoading) return;
+  if(GROQ_API_KEYS.length===0){
+    appendMsg(context,'ai','⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. Rendez-vous sur <strong>server.html</strong> pour ajouter vos clés API Groq.');
     return;
   }
-
-  const inputId = context === 'dashboard' ? 'aiInput' : `aiInput-${context}`;
-  const input = document.getElementById(inputId);
-  const msg = input?.value?.trim();
-  if (!msg) return;
-  isAILoading = true; input.value = '';
-  const sendBtnId = context === 'dashboard' ? 'aiSendBtn' : null;
-  if (sendBtnId) { const btn = document.getElementById(sendBtnId); if (btn) btn.disabled = true; }
-  appendMsg(context, 'user', msg);
-  const tid = appendTyping(context);
-  const ctxData = buildAIContext();
-  const systemPrompt = buildSystemPrompt(ctxData);
-
-  conversationHistory.push({ role: 'user', content: msg });
-  if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
+  const inputId=context==='dashboard'?'aiInput':`aiInput-${context}`;
+  const input=document.getElementById(inputId);
+  const msg=input?.value?.trim();
+  if(!msg) return;
+  isAILoading=true; input.value='';
+  const sendBtnId=context==='dashboard'?'aiSendBtn':null;
+  if(sendBtnId){const btn=document.getElementById(sendBtnId);if(btn) btn.disabled=true;}
+  appendMsg(context,'user',msg);
+  const tid=appendTyping(context);
+  const ctxData=buildAIContext();
+  const systemPrompt=buildSystemPrompt(ctxData);
+  conversationHistory.push({role:'user',content:msg});
+  if(conversationHistory.length>20) conversationHistory=conversationHistory.slice(-20);
 
   try {
-    let response, lastError;
-
-    // Rotation clés × rotation modèles
-    const totalAttempts = GROQ_API_KEYS.length * GROQ_MODELS.length;
-    for (let attempt = 0; attempt < Math.min(totalAttempts, 6); attempt++) {
-      const keyToUse   = GROQ_API_KEYS[(groqKeyIdx + attempt) % GROQ_API_KEYS.length];
-      const modelToUse = GROQ_MODELS[(groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length];
-      try {
-        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${keyToUse}` },
-          body: JSON.stringify({
-            model: modelToUse,
-            max_tokens: 6000,
-            temperature: 0.02,
-            top_p: 0.95,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...conversationHistory
-            ]
-          })
+    let response,lastError;
+    const totalAttempts=GROQ_API_KEYS.length*GROQ_MODELS.length;
+    for(let attempt=0;attempt<Math.min(totalAttempts,6);attempt++){
+      const keyToUse=GROQ_API_KEYS[(groqKeyIdx+attempt)%GROQ_API_KEYS.length];
+      const modelToUse=GROQ_MODELS[(groqModelIdx+Math.floor(attempt/GROQ_API_KEYS.length))%GROQ_MODELS.length];
+      try{
+        response=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${keyToUse}`},
+          body:JSON.stringify({model:modelToUse,max_tokens:6000,temperature:0.02,top_p:0.95,messages:[{role:'system',content:systemPrompt},...conversationHistory]})
         });
-        if (response.ok) {
-          groqKeyIdx   = (groqKeyIdx + attempt) % GROQ_API_KEYS.length;
-          groqModelIdx = (groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length;
-          break;
-        }
-        const errData = await response.json().catch(() => ({}));
-        lastError = errData.error?.message || 'Erreur ' + response.status;
-        if (lastError.includes('decommissioned') || lastError.includes('deprecated') || response.status === 404) {
-          toast(`⚠️ Modèle/clé ${attempt + 1} indisponible → bascule...`, 'info');
-          continue;
-        }
+        if(response.ok){groqKeyIdx=(groqKeyIdx+attempt)%GROQ_API_KEYS.length;groqModelIdx=(groqModelIdx+Math.floor(attempt/GROQ_API_KEYS.length))%GROQ_MODELS.length;break;}
+        const errData=await response.json().catch(()=>({}));
+        lastError=errData.error?.message||'Erreur '+response.status;
+        if(lastError.includes('decommissioned')||lastError.includes('deprecated')||response.status===404){toast(`⚠️ Modèle/clé ${attempt+1} indisponible → bascule...`,'info');continue;}
         break;
-      } catch (e) { lastError = e.message; }
+      } catch(e){lastError=e.message;}
     }
+    removeTyping(context,tid);
+    if(!response||!response.ok) throw new Error(lastError||'Toutes les clés/modèles sont indisponibles');
+    const data=await response.json();
+    const fullText=data.choices?.[0]?.message?.content||'Pas de réponse.';
+    conversationHistory.push({role:'assistant',content:fullText});
 
-    removeTyping(context, tid);
-    if (!response || !response.ok) throw new Error(lastError || 'Toutes les clés/modèles sont indisponibles');
-
-    const data = await response.json();
-    const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
-
-    conversationHistory.push({ role: 'assistant', content: fullText });
-
-    // Traitement FILTRE
-    const filtreMarker = fullText.indexOf('###FILTRE###');
-    if (filtreMarker !== -1) {
-      const displayText = fullText.substring(0, filtreMarker).trim();
-      const jsonStr = fullText.substring(filtreMarker + 12).trim();
-      if (displayText) appendMsg(context, 'ai', displayText);
-      try {
-        const clean = jsonStr.replace(/```json|```/g, '').trim();
-        const jsonMatch = clean.match(/(\{[\s\S]*?\})/);
-        if (jsonMatch) { const filtre = JSON.parse(jsonMatch[1]); applyFiltreAndNavigate(filtre, context); }
-      } catch (pe) { console.warn('Filtre parse error:', pe); }
-
-    // Traitement ÉCRITURE
-    } else if (fullText.includes('###ECRITURE###')) {
-      const parts = fullText.split('###ECRITURE###');
-      const textBeforeFirst = parts[0].trim();
-      const ecrituresAI = [];
-      for (let i = 1; i < parts.length; i++) {
-        const segment = parts[i].trim();
-        const jsonMatch = segment.match(/(\{[\s\S]*\})/);
-        if (jsonMatch) {
-          try {
-            const cleanJson = jsonMatch[1].replace(/```json|```/g, '').trim();
-            const ecr = JSON.parse(cleanJson);
-            if (ecr.lignes && ecr.lignes.length >= 2) {
-              let d = 0, c = 0;
-              ecr.lignes.forEach(l => { d += Math.round(parseFloat(l.debit) || 0); c += Math.round(parseFloat(l.credit) || 0); });
-              ecr.lignes = sortLignesDebitAvantCredit(
-                ecr.lignes.map(l => ({ ...l, debit: Math.round(parseFloat(l.debit) || 0), credit: Math.round(parseFloat(l.credit) || 0) }))
-              );
-              ecr.lignes = corrigerComptesErreurs(ecr.lignes);
-              if (Math.abs(d - c) <= 5) ecrituresAI.push(ecr);
-              else console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d - c)} FCFA`);
+    const filtreMarker=fullText.indexOf('###FILTRE###');
+    if(filtreMarker!==-1){
+      const displayText=fullText.substring(0,filtreMarker).trim();
+      const jsonStr=fullText.substring(filtreMarker+12).trim();
+      if(displayText) appendMsg(context,'ai',displayText);
+      try{
+        const clean=jsonStr.replace(/```json|```/g,'').trim();
+        const jsonMatch=clean.match(/(\{[\s\S]*?\})/);
+        if(jsonMatch){const filtre=JSON.parse(jsonMatch[1]);applyFiltreAndNavigate(filtre,context);}
+      } catch(pe){console.warn('Filtre parse error:',pe);}
+    } else if(fullText.includes('###ECRITURE###')){
+      const parts=fullText.split('###ECRITURE###');
+      const textBeforeFirst=parts[0].trim();
+      const ecrituresAI=[];
+      for(let i=1;i<parts.length;i++){
+        const segment=parts[i].trim();
+        const jsonMatch=segment.match(/(\{[\s\S]*\})/);
+        if(jsonMatch){
+          try{
+            const cleanJson=jsonMatch[1].replace(/```json|```/g,'').trim();
+            const ecr=JSON.parse(cleanJson);
+            if(ecr.lignes&&ecr.lignes.length>=2){
+              let d=0,c=0;
+              ecr.lignes.forEach(l=>{d+=Math.round(parseFloat(l.debit)||0);c+=Math.round(parseFloat(l.credit)||0);});
+              ecr.lignes=sortLignesDebitAvantCredit(ecr.lignes.map(l=>({...l,debit:Math.round(parseFloat(l.debit)||0),credit:Math.round(parseFloat(l.credit)||0)})));
+              ecr.lignes=corrigerComptesErreurs(ecr.lignes);
+              if(Math.abs(d-c)<=5) ecrituresAI.push(ecr);
+              else console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d-c)} FCFA`);
             }
-          } catch (pe) { console.warn('JSON parse error écriture', i, ':', pe.message); }
+          } catch(pe){console.warn('JSON parse error écriture',i,':',pe.message);}
         }
       }
-      if (textBeforeFirst) appendMsg(context, 'ai', textBeforeFirst);
-      if (ecrituresAI.length === 0) {
-        appendMsg(context, 'ai', '⚠️ Aucune écriture équilibrée extraite. Veuillez reformuler votre demande ou préciser les montants.');
+      if(textBeforeFirst) appendMsg(context,'ai',textBeforeFirst);
+      if(ecrituresAI.length===0){
+        appendMsg(context,'ai','⚠️ Aucune écriture équilibrée extraite. Veuillez reformuler votre demande ou préciser les montants.');
       } else {
-        currentGroupId = 'grp_' + Date.now();
-        const confirmMsg = `✅ <strong>${ecrituresAI.length} écriture${ecrituresAI.length > 1 ? 's' : ''} liées</strong> préparées et groupées :<br>` +
-          ecrituresAI.map((e, i) => `<br><strong>${i + 1}. [${e.journal}]</strong> ${e.libelle}`).join('') +
+        currentGroupId='grp_'+Date.now();
+        const confirmMsg=`✅ <strong>${ecrituresAI.length} écriture${ecrituresAI.length>1?'s':''} liées</strong> préparées et groupées :<br>`+
+          ecrituresAI.map((e,i)=>`<br><strong>${i+1}. [${e.journal}]</strong> ${e.libelle}`).join('')+
           `<br><br>⚡ Cliquez <strong>"Tout enregistrer"</strong> pour valider toutes les écritures en un clic.`;
-        appendMsg(context, 'ai', confirmMsg);
+        appendMsg(context,'ai',confirmMsg);
         setEcritureQueue(ecrituresAI);
-        if (context === 'saisie') {
-          toast(`✨ ${ecrituresAI.length} écriture${ecrituresAI.length > 1 ? 's' : ''} préparée${ecrituresAI.length > 1 ? 's' : ''}`, 'info');
-        } else {
-          showMultiEcrBanner(ecrituresAI);
-          showSaisieNotif(ecrituresAI[0]?.libelle || msg.substring(0, 40), ecrituresAI.length);
-        }
+        if(context==='saisie'){toast(`✨ ${ecrituresAI.length} écriture${ecrituresAI.length>1?'s':''} préparée${ecrituresAI.length>1?'s':'`},'info`);}
+        else{showMultiEcrBanner(ecrituresAI);showSaisieNotif(ecrituresAI[0]?.libelle||msg.substring(0,40),ecrituresAI.length);}
       }
-    } else {
-      appendMsg(context, 'ai', fullText);
-    }
-  } catch (err) {
-    removeTyping(context, tid);
+    } else { appendMsg(context,'ai',fullText); }
+  } catch(err){
+    removeTyping(context,tid);
     conversationHistory.pop();
-    appendMsg(context, 'ai', `⚠️ Incident technique : ${err.message} — Veuillez réessayer.`);
+    appendMsg(context,'ai',`⚠️ Incident technique : ${err.message} — Veuillez réessayer.`);
   }
-  isAILoading = false;
-  if (sendBtnId) { const btn = document.getElementById(sendBtnId); if (btn) btn.disabled = false; }
+  isAILoading=false;
+  if(sendBtnId){const btn=document.getElementById(sendBtnId);if(btn) btn.disabled=false;}
 }
 
-function applyFiltreAndNavigate(filtre, context) {
-  const { type, dateDebut, dateFin, journal, compte } = filtre;
-  if (type === 'journal') {
+function applyFiltreAndNavigate(filtre,context){
+  const {type,dateDebut,dateFin,journal,compte}=filtre;
+  if(type==='journal'){
     navigate('journal');
-    if (dateDebut) document.getElementById('jnl-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('jnl-date-fin').value = dateFin;
-    if (journal) document.getElementById('journalFilter').value = journal;
+    if(dateDebut) document.getElementById('jnl-date-debut').value=dateDebut;
+    if(dateFin) document.getElementById('jnl-date-fin').value=dateFin;
+    if(journal) document.getElementById('journalFilter').value=journal;
     renderJournal();
-    const analyseEl = document.getElementById('journal-analyse');
-    if (analyseEl) {
-      analyseEl.style.display = 'block';
-      const label = dateDebut === dateFin ? formatDateFR(dateDebut) : `${formatDateFR(dateDebut)} au ${formatDateFR(dateFin)}`;
-      analyseEl.innerHTML = `<div class="analyse-title">📋 Journal — ${label || 'Exercice complet'}</div>Affichage des écritures pour la période demandée.`;
-    }
-  } else if (type === 'balance') {
+    const analyseEl=document.getElementById('journal-analyse');
+    if(analyseEl){analyseEl.style.display='block';const label=dateDebut===dateFin?formatDateFR(dateDebut):`${formatDateFR(dateDebut)} au ${formatDateFR(dateFin)}`;analyseEl.innerHTML=`<div class="analyse-title">📋 Journal — ${label||'Exercice complet'}</div>Affichage des écritures pour la période demandée.`;}
+  } else if(type==='balance'){
     navigate('balance');
-    if (dateDebut) document.getElementById('bal-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('bal-date-fin').value = dateFin;
-    if (journal) document.getElementById('bal-journal').value = journal;
+    if(dateDebut) document.getElementById('bal-date-debut').value=dateDebut;
+    if(dateFin) document.getElementById('bal-date-fin').value=dateFin;
+    if(journal) document.getElementById('bal-journal').value=journal;
     renderBalance();
-  } else if (type === 'grandlivre') {
+  } else if(type==='grandlivre'){
     navigate('grandlivre');
-    if (dateDebut) document.getElementById('gl-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('gl-date-fin').value = dateFin;
-    if (compte) document.getElementById('glSearch').value = compte;
+    if(dateDebut) document.getElementById('gl-date-debut').value=dateDebut;
+    if(dateFin) document.getElementById('gl-date-fin').value=dateFin;
+    if(compte) document.getElementById('glSearch').value=compte;
     renderGrandLivre();
-    if (compte) setTimeout(() => { const el = document.getElementById('gl-' + compte); if (el) el.style.display = 'block'; }, 200);
-  } else if (type === 'bilan') {
+    if(compte) setTimeout(()=>{const el=document.getElementById('gl-'+compte);if(el) el.style.display='block';},200);
+  } else if(type==='bilan'){
     navigate('bilan');
-    if (dateFin) document.getElementById('bilan-date-arrete').value = dateFin;
+    if(dateFin) document.getElementById('bilan-date-arrete').value=dateFin;
     renderBilan();
   }
 }
 
 // ── Affichage messages ──
-function appendMsg(context, role, text) {
-  const msgId = context === 'dashboard' ? 'aiMessages' : `aiMessages-${context}`;
-  const c = document.getElementById(msgId);
-  if (!c) return;
-  const d = document.createElement('div');
-  d.className = 'msg ' + role;
-  d.innerHTML = `<div class="msg-av">${role === 'ai' ? 'CA' : 'U'}</div><div class="msg-body">${fmt(text)}</div>`;
-  c.appendChild(d); c.scrollTop = c.scrollHeight;
+function appendMsg(context,role,text){
+  const msgId=context==='dashboard'?'aiMessages':`aiMessages-${context}`;
+  const c=document.getElementById(msgId); if(!c) return;
+  const d=document.createElement('div');
+  d.className='msg '+role;
+  d.innerHTML=`<div class="msg-av">${role==='ai'?'CA':'U'}</div><div class="msg-body">${fmt(text)}</div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
 }
-function appendTyping(context) {
-  const id = 't' + Date.now();
-  const msgId = context === 'dashboard' ? 'aiMessages' : `aiMessages-${context}`;
-  const c = document.getElementById(msgId);
-  if (!c) return id;
-  const d = document.createElement('div');
-  d.className = 'msg ai'; d.id = id;
-  d.innerHTML = `<div class="msg-av">CA</div><div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div>`;
-  c.appendChild(d); c.scrollTop = c.scrollHeight;
+function appendTyping(context){
+  const id='t'+Date.now();
+  const msgId=context==='dashboard'?'aiMessages':`aiMessages-${context}`;
+  const c=document.getElementById(msgId); if(!c) return id;
+  const d=document.createElement('div');
+  d.className='msg ai'; d.id=id;
+  d.innerHTML=`<div class="msg-av">CA</div><div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
   return id;
 }
-function removeTyping(context, id) { const el = document.getElementById(id); if (el) el.remove(); }
+function removeTyping(context,id){const el=document.getElementById(id);if(el) el.remove();}
 
-function fmt(text) {
-  if (!text) return '';
+function fmt(text){
+  if(!text) return '';
   return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
-    .replace(/&lt;table&gt;/gi, '<table>').replace(/&lt;\/table&gt;/gi, '</table>')
-    .replace(/&lt;thead&gt;/gi, '<thead>').replace(/&lt;\/thead&gt;/gi, '</thead>')
-    .replace(/&lt;tbody&gt;/gi, '<tbody>').replace(/&lt;\/tbody&gt;/gi, '</tbody>')
-    .replace(/&lt;tfoot&gt;/gi, '<tfoot>').replace(/&lt;\/tfoot&gt;/gi, '</tfoot>')
-    .replace(/&lt;tr&gt;/gi, '<tr>').replace(/&lt;\/tr&gt;/gi, '</tr>')
-    .replace(/&lt;th(&gt;|(\s[^&]*)&gt;)/gi, (_, m) => '<th' + m.replace(/&gt;/g, '>').replace(/&lt;/g, '<'))
-    .replace(/&lt;\/th&gt;/gi, '</th>')
-    .replace(/&lt;td(&gt;|(\s[^&]*)&gt;)/gi, (_, m) => '<td' + m.replace(/&gt;/g, '>').replace(/&lt;/g, '<'))
-    .replace(/&lt;\/td&gt;/gi, '</td>')
-    .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
-    .replace(/&lt;em&gt;/gi, '<em>').replace(/&lt;\/em&gt;/gi, '</em>')
-    .replace(/&lt;br&gt;/gi, '<br>').replace(/&lt;br\/&gt;/gi, '<br>');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/`(.*?)`/g,'<code>$1</code>')
+    .replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>')
+    .replace(/&lt;table&gt;/gi,'<table>').replace(/&lt;\/table&gt;/gi,'</table>')
+    .replace(/&lt;thead&gt;/gi,'<thead>').replace(/&lt;\/thead&gt;/gi,'</thead>')
+    .replace(/&lt;tbody&gt;/gi,'<tbody>').replace(/&lt;\/tbody&gt;/gi,'</tbody>')
+    .replace(/&lt;tfoot&gt;/gi,'<tfoot>').replace(/&lt;\/tfoot&gt;/gi,'</tfoot>')
+    .replace(/&lt;tr&gt;/gi,'<tr>').replace(/&lt;\/tr&gt;/gi,'</tr>')
+    .replace(/&lt;th(&gt;|(\s[^&]*)&gt;)/gi,(_,m)=>'<th'+m.replace(/&gt;/g,'>').replace(/&lt;/g,'<'))
+    .replace(/&lt;\/th&gt;/gi,'</th>')
+    .replace(/&lt;td(&gt;|(\s[^&]*)&gt;)/gi,(_,m)=>'<td'+m.replace(/&gt;/g,'>').replace(/&lt;/g,'<'))
+    .replace(/&lt;\/td&gt;/gi,'</td>')
+    .replace(/&lt;strong&gt;/gi,'<strong>').replace(/&lt;\/strong&gt;/gi,'</strong>')
+    .replace(/&lt;em&gt;/gi,'<em>').replace(/&lt;\/em&gt;/gi,'</em>')
+    .replace(/&lt;br&gt;/gi,'<br>').replace(/&lt;br\/&gt;/gi,'<br>');
 }
 
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // COMEO ROBOT — Assistant Vocal IA
-// STT (Web Speech API) → Groq LLM → TTS (Web Speech API)
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+let robotOpen=false,robotListening=false,robotSpeaking=false,robotRecog=null;
+let robotSynth=window.speechSynthesis,robotVoice=null,robotConvHistory=[];
 
-let robotOpen       = false;
-let robotListening  = false;
-let robotSpeaking   = false;
-let robotRecog      = null;
-let robotSynth      = window.speechSynthesis;
-let robotVoice      = null;
-let robotConvHistory = [];
-
-// ── Initialiser les barres visualiseur ──
-function initRobotVisualizer() {
-  const viz = document.getElementById('robotViz');
-  if (!viz || viz.children.length > 0) return;
-  const count = 24;
-  const peaks = [4,8,14,20,28,34,38,40,38,34,30,26,30,34,38,40,38,34,28,20,14,8,6,4];
-  for (let i = 0; i < count; i++) {
-    const b = document.createElement('div');
-    b.className = 'rv-bar';
-    b.style.cssText = `--max:${peaks[i]||20}px;--spd:${0.4 + Math.random()*0.5}s;animation-delay:${i*0.04}s`;
+function initRobotVisualizer(){
+  const viz=document.getElementById('robotViz');
+  if(!viz||viz.children.length>0) return;
+  const count=24;
+  const peaks=[4,8,14,20,28,34,38,40,38,34,30,26,30,34,38,40,38,34,28,20,14,8,6,4];
+  for(let i=0;i<count;i++){
+    const b=document.createElement('div');
+    b.className='rv-bar';
+    b.style.cssText=`--max:${peaks[i]||20}px;--spd:${0.4+Math.random()*0.5}s;animation-delay:${i*0.04}s`;
     viz.appendChild(b);
   }
-
-  // Animation JS des barres (remplace les keyframes CSS)
-  let animId;
-  function animBars() {
-    const avatar = document.getElementById('robotAvatar');
-    const active = avatar && (avatar.classList.contains('speaking') || avatar.classList.contains('listening'));
-    document.querySelectorAll('.rv-bar').forEach((bar, i) => {
-      const max = peaks[i] || 20;
-      const state = avatar?.classList.contains('speaking') ? 'speaking' : avatar?.classList.contains('listening') ? 'listening' : 'idle';
-      const amplitude = state === 'speaking' ? max : state === 'listening' ? max * 0.6 : 4;
-      const wave = amplitude * (0.4 + 0.6 * Math.abs(Math.sin(Date.now() / 130 + i * 0.55)));
-      bar.style.height = Math.max(4, active ? wave : 4) + 'px';
+  function animBars(){
+    const avatar=document.getElementById('robotAvatar');
+    const active=avatar&&(avatar.classList.contains('speaking')||avatar.classList.contains('listening'));
+    document.querySelectorAll('.rv-bar').forEach((bar,i)=>{
+      const max=peaks[i]||20;
+      const state=avatar?.classList.contains('speaking')?'speaking':avatar?.classList.contains('listening')?'listening':'idle';
+      const amplitude=state==='speaking'?max:state==='listening'?max*0.6:4;
+      const wave=amplitude*(0.4+0.6*Math.abs(Math.sin(Date.now()/130+i*0.55)));
+      bar.style.height=Math.max(4,active?wave:4)+'px';
     });
-    animId = requestAnimationFrame(animBars);
+    requestAnimationFrame(animBars);
   }
   animBars();
 }
 
-// ── Fond particules ──
-function initRobotBg() {
-  const bg = document.getElementById('robotBg');
-  if (!bg || bg.children.length > 0) return;
-  for (let i = 0; i < 14; i++) {
-    const d = document.createElement('div');
-    const sz = 40 + Math.random() * 120;
-    d.className = 'robot-bg-dot';
-    d.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--spd:${8+Math.random()*14}s;animation-delay:${Math.random()*8}s`;
+function initRobotBg(){
+  const bg=document.getElementById('robotBg');
+  if(!bg||bg.children.length>0) return;
+  for(let i=0;i<14;i++){
+    const d=document.createElement('div');
+    const sz=40+Math.random()*120;
+    d.className='robot-bg-dot';
+    d.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--spd:${8+Math.random()*14}s;animation-delay:${Math.random()*8}s`;
     bg.appendChild(d);
   }
 }
 
-// ── Choisir meilleure voix française ──
-function pickRobotVoice() {
-  const voices = robotSynth.getVoices();
-  if (!voices.length) return;
-
-  // Priorité 1 — Voix Google masculines françaises (qualité Gemini)
-  const googleMale = voices.find(v =>
-    v.name === 'Google français' && v.lang.startsWith('fr')
-  );
-  if (googleMale) { robotVoice = googleMale; return; }
-
-  // Priorité 2 — Microsoft masculines françaises (Windows / Edge)
-  const msPref = ['Microsoft Paul', 'Microsoft Guillaume', 'Microsoft Henri', 'Microsoft Remy'];
-  for (const name of msPref) {
-    const v = voices.find(v => v.name.includes(name));
-    if (v) { robotVoice = v; return; }
-  }
-
-  // Priorité 3 — Voix systèmes masculines françaises connues
-  const maleFrNames = ['Thomas', 'Nicolas', 'Remy', 'Guillaume', 'Henri', 'Pierre'];
-  for (const name of maleFrNames) {
-    const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('fr'));
-    if (v) { robotVoice = v; return; }
-  }
-
-  // Priorité 4 — N'importe quelle voix française disponible
-  const anyFr = voices.find(v => v.lang.startsWith('fr'));
-  if (anyFr) { robotVoice = anyFr; return; }
-
-  // Fallback ultime
-  robotVoice = voices[0] || null;
+function pickRobotVoice(){
+  const voices=robotSynth.getVoices();
+  if(!voices.length) return;
+  const googleMale=voices.find(v=>v.name==='Google français'&&v.lang.startsWith('fr'));
+  if(googleMale){robotVoice=googleMale;return;}
+  const msPref=['Microsoft Paul','Microsoft Guillaume','Microsoft Henri','Microsoft Remy'];
+  for(const name of msPref){const v=voices.find(v=>v.name.includes(name));if(v){robotVoice=v;return;}}
+  const maleFrNames=['Thomas','Nicolas','Remy','Guillaume','Henri','Pierre'];
+  for(const name of maleFrNames){const v=voices.find(v=>v.name.includes(name)&&v.lang.startsWith('fr'));if(v){robotVoice=v;return;}}
+  const anyFr=voices.find(v=>v.lang.startsWith('fr'));
+  if(anyFr){robotVoice=anyFr;return;}
+  robotVoice=voices[0]||null;
 }
+speechSynthesis.addEventListener('voiceschanged',pickRobotVoice);
+setTimeout(pickRobotVoice,200); setTimeout(pickRobotVoice,800); pickRobotVoice();
 
-// Recharger dès que les voix sont disponibles (délai navigateur)
-speechSynthesis.addEventListener('voiceschanged', pickRobotVoice);
-setTimeout(pickRobotVoice, 200);
-setTimeout(pickRobotVoice, 800);
-pickRobotVoice();
-
-// ── Ouvrir / Fermer le robot ──
-function openRobot() {
-  const panel = document.getElementById('robotPanel');
-  if (!panel) return;
+function openRobot(){
+  const panel=document.getElementById('robotPanel');
+  if(!panel) return;
   panel.classList.add('open');
-  robotOpen = true;
-  document.body.style.overflow = 'hidden';
-  initRobotVisualizer();
-  initRobotBg();
-  // Message de bienvenue vocal avec données contextuelles
- setTimeout(() => {
-  const company = currentProfile?.company || 'votre entreprise';
-  const nb = ecritures.length;
-  const greetings_with_data = [
-    `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
-    `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
-    `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
-  ];
-  const greetings_empty = [
-    `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
-    `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
-  ];
-  const pool = nb > 0 ? greetings_with_data : greetings_empty;
-  const greeting = pool[Math.floor(Math.random() * pool.length)];
-  robotSpeak(greeting); // ✅ LIGNE MANQUANTE — appel effectif du TTS
-}, 400);
+  robotOpen=true;
+  document.body.style.overflow='hidden';
+  initRobotVisualizer(); initRobotBg();
+  setTimeout(()=>{
+    const company=currentProfile?.company||'votre entreprise';
+    const nb=ecritures.length;
+    const pool=nb>0?[
+      `Bonjour et bienvenue ! Votre dossier ${company} se porte bien, avec ${nb} écriture${nb>1?'s':''} enregistrée${nb>1?'s':''}. Qu'est-ce que je peux faire pour vous aujourd'hui ?`,
+      `Bonjour ! Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb>1?'s':''}. Posez-moi n'importe quelle question.`
+    ]:[
+      `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}. Parlez-moi, je suis là pour vous guider.`,
+      `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Commençons ensemble.`
+    ];
+    robotSpeak(pool[Math.floor(Math.random()*pool.length)]);
+  },400);
 }
 
-function closeRobot() {
-  const panel = document.getElementById('robotPanel');
-  if (!panel) return;
+function closeRobot(){
+  const panel=document.getElementById('robotPanel');
+  if(!panel) return;
   stopRobotListening();
   robotSynth.cancel();
   panel.classList.remove('open');
-  robotOpen = false;
-  document.body.style.overflow = '';
-  robotSpeaking = false;
+  robotOpen=false;
+  document.body.style.overflow='';
+  robotSpeaking=false;
   setRobotStatus('online');
 }
 
-// ── Statuts visuels ──
-function setRobotStatus(state) {
-  const pill    = document.getElementById('robotStatusPill');
-  const avatar  = document.getElementById('robotAvatar');
-  const hint    = document.getElementById('robotHint');
-  const mic     = document.getElementById('robotMicBtn');
-  const bars    = document.querySelectorAll('.rv-bar');
-  if (!pill) return;
-
-  const cfg = {
-    online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
-    listening: { text:'Écoute…',       cls:'listening', hint:'Je vous écoute…',        micOn:true  },
-    thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
-    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Je vous réponds…',       micOn:false }
-  };
-  const s = cfg[state] || cfg.online;
-  pill.textContent = s.text;
-  pill.className   = 'robot-status-pill ' + s.cls;
-  if (avatar) avatar.className = 'robot-avatar-main ' + (state !== 'online' ? state : '');
-  if (hint)   hint.textContent = s.hint;
-  if (mic)    mic.classList.toggle('active', s.micOn);
-
-  // Animer les barres
-  if (bars.length) {
-    bars.forEach(b => {
-      b.style.opacity = (state === 'online') ? '.3' : '.85';
-    });
-  }
+function setRobotStatus(state){
+  const pill=document.getElementById('robotStatusPill');
+  const avatar=document.getElementById('robotAvatar');
+  const hint=document.getElementById('robotHint');
+  const mic=document.getElementById('robotMicBtn');
+  if(!pill) return;
+  const cfg={online:{text:'En ligne',cls:'',hint:'Appuyez pour parler',micOn:false},listening:{text:'Écoute…',cls:'listening',hint:'Je vous écoute…',micOn:true},thinking:{text:'Réflexion…',cls:'thinking',hint:'Analyse en cours…',micOn:false},speaking:{text:'Répond…',cls:'speaking',hint:'Je vous réponds…',micOn:false}};
+  const s=cfg[state]||cfg.online;
+  pill.textContent=s.text; pill.className='robot-status-pill '+s.cls;
+  if(avatar) avatar.className='robot-avatar-main '+(state!=='online'?state:'');
+  if(hint) hint.textContent=s.hint;
+  if(mic) mic.classList.toggle('active',s.micOn);
+  document.querySelectorAll('.rv-bar').forEach(b=>{b.style.opacity=(state==='online')?'.3':'.85';});
 }
 
-function setRobotBubble(text) {
-  const bubble = document.getElementById('robotBubble');
-  const inner  = document.getElementById('robotBubbleText');
-  const target = inner || bubble;
-  if (!target) return;
-  if (bubble) bubble.classList.add('fading');
-  setTimeout(() => {
-    target.innerHTML = text + '<span class="blink-cur"></span>';
-    if (bubble) bubble.classList.remove('fading');
-    if (bubble) bubble.scrollTop = bubble.scrollHeight;
-  }, 180);
+function setRobotBubble(text){
+  const bubble=document.getElementById('robotBubble');
+  const inner=document.getElementById('robotBubbleText');
+  const target=inner||bubble;
+  if(!target) return;
+  if(bubble) bubble.classList.add('fading');
+  setTimeout(()=>{
+    target.innerHTML=text.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--warm)">$1</strong>').replace(/\n/g,'<br>')+'<span class="blink-cur"></span>';
+    if(bubble) bubble.classList.remove('fading');
+    if(bubble) bubble.scrollTop=bubble.scrollHeight;
+  },180);
 }
-// ── Synthèse vocale (TTS) ──
-function robotSpeak(text) {
+
+function robotSpeak(text){
   robotSynth.cancel();
-  robotSpeaking = true;
+  robotSpeaking=true;
   setRobotStatus('speaking');
-
-  // Affichage bulle
-  setRobotBubble(
-    text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
-        .replace(/\n/g, '<br>')
-  );
-
-  // Nettoyage texte pour la synthèse
-  const clean = text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/[\[\]#*_~`]/g, '')
-    .replace(/FCFA/g, 'francs CFA')
-    .replace(/\bXA\b/g, 'marge commerciale')
-    .replace(/\bXB\b/g, 'chiffre d\'affaires')
-    .replace(/\bXC\b/g, 'valeur ajoutée')
-    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bDAP\b/g, 'dotations aux amortissements')
-    .replace(/\bTVA\b/g, 'T.V.A')
-    .replace(/\n/g, ' . ');
-
-  // Découper en phrases pour un débit naturel (comme Gemini)
-  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
-
-  let idx = 0;
-
-  function speakNext() {
-    if (idx >= sentences.length || !robotSpeaking) {
-      robotSpeaking = false;
-      setRobotStatus('online');
-      setTimeout(() => {
-        if (robotOpen && !robotListening) startRobotListening();
-      }, 700);
-      return;
-    }
-
-    const chunk = sentences[idx].trim();
-    if (!chunk) { idx++; speakNext(); return; }
-
-    const utter = new SpeechSynthesisUtterance(chunk);
-
-    // Voix masculine
-    if (robotVoice) utter.voice = robotVoice;
-    utter.lang   = 'fr-FR';
-
-    // Réglages clés pour sonner comme Gemini :
-    // - rate 0.92  → légèrement plus lent qu'un robot, plus humain
-    // - pitch 0.88 → voix grave et posée (masculin)
-    // - volume 1   → plein volume
-    utter.rate   = 0.92;
-    utter.pitch  = 0.88;
-    utter.volume = 1;
-
-    utter.onend   = () => { idx++; speakNext(); };
-    utter.onerror = () => { idx++; speakNext(); };
-
+  setRobotBubble(text.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--warm)">$1</strong>').replace(/\n/g,'<br>'));
+  const clean=text.replace(/\*\*(.*?)\*\*/g,'$1').replace(/[\[\]#*_~`]/g,'').replace(/FCFA/g,'francs CFA').replace(/\bXA\b/g,"marge commerciale").replace(/\bXB\b/g,"chiffre d'affaires").replace(/\bXC\b/g,"valeur ajoutée").replace(/\bXD\b/g,"excédent brut d'exploitation").replace(/\bEBE\b/g,"excédent brut d'exploitation").replace(/\bDAP\b/g,"dotations aux amortissements").replace(/\bTVA\b/g,"T.V.A").replace(/\n/g,' . ');
+  const sentences=clean.match(/[^.!?]+[.!?]+/g)||[clean];
+  let idx=0;
+  function speakNext(){
+    if(idx>=sentences.length||!robotSpeaking){robotSpeaking=false;setRobotStatus('online');setTimeout(()=>{if(robotOpen&&!robotListening) startRobotListening();},700);return;}
+    const chunk=sentences[idx].trim();
+    if(!chunk){idx++;speakNext();return;}
+    const utter=new SpeechSynthesisUtterance(chunk);
+    if(robotVoice) utter.voice=robotVoice;
+    utter.lang='fr-FR'; utter.rate=0.92; utter.pitch=0.88; utter.volume=1;
+    utter.onend=()=>{idx++;speakNext();}; utter.onerror=()=>{idx++;speakNext();};
     robotSynth.speak(utter);
   }
-
   speakNext();
 }
 
-// ── Reconnaissance vocale (STT) ──
-function initRobotSTT() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return null;
-  const recog = new SpeechRecognition();
-  recog.lang = 'fr-FR';
-  recog.continuous = false;
-  recog.interimResults = false;
-  recog.maxAlternatives = 1;
-  recog.onresult = (e) => {
-    const transcript = e.results[0][0].transcript.trim();
-    if (transcript.length > 1) { robotListening = false; handleRobotQuery(transcript); }
-  };
-  recog.onerror = (e) => {
-    robotListening = false;
-    setRobotStatus('online');
-    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-      setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
-    } else { setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000); }
-  };
-  recog.onend = () => {
-    if (robotListening) { robotListening = false; setRobotStatus('online'); }
-  };
+function initRobotSTT(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition) return null;
+  const recog=new SpeechRecognition();
+  recog.lang='fr-FR'; recog.continuous=false; recog.interimResults=false; recog.maxAlternatives=1;
+  recog.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t.length>1){robotListening=false;handleRobotQuery(t);}};
+  recog.onerror=e=>{robotListening=false;setRobotStatus('online');if(e.error!=='no-speech'&&e.error!=='aborted'){setRobotBubble("Désolé, je n'ai pas bien entendu. Réessayez.");}else{setTimeout(()=>{if(robotOpen) startRobotListening();},1000);}};
+  recog.onend=()=>{if(robotListening){robotListening=false;setRobotStatus('online');}};
   return recog;
 }
 
-function startRobotListening() {
-  if (robotSpeaking || robotListening) return;
-  if (!robotRecog) robotRecog = initRobotSTT();
-  if (!robotRecog) { setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.'); return; }
-  try {
-    robotRecog.start();
-    robotListening = true;
-    setRobotStatus('listening');
-  } catch(e) { robotListening = false; }
+function startRobotListening(){
+  if(robotSpeaking||robotListening) return;
+  if(!robotRecog) robotRecog=initRobotSTT();
+  if(!robotRecog){setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.');return;}
+  try{robotRecog.start();robotListening=true;setRobotStatus('listening');}
+  catch(e){robotListening=false;}
 }
 
-function stopRobotListening() {
-  if (robotRecog && robotListening) {
-    try { robotRecog.stop(); } catch(e) {}
-    robotListening = false;
-  }
+function stopRobotListening(){
+  if(robotRecog&&robotListening){try{robotRecog.stop();}catch(e){}robotListening=false;}
 }
 
-function toggleRobotMic() {
-  if (robotSpeaking) { robotSynth.cancel(); robotSpeaking = false; setRobotStatus('online'); return; }
-  if (robotListening) { stopRobotListening(); setRobotStatus('online'); }
-  else { startRobotListening(); }
+function toggleRobotMic(){
+  if(robotSpeaking){robotSynth.cancel();robotSpeaking=false;setRobotStatus('online');return;}
+  if(robotListening){stopRobotListening();setRobotStatus('online');}
+  else startRobotListening();
 }
 
-// ── Envoi à Groq avec contexte comptable ──
-async function handleRobotQuery(query) {
-  if (!query) return;
-  setRobotStatus('thinking');
-  setRobotBubble('Je réfléchis…');
+async function handleRobotQuery(query){
+  if(!query) return;
+  setRobotStatus('thinking'); setRobotBubble('Je réfléchis…');
+  if(GROQ_API_KEYS.length===0){robotSpeak("Les clés API ne sont pas configurées. Veuillez contacter l'administrateur.");return;}
+  let tD=0,tC=0;
+  ecritures.forEach(e=>e.lignes.forEach(l=>{tD+=l.debit||0;tC+=l.credit||0;}));
+  const map=getMap();
+  const nb=ecritures.length,company=currentProfile?.company||'Entreprise',yr=document.getElementById('exerciceYear')?.value||'2024';
+  const jrnlResume=ecritures.slice(-10).map(e=>{let d=0,c=0;e.lignes.forEach(l=>{d+=l.debit||0;c+=l.credit||0;});return `[${e.date}][${e.journal}] ${e.libelle||'—'} — Débit:${fn(d)} Crédit:${fn(c)}`;}).join('\n');
+  const soldes=Object.entries(map).slice(0,20).map(([code,acc])=>{const s=acc.debit-acc.credit;return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;}).join(', ');
 
-  if (GROQ_API_KEYS.length === 0) {
-    robotSpeak('Les clés API ne sont pas configurées. Veuillez contacter l\'administrateur.');
-    return;
-  }
+  const systemRobot=`Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
 
-  // Construire un résumé rapide des données
-  let tD = 0, tC = 0;
-  ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const map = getMap();
-  const nb = ecritures.length;
-  const company = currentProfile?.company || 'Entreprise';
-  const yr = document.getElementById('exerciceYear')?.value || '2024';
+IDENTITÉ — si on te demande qui t'a créé :
+"J'ai été créé par le système MarcioAI dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE."
 
-  // Résumé journal — 10 dernières opérations
-  const jrnlResume = ecritures.slice(-10).map(e => {
-    let d=0,c=0; e.lignes.forEach(l=>{d+=l.debit||0;c+=l.credit||0;});
-    return `[${e.date}][${e.journal}] ${e.libelle||'—'} — Débit:${fn(d)} Crédit:${fn(c)}`;
-  }).join('\n');
+FAÇON DE PARLER — comme un humain cultivé et chaleureux, pas comme un robot.
+Utilise "eh bien", "voyons voir", "tout à fait". Sois concis : 3 à 5 phrases max. Jamais de markdown.
 
-  // Soldes des comptes principaux
-  const soldes = Object.entries(map).slice(0, 20).map(([code, acc]) => {
-    const s = acc.debit - acc.credit;
-    return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
-  }).join(', ');
+DONNÉES COMPTABLES pour ${company} (exercice ${yr}) :
+Écritures : ${nb} | Débits : ${fn(tD)} FCFA | Crédits : ${fn(tC)} FCFA
+Situation : ${Math.abs(tD-tC)<1?'parfaitement équilibrés':'déséquilibre de '+fn(Math.abs(tD-tC))+' FCFA'}
+Soldes : ${soldes}
+Dernières opérations : ${jrnlResume||'Aucune écriture saisie'}`;
 
- const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
-
-IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé, qui es-tu, ou qui est ton concepteur :
-"J'ai été créé par le système MarcioAI dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
-
-FAÇON DE PARLER — tu parles exactement comme un humain cultivé et chaleureux, pas comme un robot :
-- Utilise des petites hésitations naturelles comme "eh bien", "voyons voir", "tout à fait", "exactement", "bien sûr"
-- Varie tes formules : ne commence jamais deux phrases de la même façon
-- Montre de l'enthousiasme quand c'est positif : "Très bonne nouvelle !", "Parfait !", "Excellent !"
-- Montre de l'empathie quand c'est négatif : "Je vois, c'est un point important à surveiller", "Ne vous inquiétez pas, on va arranger ça"
-- Pose parfois une petite question de suivi pour engager la conversation
-- Utilise "vous" avec respect et professionnalisme
-- Tu peux dire "écoutez", "regardons ensemble", "je vous explique"
-- Articule clairement les chiffres : dis "cinq cent mille francs CFA" pas "500000 FCFA"
-- N'utilise JAMAIS de markdown, tirets, tableaux, astérisques — parle uniquement
-- Sois concis et naturel : 3 à 5 phrases maximum par réponse
-- Arrondis toujours les grands chiffres pour la fluidité orale
-
-DONNÉES COMPTABLES EN TEMPS RÉEL pour ${company} (exercice ${yr}) :
-Nombre d'écritures enregistrées : ${nb}
-Total des débits : ${fn(tD)} francs CFA
-Total des crédits : ${fn(tC)} francs CFA
-Situation : ${Math.abs(tD-tC)<1 ? 'les comptes sont parfaitement équilibrés' : 'attention, déséquilibre de '+fn(Math.abs(tD-tC))+' francs CFA'}
-Soldes des comptes principaux : ${soldes}
-Dernières opérations enregistrées : ${jrnlResume || 'Aucune écriture saisie pour le moment'}
-
-Tu peux donner des conseils comptables, fiscaux, analyser les données, et répondre à toutes les questions sur le travail comptable.
-Réponds directement sans te présenter à nouveau sauf demande explicite.`;
-
-  robotConvHistory.push({ role: 'user', content: query });
-  if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
-
-  try {
+  robotConvHistory.push({role:'user',content:query});
+  if(robotConvHistory.length>10) robotConvHistory=robotConvHistory.slice(-10);
+  try{
     let response;
-    for (let i = 0; i < Math.min(GROQ_API_KEYS.length, 3); i++) {
-      const key   = GROQ_API_KEYS[(groqKeyIdx + i) % GROQ_API_KEYS.length];
-      const model = GROQ_MODELS[groqModelIdx % GROQ_MODELS.length];
-      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({
-          model,
-          max_tokens: 280,
-          temperature: 0.3,
-          messages: [
-            { role: 'system', content: systemRobot },
-            ...robotConvHistory
-          ]
-        })
-      });
-      if (response.ok) break;
+    for(let i=0;i<Math.min(GROQ_API_KEYS.length,3);i++){
+      const key=GROQ_API_KEYS[(groqKeyIdx+i)%GROQ_API_KEYS.length];
+      const model=GROQ_MODELS[groqModelIdx%GROQ_MODELS.length];
+      response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},body:JSON.stringify({model,max_tokens:280,temperature:0.3,messages:[{role:'system',content:systemRobot},...robotConvHistory]})});
+      if(response.ok) break;
     }
-    if (!response || !response.ok) throw new Error('Erreur API');
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu générer de réponse.';
-    robotConvHistory.push({ role: 'assistant', content: reply });
+    if(!response||!response.ok) throw new Error('Erreur API');
+    const data=await response.json();
+    const reply=data.choices?.[0]?.message?.content?.trim()||"Je n'ai pas pu générer de réponse.";
+    robotConvHistory.push({role:'assistant',content:reply});
     robotSpeak(reply);
-  } catch(err) {
-    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion et réessayez.');
-  }
+  } catch(err){robotSpeak("Désolé, une erreur est survenue. Vérifiez votre connexion et réessayez.");}
 }
 
-// Exposer
-window.openRobot        = openRobot;
-window.closeRobot       = closeRobot;
-window.toggleRobotMic   = toggleRobotMic;
+window.openRobot=openRobot; window.closeRobot=closeRobot; window.toggleRobotMic=toggleRobotMic;
+
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
-function toast(message, type = 'info') {
-  const c = document.getElementById('toastContainer') || document.getElementById('toast');
-  if (!c) return;
-  const d = document.createElement('div');
-  d.className = 'toast ' + type;
-  const icons = { success: '✓', error: '✕', info: 'i' };
-  const colors = { success: '#4ade80', error: '#f87171', info: '#d4a853' };
-  d.innerHTML = `<span style="font-weight:700;color:${colors[type] || colors.info}">${icons[type] || 'i'}</span><span>${message}</span>`;
+function toast(message, type='info'){
+  const c=document.getElementById('toastContainer')||document.getElementById('toast');
+  if(!c) return;
+  const d=document.createElement('div');
+  d.className='toast '+type;
+  const icons={success:'✓',error:'✕',info:'i'};
+  const colors={success:'#4ade80',error:'#f87171',info:'#d4a853'};
+  d.innerHTML=`<span style="font-weight:700;color:${colors[type]||colors.info}">${icons[type]||'i'}</span><span>${message}</span>`;
   c.appendChild(d);
-  setTimeout(() => d.style.opacity = '0', 3500);
-  setTimeout(() => d.remove(), 4100);
+  setTimeout(()=>d.style.opacity='0',3500);
+  setTimeout(()=>d.remove(),4100);
 }
 
 // ══════════════════════════════════════════
-// INIT SESSION
+// 🔐 INIT — Firebase Auth listener (remplace localStorage)
 // ══════════════════════════════════════════
 document.addEventListener('firebase-ready', async () => {
-  // Charger la config serveur dès le démarrage (avant même le login)
   await loadServerConfig();
-  const session = localStorage.getItem('syscohada_session');
-  if (session) {
-    try {
-      const { profileId } = JSON.parse(session);
-      const docRef = window._fbDoc(window._db, 'profiles', profileId);
-      const snap = await window._fbGetDoc(docRef);
-      if (snap.exists()) {
-        currentProfile = { ...snap.data(), id: profileId };
-        conversationHistory = [];
-        await loadApp();
-      }
-    } catch (e) { localStorage.removeItem('syscohada_session'); }
-  }
+  // onAuthStateChanged gère la persistance de session automatiquement
+  initAuthListener();
 });
 
 // ══════════════════════════════════════════
 // EXPOSITION GLOBALE
 // ══════════════════════════════════════════
-window.sendToAI             = sendToAI;
-window.handleAiKey          = handleAiKey;
-window.quickAI              = quickAI;
-window.doLogin              = doLogin;
-window.doRegister           = doRegister;
-window.doLogout             = doLogout;
-window.switchTab            = switchTab;
-window.navigate             = navigate;
-window.addLigne             = addLigne;
-window.removeLigne          = removeLigne;
-window.saveEcriture         = saveEcriture;
-window.updateAccountSuggest = updateAccountSuggest;
-window.selectAccount        = selectAccount;
-window.hideDropdown         = hideDropdown;
-window.updateBalance        = updateBalance;
-window.autoSaveAllEcritures = autoSaveAllEcritures;
-window.autoSaveAllFromNotif = autoSaveAllFromNotif;
-window.skipToNextEcriture   = skipToNextEcriture;
-window.dismissFillBanner    = dismissFillBanner;
-window.hideMultiEcrBanner   = hideMultiEcrBanner;
-window.hideSaisieNotif      = hideSaisieNotif;
-window.goToSaisie           = goToSaisie;
-window.toggleGL             = toggleGL;
-window.deleteEcriture       = deleteEcriture;
-window.deleteGroupe         = deleteGroupe;
-window.openExportModal      = openExportModal;
-window.closeExportModal     = closeExportModal;
-window.selectExport         = selectExport;
-window.doExport             = doExport;
-window.renderJournal        = renderJournal;
-window.renderGrandLivre     = renderGrandLivre;
-window.renderBalance        = renderBalance;
-window.renderBilan          = renderBilan;
-window.renderResultat       = renderResultat;
-window.renderTresorerie     = renderTresorerie;
-window.renderPlanComptable  = renderPlanComptable;
-window.resetJournalFiltre   = resetJournalFiltre;
-window.resetGLFiltre        = resetGLFiltre;
-window.resetBalanceFiltre   = resetBalanceFiltre;
-window.updateStats          = updateStats;
-window.toggleMobileSidebar  = toggleMobileSidebar;
-window.closeMobileSidebar   = closeMobileSidebar;
+window.sendToAI=sendToAI; window.handleAiKey=handleAiKey; window.quickAI=quickAI;
+window.doLogin=doLogin; window.doRegister=doRegister; window.doLogout=doLogout;
+window.switchTab=switchTab; window.showResetForm=showResetForm; window.hideResetForm=hideResetForm;
+window.doResetPassword=doResetPassword; window.togglePasswordVisibility=togglePasswordVisibility;
+window.navigate=navigate; window.addLigne=addLigne; window.removeLigne=removeLigne;
+window.saveEcriture=saveEcriture; window.updateAccountSuggest=updateAccountSuggest;
+window.selectAccount=selectAccount; window.hideDropdown=hideDropdown; window.updateBalance=updateBalance;
+window.autoSaveAllEcritures=autoSaveAllEcritures; window.autoSaveAllFromNotif=autoSaveAllFromNotif;
+window.skipToNextEcriture=skipToNextEcriture; window.dismissFillBanner=dismissFillBanner;
+window.hideMultiEcrBanner=hideMultiEcrBanner; window.hideSaisieNotif=hideSaisieNotif;
+window.goToSaisie=goToSaisie; window.toggleGL=toggleGL;
+window.deleteEcriture=deleteEcriture; window.deleteGroupe=deleteGroupe;
+window.openExportModal=openExportModal; window.closeExportModal=closeExportModal;
+window.selectExport=selectExport; window.doExport=doExport;
+window.renderJournal=renderJournal; window.renderGrandLivre=renderGrandLivre;
+window.renderBalance=renderBalance; window.renderBilan=renderBilan;
+window.renderResultat=renderResultat; window.renderTresorerie=renderTresorerie;
+window.renderPlanComptable=renderPlanComptable; window.resetJournalFiltre=resetJournalFiltre;
+window.resetGLFiltre=resetGLFiltre; window.resetBalanceFiltre=resetBalanceFiltre;
+window.updateStats=updateStats; window.toggleMobileSidebar=toggleMobileSidebar;
+window.closeMobileSidebar=closeMobileSidebar;
