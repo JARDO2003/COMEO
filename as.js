@@ -1,9 +1,3 @@
-// ═══════════════════════════════════════════════════════════════
-// COMEO AI — Script principal avec système d'abonnement intégré
-// Base principale : data-com-a94a8 (profils + écritures)
-// Base abonnements : data-fae4a (subscriptions + payments)
-// ═══════════════════════════════════════════════════════════════
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
