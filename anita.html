@@ -24,19 +24,23 @@
       <div class="auth-tab" id="tab-register" onclick="switchTab('register')">Créer un profil</div>
     </div>
     <div id="form-login" class="auth-form">
-      <div class="af-field"><label class="af-label">Nom d'entreprise</label><input class="af-input" type="text" id="l-company" placeholder="ex: SOTRA SARL"></div>
-      <div class="af-field"><label class="af-label">Mot de passe</label><input class="af-input" type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <div class="auth-err" id="l-err"></div>
-      <button class="auth-btn" onclick="doLogin()">⚡ Se connecter</button>
-    </div>
-    <div id="form-register" class="auth-form" style="display:none">
-      <div class="af-field"><label class="af-label">Nom de l'entreprise</label><input class="af-input" type="text" id="r-company" placeholder="ex: SOTRA SARL"></div>
-      <div class="af-field"><label class="af-label">N° Compte ventes</label><input class="af-input" type="text" id="r-compte701" placeholder="701" value="701"></div>
-      <div class="af-field"><label class="af-label">Exercice comptable</label><input class="af-input" type="text" id="r-exercice" placeholder="2024" value="2024" maxlength="4"></div>
-      <div class="af-field"><label class="af-label">Mot de passe (min 4 car.)</label><input class="af-input" type="password" id="r-pass" placeholder="Minimum 4 caractères"></div>
-      <div class="auth-err" id="r-err"></div>
-      <button class="auth-btn" onclick="doRegister()">✓ Créer mon profil</button>
-    </div>
+  <div class="af-field"><label class="af-label">Email</label><input class="af-input" type="email" id="l-email" placeholder="contact@sotra.ci"></div>
+  <div class="af-field"><label class="af-label">Mot de passe</label><input class="af-input" type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+  <div class="auth-err" id="l-err"></div>
+  <button class="auth-btn" onclick="doLogin()">⚡ Se connecter</button>
+  <div style="text-align:center;margin-top:10px">
+    <a href="#" style="font-size:12px;color:var(--warm);opacity:.7" onclick="doForgotPassword()">Mot de passe oublié ?</a>
+  </div>
+</div>
+   <div id="form-register" class="auth-form" style="display:none">
+  <div class="af-field"><label class="af-label">Nom de l'entreprise</label><input class="af-input" type="text" id="r-company" placeholder="ex: SOTRA SARL"></div>
+  <div class="af-field"><label class="af-label">Email professionnel</label><input class="af-input" type="email" id="r-email" placeholder="contact@sotra.ci"></div>
+  <div class="af-field"><label class="af-label">N° Compte ventes</label><input class="af-input" type="text" id="r-compte701" placeholder="701" value="701"></div>
+  <div class="af-field"><label class="af-label">Exercice comptable</label><input class="af-input" type="text" id="r-exercice" placeholder="2024" value="2024" maxlength="4"></div>
+  <div class="af-field"><label class="af-label">Mot de passe (min 6 car.)</label><input class="af-input" type="password" id="r-pass" placeholder="Minimum 6 caractères"></div>
+  <div class="auth-err" id="r-err"></div>
+  <button class="auth-btn" onclick="doRegister()">✓ Créer mon profil</button>
+</div>
   </div>
 </div>
 
