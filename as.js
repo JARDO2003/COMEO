@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
   authDomain: "data-com-a94a8.firebaseapp.com",
@@ -11,14 +12,22 @@ const firebaseConfig = {
   appId: "1:276904640935:web:9cd805aeba6c34c767f682",
   measurementId: "G-FYQCWY5G4S"
 };
-const auth = getAuth(app);
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-window._db = db; window._fbCollection = collection; window._fbAddDoc = addDoc;
-window._fbGetDocs = getDocs; window._fbDeleteDoc = deleteDoc; window._fbDoc = doc;
-window._fbQuery = query; window._fbOrderBy = orderBy; window._fbSetDoc = setDoc;
-window._fbGetDoc = getDoc; window._fbReady = true;
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+window._db          = db;
+window._fbCollection = collection;
+window._fbAddDoc    = addDoc;
+window._fbGetDocs   = getDocs;
+window._fbDeleteDoc = deleteDoc;
+window._fbDoc       = doc;
+window._fbQuery     = query;
+window._fbOrderBy   = orderBy;
+window._fbSetDoc    = setDoc;
+window._fbGetDoc    = getDoc;
+window._fbReady     = true;
 document.dispatchEvent(new Event('firebase-ready'));
 
 // ══════════════════════════════════════════
