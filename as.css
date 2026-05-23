@@ -764,6 +764,18 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 .robot-fab:hover .robot-fab-label { opacity:1; }
 
 /* PANNEAU PLEIN ÉCRAN */
+/* PANNEAU PLEIN ÉCRAN */
+.robot-panel {
+  position:fixed; inset:0; z-index:9000;
+  background:#06070f;
+  display:none; flex-direction:column;
+  overflow:hidden;
+  height:100vh;
+  width:100vw;
+}
+.robot-panel.open { display:flex; animation:rOpen .35s cubic-bezier(.4,0,.2,1); }
+@keyframes rOpen { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+
 .robot-body {
   position:relative; z-index:5;
   flex:1 1 0;
@@ -772,7 +784,6 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
   display:flex; flex-direction:column; align-items:center;
   justify-content:center; padding:20px 24px; gap:18px;
 }
-.robot-panel.open { display:flex; animation:rOpen .35s cubic-bezier(.4,0,.2,1); }
 @keyframes rOpen { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
 
 /* Canvas fond */
