@@ -1862,24 +1862,26 @@ function openRobot() {
   if (!panel) return;
   panel.classList.add('open');
   robotOpen = true;
+  document.body.style.overflow = 'hidden';
   initRobotVisualizer();
   initRobotBg();
   // Message de bienvenue vocal avec données contextuelles
-  setTimeout(() => {
-    const company = currentProfile?.company || 'votre entreprise';
-    const nb = ecritures.length;
-   const greetings_with_data = [
-  `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
-  `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
-  `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
-];
-const greetings_empty = [
-  `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
-  `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
-];
-const pool = nb > 0 ? greetings_with_data : greetings_empty;
-const greeting = pool[Math.floor(Math.random() * pool.length)];
-  }, 400);
+ setTimeout(() => {
+  const company = currentProfile?.company || 'votre entreprise';
+  const nb = ecritures.length;
+  const greetings_with_data = [
+    `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
+    `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
+    `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
+  ];
+  const greetings_empty = [
+    `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
+    `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
+  ];
+  const pool = nb > 0 ? greetings_with_data : greetings_empty;
+  const greeting = pool[Math.floor(Math.random() * pool.length)];
+  robotSpeak(greeting); // ✅ LIGNE MANQUANTE — appel effectif du TTS
+}, 400);
 }
 
 function closeRobot() {
@@ -1889,6 +1891,7 @@ function closeRobot() {
   robotSynth.cancel();
   panel.classList.remove('open');
   robotOpen = false;
+  document.body.style.overflow = '';
   robotSpeaking = false;
   setRobotStatus('online');
 }
