@@ -1,6 +1,13 @@
+// ═══════════════════════════════════════════════════════════════
+// COMEO AI — Script principal avec système d'abonnement intégré
+// Base principale : data-com-a94a8 (profils + écritures)
+// Base abonnements : data-fae4a (subscriptions + payments)
+// ═══════════════════════════════════════════════════════════════
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ── Base principale (profils + écritures) ──
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
   authDomain: "data-com-a94a8.firebaseapp.com",
@@ -12,8 +19,23 @@ const firebaseConfig = {
   measurementId: "G-FYQCWY5G4S"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// ── Base abonnements (séparée) ──
+const subFirebaseConfig = {
+  apiKey: "AIzaSyDHRxGdHpM2RFtvGMhXOu3slrT2JlmyNLM",
+  authDomain: "data-fae4a.firebaseapp.com",
+  databaseURL: "https://data-fae4a-default-rtdb.firebaseio.com",
+  projectId: "data-fae4a",
+  storageBucket: "data-fae4a.firebasestorage.app",
+  messagingSenderId: "1077301559347",
+  appId: "1:1077301559347:web:3405ab3bc8e1010d9e6346",
+  measurementId: "G-C631QW9NDN"
+};
+
+const app    = initializeApp(firebaseConfig);
+const db     = getFirestore(app);
+const subApp = initializeApp(subFirebaseConfig, 'subscriptions');
+const subDb  = getFirestore(subApp);
+
 window._db = db; window._fbCollection = collection; window._fbAddDoc = addDoc;
 window._fbGetDocs = getDocs; window._fbDeleteDoc = deleteDoc; window._fbDoc = doc;
 window._fbQuery = query; window._fbOrderBy = orderBy; window._fbSetDoc = setDoc;
@@ -21,14 +43,155 @@ window._fbGetDoc = getDoc; window._fbReady = true;
 document.dispatchEvent(new Event('firebase-ready'));
 
 // ══════════════════════════════════════════
+// SYSTÈME D'ABONNEMENT
+// Lien paiement : https://pay.wave.com/m/M_ci_iqMcg8KwRE-W/c/ci/?amount=15000
+// Essai gratuit : 12 heures | Prix : 15 000 FCFA / mois
+// ══════════════════════════════════════════
+const WAVE_PAYMENT_LINK = "https://pay.wave.com/m/M_ci_iqMcg8KwRE-W/c/ci/?amount=15000";
+const TRIAL_HOURS       = 12;
+const SUB_PRICE         = 15000;
+
+// ── Vérifie le statut d'abonnement d'un profileId ──
+async function checkSubscription(profileId) {
+  try {
+    const snap = await getDoc(doc(subDb, 'subscriptions', profileId));
+    if (!snap.exists()) return { allowed: false, status: 'none', message: 'no_sub' };
+
+    const sub = snap.data();
+    const now = new Date();
+
+    // Compte bloqué par admin
+    if (sub.status === 'blocked') {
+      return { allowed: false, status: 'blocked', message: 'blocked' };
+    }
+
+    // Expiration dépassée → statut expired automatique
+    if (sub.expiryDate && new Date(sub.expiryDate) < now) {
+      // Mettre à jour le statut en base si pas encore fait
+      if (sub.status !== 'expired') {
+        setDoc(doc(subDb, 'subscriptions', profileId), { status: 'expired' }, { merge: true })
+          .catch(() => {});
+      }
+      return { allowed: false, status: 'expired', message: 'expired', expiry: sub.expiryDate };
+    }
+
+    // Essai ou abonnement actif dans les délais
+    if (sub.status === 'active' || sub.status === 'trial') {
+      return { allowed: true, status: sub.status, expiry: sub.expiryDate };
+    }
+
+    // En attente de paiement
+    return { allowed: false, status: sub.status || 'pending', message: 'pending' };
+  } catch (e) {
+    console.warn('[COMEO] Erreur vérif abonnement :', e.message);
+    // En cas d'erreur réseau : bloquer par sécurité
+    return { allowed: false, status: 'error', message: 'network_error' };
+  }
+}
+
+// ── Crée un essai gratuit de 12h pour un nouveau profil ──
+async function createTrialSubscription(profileId, company) {
+  const trialExpiry = new Date();
+  trialExpiry.setHours(trialExpiry.getHours() + TRIAL_HOURS);
+  try {
+    await setDoc(doc(subDb, 'subscriptions', profileId), {
+      company:     company || profileId,
+      status:      'trial',
+      startDate:   new Date().toISOString(),
+      expiryDate:  trialExpiry.toISOString(),
+      totalPaid:   0,
+      createdAt:   new Date().toISOString()
+    });
+    return true;
+  } catch (e) {
+    console.warn('[COMEO] Erreur création essai :', e.message);
+    return false;
+  }
+}
+
+// ── Affiche l'overlay de paiement ──
+function showPaywall(status, expiry) {
+  const overlay = document.getElementById('paywallOverlay');
+  if (!overlay) return;
+
+  const title   = overlay.querySelector('#pw-title');
+  const msg     = overlay.querySelector('#pw-msg');
+  const badge   = overlay.querySelector('#pw-badge');
+
+  if (status === 'expired' || status === 'trial') {
+    if (title)  title.textContent = 'Votre période d\'essai est terminée';
+    if (msg)    msg.textContent   = 'Pour continuer à utiliser COMEO AI, abonnez-vous à 15 000 FCFA/mois via Wave.';
+    if (badge)  badge.textContent = '⏱ Essai expiré';
+  } else if (status === 'blocked') {
+    if (title)  title.textContent = 'Compte suspendu';
+    if (msg)    msg.textContent   = 'Votre compte a été suspendu. Contactez l\'administrateur pour plus d\'informations.';
+    if (badge)  badge.textContent = '⊘ Compte bloqué';
+  } else if (status === 'pending') {
+    if (title)  title.textContent = 'Paiement en attente';
+    if (msg)    msg.textContent   = 'Votre paiement est en cours de vérification. Contactez l\'administrateur si cela prend trop de temps.';
+    if (badge)  badge.textContent = '⏳ En attente';
+  } else {
+    if (title)  title.textContent = 'Abonnement requis';
+    if (msg)    msg.textContent   = 'Pour accéder à COMEO AI, abonnez-vous à 15 000 FCFA/mois via Wave.';
+    if (badge)  badge.textContent = '🔒 Non abonné';
+  }
+
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function hidePaywall() {
+  const overlay = document.getElementById('paywallOverlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+window.hidePaywall = hidePaywall;
+window.openWavePayment = () => window.open(WAVE_PAYMENT_LINK, '_blank');
+
+// ── Vérifie périodiquement l'abonnement (toutes les 5 min) ──
+function startSubscriptionWatcher(profileId) {
+  setInterval(async () => {
+    if (!currentProfile) return;
+    const result = await checkSubscription(profileId);
+    if (!result.allowed) showPaywall(result.status, result.expiry);
+  }, 5 * 60 * 1000); // toutes les 5 minutes
+}
+
+// ── Minuterie de compte à rebours affichée dans la topbar ──
+let countdownInterval = null;
+function startTrialCountdown(expiryDateStr) {
+  const indicator = document.getElementById('trialIndicator');
+  if (!indicator) return;
+
+  function update() {
+    const now      = new Date();
+    const expiry   = new Date(expiryDateStr);
+    const diffMs   = expiry - now;
+    if (diffMs <= 0) {
+      indicator.innerHTML = '⏱ Essai expiré';
+      clearInterval(countdownInterval);
+      showPaywall('expired');
+      return;
+    }
+    const hours   = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    const secs    = Math.floor((diffMs % 60000) / 1000);
+    indicator.innerHTML = `⏱ Essai : ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    indicator.style.display = 'flex';
+  }
+  update();
+  countdownInterval = setInterval(update, 1000);
+}
+
+// ══════════════════════════════════════════
 // CONFIGURATION SERVEUR — Chargée depuis Firestore (server_config)
 // Les clés API Groq et l'ordre des modèles sont gérés via server.html
 // JAMAIS de clé API en dur dans ce fichier
 // ══════════════════════════════════════════
-let GROQ_API_KEYS  = [];   // Chargées depuis server_config/groq_keys
-let GROQ_MODELS    = [];   // Chargées depuis server_config/models
-let groqKeyIdx     = 0;    // Index rotation clés
-let groqModelIdx   = 0;    // Index rotation modèles
+let GROQ_API_KEYS  = [];
+let GROQ_MODELS    = [];
+let groqKeyIdx     = 0;
+let groqModelIdx   = 0;
 let serverConfigLoaded = false;
 
 async function loadServerConfig() {
@@ -37,17 +200,13 @@ async function loadServerConfig() {
       getDoc(doc(db, 'server_config', 'groq_keys')),
       getDoc(doc(db, 'server_config', 'models'))
     ]);
-
     if (keysSnap.exists()) {
       const rawKeys = keysSnap.data().keys || [];
       GROQ_API_KEYS = rawKeys.map(k => k.value).filter(Boolean);
     }
-
     if (modelsSnap.exists()) {
       GROQ_MODELS = modelsSnap.data().list || [];
     }
-
-    // Valeurs par défaut si Firestore vide
     if (GROQ_MODELS.length === 0) {
       GROQ_MODELS = [
         'llama-3.3-70b-versatile',
@@ -55,12 +214,10 @@ async function loadServerConfig() {
         'meta-llama/llama-4-scout-17b-16e-instruct'
       ];
     }
-
     serverConfigLoaded = true;
     console.log(`[COMEO] Config chargée — ${GROQ_API_KEYS.length} clé(s) Groq, ${GROQ_MODELS.length} modèle(s)`);
   } catch (e) {
     console.warn('[COMEO] Erreur chargement config serveur :', e.message);
-    // Fallback modèles uniquement (sans clé — l'IA sera désactivée)
     GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
   }
 }
@@ -151,9 +308,6 @@ const NATURE_MAP  = { '1':'Passif','2':'Actif','3':'Actif','4':'Mixte','5':'Acti
 const JOURNAL_NAMES = { 'AC':'Achats','VE':'Ventes','BQ':'Banque','CA':'Caisse','OD':'Opérations Diverses','IN':'Inventaire','AN':'À Nouveau' };
 const JOURNAL_ICONS = { 'AC':'🛒','VE':'💰','BQ':'🏦','CA':'💵','OD':'📋','IN':'📦','AN':'📂' };
 
-// ══════════════════════════════════════════
-// TRI DÉBIT AVANT CRÉDIT — NORME SYSCOHADA
-// ══════════════════════════════════════════
 function sortLignesDebitAvantCredit(lignes) {
   return [...lignes].sort((a, b) => {
     const aIsDebit = (parseFloat(a.debit) || 0) > 0;
@@ -196,138 +350,58 @@ function closeMobileSidebar() {
 }
 
 // ══════════════════════════════════════════
-// SYSTEM PROMPT — RAISONNEMENT STRUCTURÉ
+// SYSTEM PROMPT
 // ══════════════════════════════════════════
 function buildSystemPrompt(ctx) {
   const { nbEcritures, companyName, exercice, totalDebit, totalCredit, comptesSoldes, allDates, ecrituresResume } = ctx;
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
   return `Tu es COMEO AI — Expert-Comptable Diplômé et Commissaire aux Comptes agréé en Côte d'Ivoire, membre de l'ONECCA-CI. Tu maîtrises parfaitement le SYSCOHADA Révisé 2017 et le droit fiscal ivoirien.
 
 ════════════════════════════════════════════
 🧠 MÉTHODE DE RAISONNEMENT OBLIGATOIRE
 ════════════════════════════════════════════
-
 Avant de produire TOUTE écriture, tu DOIS raisonner en silence selon ces étapes :
-
-ÉTAPE 1 — IDENTIFIER L'OPÉRATION
-  → Quelle est la nature exacte de l'opération ? (achat, vente, salaire, immobilisation, emprunt...)
-  → L'opération est-elle HT ou TTC ? Si TTC : HT = TTC ÷ 1,18 | TVA = TTC × 18/118
-  → Qui paie / qui reçoit ? Quelle est la contrepartie financière ?
-
-ÉTAPE 2 — COMPTER LES ÉCRITURES NÉCESSAIRES
-  → Combien d'écritures cette opération requiert-elle ? (1, 2 ou 3 ?)
-  → Ne JAMAIS générer moins d'écritures que nécessaire
-  → Vérifier : y a-t-il un mouvement de stock ? Un règlement ? Une constatation de dette ?
-
+ÉTAPE 1 — IDENTIFIER L'OPÉRATION → nature exacte, HT ou TTC, qui paie / reçoit
+ÉTAPE 2 — COMPTER LES ÉCRITURES NÉCESSAIRES → 1, 2 ou 3 ? Mouvement de stock ? Règlement ?
 ÉTAPE 3 — CHOISIR LES COMPTES EXACTS
-  → Classe 6 pour charges, Classe 7 pour produits, Classe 2 pour immobilisations
-  → JAMAIS 601 pour un véhicule/ordinateur/mobilier → utiliser 2451/2442/2444
-  → JAMAIS 511/512/513 pour un règlement par chèque → utiliser 521
-  → TVA : 4452 achats courants | 4451 immobilisations | 4453 transports | 4454 services
-
-ÉTAPE 4 — VÉRIFIER L'ÉQUILIBRE
-  → Σ DÉBITS = Σ CRÉDITS dans chaque écriture (tolérance : 0 FCFA)
-  → Les lignes débitrices TOUJOURS en premier (norme SYSCOHADA)
-
+ÉTAPE 4 — VÉRIFIER L'ÉQUILIBRE → Σ DÉBITS = Σ CRÉDITS (tolérance 0 FCFA)
 ÉTAPE 5 — FORMATER EN JSON
-  → Utiliser EXACTEMENT le format ###ECRITURE### décrit ci-dessous
 
 ════════════════════════════════════════════
 📋 SCHÉMAS OBLIGATOIRES PAR TYPE D'OPÉRATION
 ════════════════════════════════════════════
+ACHAT MARCHANDISES À CRÉDIT (3 écritures):
+  [AC] DÉBIT 601 + 4452 / CRÉDIT 401
+  [IN] DÉBIT 311 / CRÉDIT 6031
+  [BQ] DÉBIT 401 / CRÉDIT 521
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 ACHAT MARCHANDISES À CRÉDIT (3 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [AC] — Constatation facture :
-  DÉBIT  601   Achats de marchandises                    [HT]
-  DÉBIT  4452  TVA récupérable sur achats 18%            [TVA]
-  CRÉDIT 401   Fournisseurs                              [TTC]
+VENTE MARCHANDISES (3 écritures):
+  [VE] DÉBIT 411 / CRÉDIT 701 + 4431
+  [IN] DÉBIT 6031 / CRÉDIT 311
+  [BQ/CA] DÉBIT 521/571 / CRÉDIT 411
 
-ÉCRITURE 2 [IN] — Entrée en stock :
-  DÉBIT  311   Marchandises A                            [HT]
-  CRÉDIT 6031  Variation des stocks de marchandises      [HT]
+PAIEMENT SALAIRES (2 écritures):
+  [OD] DÉBIT 661 / CRÉDIT 422 + 431 + 447
+  [BQ] DÉBIT 422 / CRÉDIT 521
 
-ÉCRITURE 3 [BQ ou CA] — Règlement :
-  DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 521   Banques locales                           [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 VENTE MARCHANDISES (3 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [VE] — Facturation client :
-  DÉBIT  411   Clients                                   [TTC]
-  CRÉDIT 701   Ventes de marchandises                    [HT]
-  CRÉDIT 4431  TVA facturée sur ventes 18%               [TVA]
-
-ÉCRITURE 2 [IN] — Sortie de stock au coût d'achat :
-  DÉBIT  6031  Variation des stocks de marchandises      [coût HT]
-  CRÉDIT 311   Marchandises A                            [coût HT]
-
-ÉCRITURE 3 [BQ/CA] — Encaissement :
-  DÉBIT  521   Banques locales (ou 571 Caisse)           [TTC]
-  CRÉDIT 411   Clients                                   [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 PAIEMENT SALAIRES (2 écritures minimum)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [OD] :
-  DÉBIT  661   Rémunérations directes personnel national [brut]
-  CRÉDIT 422   Personnel, rémunérations dues             [net à payer]
-  CRÉDIT 431   Sécurité sociale — CNPS salarial 7,7%    [retenue CNPS]
-  CRÉDIT 447   Impôts retenus à la source                [retenue fiscale]
-
-ÉCRITURE 2 [BQ] :
-  DÉBIT  422   Personnel, rémunérations dues             [net à payer]
-  CRÉDIT 521   Banques locales                           [net à payer]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 ACHAT IMMOBILISATION (2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Véhicule → 2451 | Informatique → 2442 | Mobilier → 2444 | Matériel → 2441
-
-ÉCRITURE 1 [AC] :
-  DÉBIT  24xx  Immobilisation                            [HT]
-  DÉBIT  4451  TVA récupérable sur immobilisations 18%   [TVA]
-  CRÉDIT 401   Fournisseurs                              [TTC]
-
-ÉCRITURE 2 [BQ] :
-  DÉBIT  401   Fournisseurs                              [TTC]
-  CRÉDIT 521   Banques locales                           [TTC]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 EMPRUNT BANCAIRE (2 écritures)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ÉCRITURE 1 [BQ] :
-  DÉBIT  521   Banques locales                           [montant emprunté]
-  CRÉDIT 162   Emprunts auprès établissements de crédit  [montant emprunté]
-
-ÉCRITURE 2 [BQ] — Remboursement :
-  DÉBIT  162   Emprunts                                  [capital]
-  DÉBIT  671   Intérêts des emprunts                     [intérêts]
-  CRÉDIT 521   Banques locales                           [mensualité]
+ACHAT IMMOBILISATION (2 écritures):
+  [AC] DÉBIT 24xx + 4451 / CRÉDIT 401
+  [BQ] DÉBIT 401 / CRÉDIT 521
 
 ════════════════════════════════════════════
 🔢 CALCULS FISCAUX — CÔTE D'IVOIRE
 ════════════════════════════════════════════
-TVA standard       : 18%
-HT connu           : TVA = HT × 0,18 | TTC = HT × 1,18
-TTC connu          : HT = ARRONDI(TTC ÷ 1,18) | TVA = TTC - HT
-CNPS salarial      : 7,7% | CNPS patronal : 16% | TPA : 0,4% | CN : 1,5%/1,6%
-IS                 : 25% | IMF : 0,5% CA HT (min 3 000 000 FCFA/an)
+TVA standard : 18% | HT connu : TVA = HT × 0,18 | TTC = HT × 1,18
+TTC connu : HT = ARRONDI(TTC ÷ 1,18) | TVA = TTC - HT
+CNPS salarial : 7,7% | CNPS patronal : 16% | IS : 25%
 RÈGLE : Toujours arrondir à l'entier — JAMAIS de centimes en FCFA.
 
 ════════════════════════════════════════════
-✅ COMPTES CORRECTS — RÉFÉRENCE
+✅ COMPTES CORRECTS
 ════════════════════════════════════════════
-Chèque/virement → 521 (JAMAIS 511/512/513) | Espèces → 571 | Mobile Money → 552
-TVA achats → 4452 | TVA immob → 4451 | TVA transport → 4453 | TVA services → 4454
-TVA ventes → 4431 | TVA services vendus → 4432
-Véhicule → 2451 | Informatique → 2442 | Mobilier → 2444 | Matériel → 2441
-Amort véhicule → 2845 | Amort mobilier → 2844 | Amort industriel → 2841
-Salaires dus → 422 | Avances salaires → 4211
-Dette fournisseur → 401 | Créance client → 411
+Chèque/virement → 521 | Espèces → 571 | Mobile Money → 552
+TVA achats → 4452 | TVA immob → 4451 | TVA ventes → 4431
+Véhicule → 2451 | Informatique → 2442 | Mobilier → 2444
 
 ════════════════════════════════════════════
 🔴 RÈGLES ABSOLUES
@@ -336,10 +410,9 @@ Dette fournisseur → 401 | Créance client → 411
 2. Lignes DÉBITRICES toujours EN PREMIER (norme SYSCOHADA)
 3. JAMAIS de décimales — FCFA entiers uniquement
 4. TOUJOURS générer TOUTES les écritures nécessaires
-5. Explication textuelle AVANT les blocs ###ECRITURE###
 
 ════════════════════════════════════════════
-📂 CONTEXTE ENTREPRISE EN TEMPS RÉEL
+📂 CONTEXTE ENTREPRISE
 ════════════════════════════════════════════
 Entreprise    : ${companyName}
 Exercice      : ${exercice}
@@ -361,9 +434,6 @@ ${allDates ? `Période couverte : ${allDates}` : ''}
 
 Journaux : AC | VE | BQ | CA | OD | IN | AN
 
-════════════════════════════════════════════
-🔍 FILTRES ET NAVIGATION
-════════════════════════════════════════════
 Journal   : ###FILTRE###{"type":"journal","dateDebut":"YYYY-MM-DD","dateFin":"YYYY-MM-DD","journal":"","compte":""}
 Balance   : ###FILTRE###{"type":"balance","dateDebut":"","dateFin":"","journal":"","compte":""}
 Grand livre : ###FILTRE###{"type":"grandlivre","dateDebut":"","dateFin":"","journal":"","compte":"XXX"}
@@ -371,7 +441,7 @@ Bilan     : ###FILTRE###{"type":"bilan","dateDebut":"","dateFin":"YYYY-MM-DD","j
 }
 
 // ══════════════════════════════════════════
-// AUTH
+// AUTH — avec vérification abonnement
 // ══════════════════════════════════════════
 function switchTab(t) {
   document.getElementById('tab-login').classList.toggle('active', t === 'login');
@@ -381,11 +451,11 @@ function switchTab(t) {
 }
 
 async function doRegister() {
-  const company = document.getElementById('r-company').value.trim();
+  const company   = document.getElementById('r-company').value.trim();
   const compte701 = document.getElementById('r-compte701').value.trim() || '701';
-  const exercice = document.getElementById('r-exercice').value.trim() || '2024';
-  const pass = document.getElementById('r-pass').value;
-  const err = document.getElementById('r-err');
+  const exercice  = document.getElementById('r-exercice').value.trim() || '2024';
+  const pass      = document.getElementById('r-pass').value;
+  const err       = document.getElementById('r-err');
   err.classList.remove('show');
   if (!company) { err.textContent = "Nom d'entreprise requis"; err.classList.add('show'); return; }
   if (pass.length < 4) { err.textContent = 'Mot de passe trop court (4 caractères min.)'; err.classList.add('show'); return; }
@@ -393,10 +463,16 @@ async function doRegister() {
   try {
     await waitForFirebase();
     const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
+    const snap   = await window._fbGetDoc(docRef);
     if (snap.exists()) { err.textContent = "Ce nom d'entreprise existe déjà."; err.classList.add('show'); return; }
+
+    // Créer le profil
     await window._fbSetDoc(docRef, { company, compte701, exercice, password: btoa(pass), createdAt: new Date().toISOString() });
-    toast('Profil créé avec succès ! Connectez-vous.', 'success');
+
+    // Créer automatiquement un essai gratuit de 12h dans la base abonnements
+    await createTrialSubscription(profileId, company);
+
+    toast(`Profil créé ! Vous bénéficiez d'un essai gratuit de ${TRIAL_HOURS}h. Connectez-vous.`, 'success');
     switchTab('login');
     document.getElementById('l-company').value = company;
   } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
@@ -404,28 +480,40 @@ async function doRegister() {
 
 async function doLogin() {
   const company = document.getElementById('l-company').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  const err = document.getElementById('l-err');
+  const pass    = document.getElementById('l-pass').value;
+  const err     = document.getElementById('l-err');
   err.classList.remove('show');
   if (!company || !pass) { err.textContent = 'Remplissez tous les champs'; err.classList.add('show'); return; }
   const profileId = company.toLowerCase().replace(/[^a-z0-9]/g, '_');
   try {
     await waitForFirebase();
     const docRef = window._fbDoc(window._db, 'profiles', profileId);
-    const snap = await window._fbGetDoc(docRef);
+    const snap   = await window._fbGetDoc(docRef);
     if (!snap.exists()) { err.textContent = 'Entreprise introuvable.'; err.classList.add('show'); return; }
     const profile = snap.data();
     if (atob(profile.password) !== pass) { err.textContent = 'Mot de passe incorrect'; err.classList.add('show'); return; }
+
+    // ── Vérification abonnement ──
+    const subResult = await checkSubscription(profileId);
+    if (!subResult.allowed) {
+      // Afficher l'écran de paiement au lieu de charger l'app
+      err.textContent = '';
+      currentProfile = { ...profile, id: profileId };
+      showPaywall(subResult.status, subResult.expiry);
+      return;
+    }
+
     currentProfile = { ...profile, id: profileId };
     localStorage.setItem('syscohada_session', JSON.stringify({ profileId, company }));
     conversationHistory = [];
-    await loadApp();
+    await loadApp(subResult);
   } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); }
 }
 
 function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
   localStorage.removeItem('syscohada_session');
+  if (countdownInterval) clearInterval(countdownInterval);
   currentProfile = null; ecritures = []; conversationHistory = [];
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('authOverlay').style.display = 'flex';
@@ -438,15 +526,30 @@ function waitForFirebase() {
   });
 }
 
-async function loadApp() {
+async function loadApp(subResult) {
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('appShell').style.display = 'grid';
   document.getElementById('topCompanyName').textContent = currentProfile.company;
   document.getElementById('exerciceYear').value = currentProfile.exercice || '2024';
-  // Charger la config serveur (clés API) si pas encore fait
   if (!serverConfigLoaded) await loadServerConfig();
   await loadEcrituresFromFirestore();
   updateStats(); renderPlanComptable(); initSaisie();
+
+  // Afficher le badge d'abonnement dans la topbar
+  if (subResult && subResult.status === 'trial' && subResult.expiry) {
+    startTrialCountdown(subResult.expiry);
+  } else if (subResult && subResult.status === 'active') {
+    const indicator = document.getElementById('trialIndicator');
+    if (indicator) {
+      const exp = new Date(subResult.expiry);
+      indicator.innerHTML = `✓ Abonné · exp. ${exp.toLocaleDateString('fr-FR')}`;
+      indicator.style.display = 'flex';
+      indicator.style.color = '#4ade80';
+    }
+  }
+
+  // Lancer la surveillance périodique
+  startSubscriptionWatcher(currentProfile.id);
 }
 
 // ══════════════════════════════════════════
@@ -454,10 +557,10 @@ async function loadApp() {
 // ══════════════════════════════════════════
 async function loadEcrituresFromFirestore() {
   try {
-    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
-    const q = window._fbQuery(col, window._fbOrderBy('date', 'asc'));
+    const col  = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
+    const q    = window._fbQuery(col, window._fbOrderBy('date', 'asc'));
     const snap = await window._fbGetDocs(q);
-    ecritures = [];
+    ecritures  = [];
     snap.forEach(d => ecritures.push({ ...d.data(), _docId: d.id }));
     pieceCounter = ecritures.length + 1;
   } catch (e) { toast('Erreur chargement : ' + e.message, 'error'); }
@@ -465,7 +568,7 @@ async function loadEcrituresFromFirestore() {
 
 async function saveEcritureToFirestore(ecriture) {
   try {
-    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
+    const col    = window._fbCollection(window._db, 'profiles', currentProfile.id, 'ecritures');
     const docRef = await window._fbAddDoc(col, ecriture);
     ecriture._docId = docRef.id;
     return docRef.id;
@@ -509,26 +612,26 @@ function navigate(view) {
 function updateStats() {
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const all = ecritures.flatMap(e => e.lignes);
+  const all  = ecritures.flatMap(e => e.lignes);
   const prod = all.filter(l => l.compte?.[0] === '7').reduce((s, l) => s + (l.credit || 0), 0);
-  const chg = all.filter(l => l.compte?.[0] === '6').reduce((s, l) => s + (l.debit || 0), 0);
-  const res = prod - chg;
-  const eq = Math.abs(tD - tC) < 0.01;
+  const chg  = all.filter(l => l.compte?.[0] === '6').reduce((s, l) => s + (l.debit || 0), 0);
+  const res  = prod - chg;
+  const eq   = Math.abs(tD - tC) < 0.01;
   document.getElementById('s-ecritures').textContent = ecritures.length;
-  document.getElementById('s-debit').textContent = fn(tD);
-  document.getElementById('s-credit').textContent = fn(tC);
+  document.getElementById('s-debit').textContent     = fn(tD);
+  document.getElementById('s-credit').textContent    = fn(tC);
   const eqEl = document.getElementById('s-equil');
   eqEl.textContent = eq ? '✓ Équilibré' : '✗ Déséquilibré';
-  eqEl.className = 'val ' + (eq ? 'g' : 'r');
-  document.getElementById('dash-nb').textContent = ecritures.length;
-  document.getElementById('dash-debit').textContent = fs(tD);
+  eqEl.className   = 'val ' + (eq ? 'g' : 'r');
+  document.getElementById('dash-nb').textContent     = ecritures.length;
+  document.getElementById('dash-debit').textContent  = fs(tD);
   document.getElementById('dash-credit').textContent = fs(tC);
   const re = document.getElementById('dash-res');
-  re.textContent = fs(res);
-  re.style.color = res >= 0 ? 'var(--green)' : 'var(--red)';
-  const yr = document.getElementById('exerciceYear').value;
-  const bd = document.getElementById('bilanDate');
-  const ry = document.getElementById('resultatYear');
+  re.textContent  = fs(res);
+  re.style.color  = res >= 0 ? 'var(--green)' : 'var(--red)';
+  const yr  = document.getElementById('exerciceYear').value;
+  const bd  = document.getElementById('bilanDate');
+  const ry  = document.getElementById('resultatYear');
   if (bd) bd.textContent = '31/12/' + yr;
   if (ry) ry.textContent = yr;
 }
@@ -546,8 +649,8 @@ function fs(n) {
 // SAISIE
 // ══════════════════════════════════════════
 function initSaisie() {
-  document.getElementById('ecr-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('ecr-piece').placeholder = 'N°' + String(pieceCounter).padStart(5, '0');
+  document.getElementById('ecr-date').value         = new Date().toISOString().split('T')[0];
+  document.getElementById('ecr-piece').placeholder  = 'N°' + String(pieceCounter).padStart(5, '0');
   if (lignes.length === 0) { addLigne(); addLigne(); }
   renderLignes(); updateQueueBar();
 }
@@ -563,11 +666,11 @@ function removeLigne(i) { lignes.splice(i, 1); renderLignes(); }
 async function autoSaveAllEcritures() {
   if (ecrQueue.length === 0) { toast("Aucune écriture en file d'attente", 'error'); return; }
   const total = ecrQueue.length;
-  const bar = document.getElementById('autoSaveBar');
-  const msg = document.getElementById('autoSaveMsg');
-  const prog = document.getElementById('autoSaveProgress');
+  const bar   = document.getElementById('autoSaveBar');
+  const msg   = document.getElementById('autoSaveMsg');
+  const prog  = document.getElementById('autoSaveProgress');
   bar.classList.add('show');
-  const date = document.getElementById('ecr-date').value || new Date().toISOString().split('T')[0];
+  const date    = document.getElementById('ecr-date').value || new Date().toISOString().split('T')[0];
   const groupId = 'grp_' + Date.now();
   const groupLib = ecrQueue[0]?.libelle || 'Opération ' + new Date().toLocaleDateString('fr-FR');
   let saved = 0;
@@ -641,8 +744,8 @@ function loadEcritureFromQueue(idx) {
   if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
   renderLignes();
   const banner = document.getElementById('aiFillBanner');
-  const desc = document.getElementById('aiFillDesc');
-  const num = document.getElementById('aiFillNum');
+  const desc   = document.getElementById('aiFillDesc');
+  const num    = document.getElementById('aiFillNum');
   if (banner && desc) {
     desc.textContent = ecr.libelle || 'Écriture préparée par COMEO AI';
     if (num) num.textContent = ecrQueue.length > 1 ? `(${idx + 1}/${ecrQueue.length})` : '';
@@ -653,7 +756,7 @@ function loadEcritureFromQueue(idx) {
 function updateQueueBar() {
   const bar = document.getElementById('saisieQueueBar');
   if (!bar) return;
-  const counter = document.getElementById('sqbCounter');
+  const counter   = document.getElementById('sqbCounter');
   const remaining = ecrQueue.length - ecrQueueIdx;
   if (remaining > 0) {
     bar.classList.add('show');
@@ -674,12 +777,12 @@ function skipToNextEcriture() {
   }
 }
 
-function dismissFillBanner() { const b = document.getElementById('aiFillBanner'); if (b) b.classList.remove('show'); }
+function dismissFillBanner()  { const b = document.getElementById('aiFillBanner'); if (b) b.classList.remove('show'); }
 
 function showMultiEcrBanner(ecritures_ai) {
   const banner = document.getElementById('multiEcrBanner');
-  const list = document.getElementById('mebList');
-  const title = document.getElementById('mebTitle');
+  const list   = document.getElementById('mebList');
+  const title  = document.getElementById('mebTitle');
   if (!banner) return;
   title.textContent = `COMEO AI a préparé ${ecritures_ai.length} écriture${ecritures_ai.length > 1 ? 's' : ''} liées`;
   list.innerHTML = ecritures_ai.map((e, i) =>
@@ -692,7 +795,7 @@ function hideMultiEcrBanner() { const b = document.getElementById('multiEcrBanne
 
 function showSaisieNotif(libelle, count) {
   const notif = document.getElementById('saisieNotif');
-  const body = document.getElementById('saisieNotifBody');
+  const body  = document.getElementById('saisieNotifBody');
   if (!notif) return;
   body.textContent = count > 1
     ? `${count} écritures liées préparées. Cliquez "Tout enregistrer" pour les grouper.`
@@ -778,9 +881,9 @@ function renderLignes() {
 }
 
 function updateAccountSuggest(idx, input, mode) {
-  const q = input.value.toLowerCase().trim();
+  const q     = input.value.toLowerCase().trim();
   const dropId = mode === 'card' ? 'c-' + idx : 't-' + idx;
-  const drop = document.getElementById('drop-' + dropId);
+  const drop  = document.getElementById('drop-' + dropId);
   if (!drop) return;
   if (!q || q.length < 2) { drop.classList.remove('open'); return; }
   const matches = Object.entries(PC)
@@ -795,7 +898,7 @@ function updateAccountSuggest(idx, input, mode) {
 }
 
 function selectAccount(idx, code, lib) {
-  lignes[idx].compte = code;
+  lignes[idx].compte  = code;
   if (!lignes[idx].libelle) lignes[idx].libelle = lib.substring(0, 54);
   renderLignes();
 }
@@ -806,22 +909,22 @@ function hideDropdown(id) {
 function updateBalance() {
   let d = 0, c = 0;
   lignes.forEach(l => { d += parseFloat(l.debit) || 0; c += parseFloat(l.credit) || 0; });
-  const s = d - c;
+  const s   = d - c;
   const tdd = document.getElementById('totalDebitDisplay');
   const tcd = document.getElementById('totalCreditDisplay');
-  const el = document.getElementById('soldeDisplay');
+  const el  = document.getElementById('soldeDisplay');
   if (tdd) tdd.textContent = fn(d);
   if (tcd) tcd.textContent = fn(c);
-  if (el) { el.textContent = fn(Math.abs(s)); el.className = 'val ' + (Math.abs(s) < 0.01 ? 'bok' : 'bbad'); }
+  if (el)  { el.textContent = fn(Math.abs(s)); el.className = 'val ' + (Math.abs(s) < 0.01 ? 'bok' : 'bbad'); }
 }
 
 // ══════════════════════════════════════════
 // VALIDATION MANUELLE
 // ══════════════════════════════════════════
 async function saveEcriture() {
-  const date = document.getElementById('ecr-date').value;
+  const date    = document.getElementById('ecr-date').value;
   const journal = document.getElementById('ecr-journal').value;
-  const piece = document.getElementById('ecr-piece').value || 'N°' + String(pieceCounter).padStart(5, '0');
+  const piece   = document.getElementById('ecr-piece').value || 'N°' + String(pieceCounter).padStart(5, '0');
   const libelle = document.getElementById('ecr-libelle').value;
   if (!date) { toast('Veuillez saisir une date', 'error'); return; }
   const valid = lignes.filter(l => l.compte && (l.debit || l.credit));
@@ -858,7 +961,7 @@ async function saveEcriture() {
   } else {
     ecrQueue = []; ecrQueueIdx = 0; currentGroupId = null; lignes = []; updateQueueBar();
     document.getElementById('ecr-libelle').value = '';
-    document.getElementById('ecr-piece').value = '';
+    document.getElementById('ecr-piece').value   = '';
     hideSaisieNotif(); initSaisie();
   }
 }
@@ -870,9 +973,9 @@ function getEcrituresFiltrees(opts = {}) {
   const { dateDebut, dateFin, journal, compte } = opts;
   return ecritures.filter(e => {
     if (dateDebut && e.date < dateDebut) return false;
-    if (dateFin && e.date > dateFin) return false;
-    if (journal && e.journal !== journal) return false;
-    if (compte) return e.lignes.some(l => l.compte && l.compte.startsWith(compte));
+    if (dateFin   && e.date > dateFin)   return false;
+    if (journal   && e.journal !== journal) return false;
+    if (compte)   return e.lignes.some(l => l.compte && l.compte.startsWith(compte));
     return true;
   });
 }
@@ -882,9 +985,9 @@ function getEcrituresFiltrees(opts = {}) {
 // ══════════════════════════════════════════
 function resetJournalFiltre() {
   document.getElementById('jnl-date-debut').value = '';
-  document.getElementById('jnl-date-fin').value = '';
-  document.getElementById('journalFilter').value = '';
-  document.getElementById('journalSearch').value = '';
+  document.getElementById('jnl-date-fin').value   = '';
+  document.getElementById('journalFilter').value  = '';
+  document.getElementById('journalSearch').value  = '';
   const a = document.getElementById('journal-analyse');
   if (a) a.style.display = 'none';
   renderJournal();
@@ -893,17 +996,17 @@ function resetJournalFiltre() {
 function formatDateFR(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  const mois = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const mois = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   return `${parseInt(d)} ${mois[parseInt(m)]} ${y}`;
 }
 
 function renderJournal() {
-  const search = (document.getElementById('journalSearch')?.value || '').toLowerCase();
-  const filter = document.getElementById('journalFilter')?.value || '';
+  const search   = (document.getElementById('journalSearch')?.value  || '').toLowerCase();
+  const filter   = document.getElementById('journalFilter')?.value   || '';
   const dateDebut = document.getElementById('jnl-date-debut')?.value || '';
-  const dateFin = document.getElementById('jnl-date-fin')?.value || '';
-  const content = document.getElementById('journalContent');
-  const footer = document.getElementById('journal-totaux-footer');
+  const dateFin   = document.getElementById('jnl-date-fin')?.value   || '';
+  const content  = document.getElementById('journalContent');
+  const footer   = document.getElementById('journal-totaux-footer');
   if (!content) return;
 
   const ecFiltrees = getEcrituresFiltrees({ dateDebut, dateFin, journal: filter });
@@ -956,7 +1059,6 @@ function renderJournal() {
       <div class="jnl-date-sep-label">📅 ${formatDateFR(date)}</div>
       <div class="jnl-date-sep-line"></div>
     </div>`;
-
     byDate[date].forEach(group => {
       let groupD = 0, groupC = 0;
       group.ecritures.forEach(e => {
@@ -965,9 +1067,9 @@ function renderJournal() {
       });
       totalD += groupD; totalC += groupC;
       const mainJournal = group.ecritures[0]?.journal || 'OD';
-      const icon = JOURNAL_ICONS[mainJournal] || '📋';
-      const docIds = group.ecritures.map(e => `'${e._docId}'`).join(',');
-      const ecrIds = group.ecritures.map(e => e.id).join(',');
+      const icon        = JOURNAL_ICONS[mainJournal] || '📋';
+      const docIds      = group.ecritures.map(e => `'${e._docId}'`).join(',');
+      const ecrIds      = group.ecritures.map(e => e.id).join(',');
 
       if (group.isGroupe) {
         html += `<div class="jnl-groupe">
@@ -992,7 +1094,7 @@ function renderJournal() {
         const e = group.ecritures[0];
         let eD = 0, eC = 0;
         e.lignes.forEach(l => { eD += l.debit || 0; eC += l.credit || 0; });
-        const equil = Math.abs(eD - eC) < 1;
+        const equil  = Math.abs(eD - eC) < 1;
         const jnlCls = e.journal || 'OD';
         html += `<div class="jnl-groupe">
           <div class="jnl-groupe-header">
@@ -1019,16 +1121,16 @@ function renderJournal() {
   content.innerHTML = html;
   if (footer) {
     footer.style.display = 'block';
-    document.getElementById('jnl-nb-groupes').textContent = groups.length;
-    document.getElementById('jnl-nb-ecr').textContent = totalEcritures;
-    document.getElementById('jnl-nb-lignes').textContent = totalLignes;
+    document.getElementById('jnl-nb-groupes').textContent  = groups.length;
+    document.getElementById('jnl-nb-ecr').textContent      = totalEcritures;
+    document.getElementById('jnl-nb-lignes').textContent   = totalLignes;
     document.getElementById('jnl-total-debit').textContent = fn(totalD) + ' FCFA';
     document.getElementById('jnl-total-credit').textContent = fn(totalC) + ' FCFA';
     const eqEl = document.getElementById('jnl-equil-label');
     if (eqEl) {
       const balanced = Math.abs(totalD - totalC) < 1;
       eqEl.textContent = balanced ? '✓ Équilibré' : '✗ Déséquilibré';
-      eqEl.className = 'jnl-footer-val ' + (balanced ? 'eq' : 'neq');
+      eqEl.className   = 'jnl-footer-val ' + (balanced ? 'eq' : 'neq');
     }
   }
 }
@@ -1036,8 +1138,8 @@ function renderJournal() {
 function renderEcritureInGroupe(e, eIdx, totalInGroupe) {
   let eD = 0, eC = 0;
   e.lignes.forEach(l => { eD += l.debit || 0; eC += l.credit || 0; });
-  const equil = Math.abs(eD - eC) < 1;
-  const jnlCls = e.journal || 'OD';
+  const equil     = Math.abs(eD - eC) < 1;
+  const jnlCls    = e.journal || 'OD';
   const stepLabel = getStepLabel(e);
   const lignesAffichage = sortLignesDebitAvantCredit(e.lignes);
   return `<div class="jnl-ecriture type-${jnlCls}">
@@ -1101,7 +1203,7 @@ function getMap(opts = {}) {
   ecFiltrees.forEach(e => e.lignes.forEach(l => {
     if (!l.compte) return;
     if (!map[l.compte]) map[l.compte] = { debit: 0, credit: 0, mvts: [] };
-    map[l.compte].debit += l.debit || 0;
+    map[l.compte].debit  += l.debit  || 0;
     map[l.compte].credit += l.credit || 0;
     map[l.compte].mvts.push({
       date: e.date, piece: e.piece || '', journal: e.journal,
@@ -1114,18 +1216,18 @@ function getMap(opts = {}) {
 
 function resetGLFiltre() {
   document.getElementById('gl-date-debut').value = '';
-  document.getElementById('gl-date-fin').value = '';
-  document.getElementById('glSearch').value = '';
+  document.getElementById('gl-date-fin').value   = '';
+  document.getElementById('glSearch').value       = '';
   renderGrandLivre();
 }
 
 function renderGrandLivre() {
-  const search = document.getElementById('glSearch')?.value?.toLowerCase() || '';
+  const search    = document.getElementById('glSearch')?.value?.toLowerCase() || '';
   const dateDebut = document.getElementById('gl-date-debut')?.value || '';
-  const dateFin = document.getElementById('gl-date-fin')?.value || '';
-  const opts = (dateDebut || dateFin) ? { filtrer: true, dateDebut, dateFin } : {};
-  const map = getMap(opts);
-  const content = document.getElementById('grandLivreContent');
+  const dateFin   = document.getElementById('gl-date-fin')?.value  || '';
+  const opts      = (dateDebut || dateFin) ? { filtrer: true, dateDebut, dateFin } : {};
+  const map       = getMap(opts);
+  const content   = document.getElementById('grandLivreContent');
   if (!content) return;
   const comptes = Object.keys(map).sort();
   if (!comptes.length) { content.innerHTML = '<div class="empty-state"><div class="icon">⊞</div><p>Aucun mouvement</p></div>'; return; }
@@ -1179,9 +1281,9 @@ function toggleGL(id) { const el = document.getElementById(id); if (el) el.style
 // ══════════════════════════════════════════
 function resetBalanceFiltre() {
   document.getElementById('bal-date-debut').value = '';
-  document.getElementById('bal-date-fin').value = '';
-  document.getElementById('bal-journal').value = '';
-  document.getElementById('bal-classe').value = '';
+  document.getElementById('bal-date-fin').value   = '';
+  document.getElementById('bal-journal').value    = '';
+  document.getElementById('bal-classe').value     = '';
   const a = document.getElementById('balance-analyse');
   if (a) a.style.display = 'none';
   renderBalance();
@@ -1189,12 +1291,12 @@ function resetBalanceFiltre() {
 
 function renderBalance() {
   const dateDebut = document.getElementById('bal-date-debut')?.value || '';
-  const dateFin = document.getElementById('bal-date-fin')?.value || '';
-  const journal = document.getElementById('bal-journal')?.value || '';
-  const classe = document.getElementById('bal-classe')?.value || '';
-  const opts = (dateDebut || dateFin || journal) ? { filtrer: true, dateDebut, dateFin, journal } : {};
-  const map = getMap(opts);
-  const tbody = document.getElementById('balanceBody');
+  const dateFin   = document.getElementById('bal-date-fin')?.value   || '';
+  const journal   = document.getElementById('bal-journal')?.value    || '';
+  const classe    = document.getElementById('bal-classe')?.value     || '';
+  const opts      = (dateDebut || dateFin || journal) ? { filtrer: true, dateDebut, dateFin, journal } : {};
+  const map       = getMap(opts);
+  const tbody     = document.getElementById('balanceBody');
   if (!tbody) return;
   let comptes = Object.keys(map).sort();
   if (classe) comptes = comptes.filter(c => c.startsWith(classe));
@@ -1228,30 +1330,30 @@ function renderBalance() {
 // ══════════════════════════════════════════
 function renderBilan() {
   const dateArrete = document.getElementById('bilan-date-arrete')?.value;
-  const opts = dateArrete ? { filtrer: true, dateFin: dateArrete } : {};
-  const map = getMap(opts);
-  const content = document.getElementById('bilanContent');
+  const opts       = dateArrete ? { filtrer: true, dateFin: dateArrete } : {};
+  const map        = getMap(opts);
+  const content    = document.getElementById('bilanContent');
   if (!content) return;
   if (!Object.keys(map).length) {
     content.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">⊠</div><p>Saisissez des écritures pour générer le bilan</p></div>';
     return;
   }
   const actif = {
-    immob: { title: 'ACTIF IMMOBILISÉ', comptes: [] },
-    stocks: { title: 'STOCKS ET EN-COURS', comptes: [] },
+    immob:    { title: 'ACTIF IMMOBILISÉ', comptes: [] },
+    stocks:   { title: 'STOCKS ET EN-COURS', comptes: [] },
     creances: { title: 'CRÉANCES ET EMPLOIS ASSIMILÉS', comptes: [] },
-    treso: { title: 'TRÉSORERIE-ACTIF', comptes: [] }
+    treso:    { title: 'TRÉSORERIE-ACTIF', comptes: [] }
   };
   const passif = {
     cap: { title: 'CAPITAUX PROPRES ET RESSOURCES ASSIMILÉES', comptes: [] },
-    df: { title: 'DETTES FINANCIÈRES ET RESSOURCES ASSIMILÉES', comptes: [] },
+    df:  { title: 'DETTES FINANCIÈRES ET RESSOURCES ASSIMILÉES', comptes: [] },
     dct: { title: 'PASSIF CIRCULANT', comptes: [] },
-    tp: { title: 'TRÉSORERIE-PASSIF', comptes: [] }
+    tp:  { title: 'TRÉSORERIE-PASSIF', comptes: [] }
   };
   Object.entries(map).forEach(([code, acc]) => {
-    const s = acc.debit - acc.credit;
+    const s  = acc.debit - acc.credit;
     const cl = code[0];
-    const e = { code, lib: (PC[code] || code).substring(0, 40), solde: Math.abs(s) };
+    const e  = { code, lib: (PC[code] || code).substring(0, 40), solde: Math.abs(s) };
     if (cl === '2') { if (s > 0) actif.immob.comptes.push(e); }
     else if (cl === '3') { if (s > 0) actif.stocks.comptes.push(e); }
     else if (cl === '4') { if (s > 0) actif.creances.comptes.push(e); else if (s < 0) passif.dct.comptes.push({ ...e, solde: Math.abs(s) }); }
@@ -1281,34 +1383,34 @@ function renderBilan() {
 // RÉSULTAT
 // ══════════════════════════════════════════
 function renderResultat() {
-  const map = getMap();
+  const map     = getMap();
   const content = document.getElementById('resultatContent');
   if (!content) return;
   if (!Object.keys(map).length) { content.innerHTML = '<div class="empty-state"><div class="icon">↗</div><p>Aucune donnée</p></div>'; return; }
   const gt = pfx => Object.entries(map).filter(([c]) => pfx.some(p => c.startsWith(p))).reduce((s, [, a]) => s + (a.debit - a.credit), 0);
-  const ventes = Math.abs(gt(['701', '702', '703', '704', '705']));
+  const ventes   = Math.abs(gt(['701','702','703','704','705']));
   const prodsAcc = Math.abs(gt(['707']));
-  const autrProd = Math.abs(gt(['75', '718', '711']));
-  const transports = gt(['612', '614']);
-  const servExt = gt(['621', '622', '624', '625', '626', '627', '628', '631', '632', '634', '635', '638']);
-  const impTaxes = gt(['641', '645']);
-  const autresChg = gt(['651', '654', '658']);
-  const personnel = gt(['661', '662', '663', '664']);
-  const dap = gt(['681', '691', '697']);
-  const revFin = Math.abs(gt(['771', '772', '773', '774', '776', '777']));
-  const chgFin = gt(['671', '673', '674', '676']);
-  const haoP = Math.abs(gt(['821', '822', '841']));
-  const haoC = gt(['811', '812', '831', '834', '839', '851', '852', '854']);
-  const imp = gt(['891', '895']);
-  const mc = ventes - Math.abs(gt(['601'])) - gt(['6031']);
-  const ca = ventes + prodsAcc;
-  const va = ca + autrProd - Math.abs(gt(['601', '602', '604', '605', '608'])) - gt(['6031', '6032']) - transports - servExt - impTaxes - autresChg;
+  const autrProd = Math.abs(gt(['75','718','711']));
+  const transports = gt(['612','614']);
+  const servExt    = gt(['621','622','624','625','626','627','628','631','632','634','635','638']);
+  const impTaxes   = gt(['641','645']);
+  const autresChg  = gt(['651','654','658']);
+  const personnel  = gt(['661','662','663','664']);
+  const dap        = gt(['681','691','697']);
+  const revFin     = Math.abs(gt(['771','772','773','774','776','777']));
+  const chgFin     = gt(['671','673','674','676']);
+  const haoP       = Math.abs(gt(['821','822','841']));
+  const haoC       = gt(['811','812','831','834','839','851','852','854']);
+  const imp        = gt(['891','895']);
+  const mc  = ventes - Math.abs(gt(['601'])) - gt(['6031']);
+  const ca  = ventes + prodsAcc;
+  const va  = ca + autrProd - Math.abs(gt(['601','602','604','605','608'])) - gt(['6031','6032']) - transports - servExt - impTaxes - autresChg;
   const ebe = va - personnel;
-  const re = ebe - dap;
-  const rf = revFin - chgFin;
+  const re  = ebe - dap;
+  const rf  = revFin - chgFin;
   const rao = re + rf;
   const rhao = haoP - haoC;
-  const res = rao + rhao - imp;
+  const res  = rao + rhao - imp;
   const rr = (lbl, val, cls = '') => `<div class="rrow ${cls}"><span>${lbl}</span><span class="amount ${val >= 0 ? 'pos' : 'neg'}">${fn(Math.abs(val))} FCFA${val < 0 ? ' (−)' : ''}</span></div>`;
   content.innerHTML = `<div class="rlist">
     <div class="rrow header"><span>COMPTE DE RÉSULTAT — SYSCOHADA Révisé 2017</span><span></span></div>
@@ -1348,7 +1450,7 @@ function renderResultat() {
 // TRÉSORERIE
 // ══════════════════════════════════════════
 function renderTresorerie() {
-  const map = getMap();
+  const map     = getMap();
   const content = document.getElementById('tresorerieContent');
   if (!content) return;
   const tc = Object.entries(map).filter(([c]) => c.startsWith('5'));
@@ -1370,8 +1472,8 @@ function renderTresorerie() {
 // ══════════════════════════════════════════
 function renderPlanComptable() {
   const search = document.getElementById('pcSearch')?.value?.toLowerCase() || '';
-  const cls = document.getElementById('pcClass')?.value || '';
-  const tbody = document.getElementById('pcBody');
+  const cls    = document.getElementById('pcClass')?.value || '';
+  const tbody  = document.getElementById('pcBody');
   if (!tbody) return;
   const entries = Object.entries(PC).filter(([code, lib]) => {
     if (cls && !code.startsWith(cls)) return false;
@@ -1393,7 +1495,7 @@ function renderPlanComptable() {
 // ══════════════════════════════════════════
 // EXPORT PDF / WORD
 // ══════════════════════════════════════════
-function openExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'flex'; selectExport('pdf'); }
+function openExportModal()  { const m = document.getElementById('exportModal'); if (m) m.style.display = 'flex'; selectExport('pdf'); }
 function closeExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'none'; }
 function selectExport(fmt) {
   exportFormat = fmt;
@@ -1404,11 +1506,11 @@ function doExport() { closeExportModal(); if (exportFormat === 'pdf') exportPDF(
 
 function exportPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const yr = document.getElementById('exerciceYear').value;
+  const doc     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const yr      = document.getElementById('exerciceYear').value;
   const company = currentProfile?.company || 'Entreprise';
-  const pageW = 210;
-  const now = new Date().toLocaleDateString('fr-FR');
+  const pageW   = 210;
+  const now     = new Date().toLocaleDateString('fr-FR');
   doc.setFillColor(10, 11, 16); doc.rect(0, 0, pageW, 22, 'F');
   doc.setTextColor(212, 168, 83); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
   doc.text('SYSCOHADA Pro v4 — Révisé 2017', 14, 10);
@@ -1433,28 +1535,28 @@ function exportPDF() {
   });
   doc.autoTable({
     startY: 48,
-    head: [['Date', 'Jnl', 'N° Pièce', 'Compte', 'Libellé compte', 'Libellé opération', 'Débit FCFA', 'Crédit FCFA']],
+    head: [['Date','Jnl','N° Pièce','Compte','Libellé compte','Libellé opération','Débit FCFA','Crédit FCFA']],
     body: tableData,
-    foot: [['', '', '', '', '', 'TOTAUX', fn(totalD), fn(totalC)]],
-    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2.5 },
-    headStyles: { fillColor: [10, 11, 16], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 7 },
-    footStyles: { fillColor: [30, 34, 54], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: [250, 248, 244] },
+    foot: [['','','','','','TOTAUX', fn(totalD), fn(totalC)]],
+    styles:         { font:'helvetica', fontSize:7.5, cellPadding:2.5 },
+    headStyles:     { fillColor:[10,11,16], textColor:[212,168,83], fontStyle:'bold', fontSize:7 },
+    footStyles:     { fillColor:[30,34,54], textColor:[212,168,83], fontStyle:'bold', fontSize:8 },
+    alternateRowStyles: { fillColor:[250,248,244] },
     columnStyles: {
-      0: { cellWidth: 18 }, 1: { cellWidth: 10, halign: 'center' }, 2: { cellWidth: 18 },
-      3: { cellWidth: 16, fontStyle: 'bold' }, 4: { cellWidth: 28 }, 5: { cellWidth: 36 },
-      6: { cellWidth: 22, halign: 'right' }, 7: { cellWidth: 22, halign: 'right' }
+      0:{cellWidth:18}, 1:{cellWidth:10,halign:'center'}, 2:{cellWidth:18},
+      3:{cellWidth:16,fontStyle:'bold'}, 4:{cellWidth:28}, 5:{cellWidth:36},
+      6:{cellWidth:22,halign:'right'}, 7:{cellWidth:22,halign:'right'}
     },
-    margin: { left: 14, right: 14 }
+    margin: { left:14, right:14 }
   });
   doc.save(`SYSCOHADA_v4_${company.replace(/\s+/g, '_')}_${yr}.pdf`);
   toast('✓ PDF exporté avec succès', 'success');
 }
 
 function exportWord() {
-  const yr = document.getElementById('exerciceYear').value;
+  const yr      = document.getElementById('exerciceYear').value;
   const company = currentProfile?.company || 'Entreprise';
-  const now = new Date().toLocaleDateString('fr-FR');
+  const now     = new Date().toLocaleDateString('fr-FR');
   let jRows = '', totalD = 0, totalC = 0;
   ecritures.forEach(e => {
     const lignesSorted = sortLignesDebitAvantCredit(e.lignes);
@@ -1475,8 +1577,8 @@ function exportWord() {
   <tfoot><tr><td colspan="6" style="font-weight:bold;text-align:right">TOTAUX</td><td style="font-weight:bold;text-align:right">${fn(totalD)}</td><td style="font-weight:bold;text-align:right">${fn(totalC)}</td></tr></tfoot></table>
   </body></html>`;
   const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
   a.href = url; a.download = `SYSCOHADA_v4_${company.replace(/\s+/g, '_')}_${yr}.doc`;
   a.click(); URL.revokeObjectURL(url);
   toast('✓ Document Word exporté', 'success');
@@ -1491,7 +1593,7 @@ const COMPTES_IMMOB = { 'véhicule':'2451','camion':'2451','voiture':'2451','mot
 function corrigerComptesErreurs(lignes) {
   return lignes.map(l => {
     const code = String(l.compte || '');
-    const lib = (l.libelle || '').toLowerCase();
+    const lib  = (l.libelle || '').toLowerCase();
     let newCode = code;
     if ((code === '607' || code === '6058' || code === '601') && l.debit > 0) {
       const motTrouve = MOTS_IMMOBILISATIONS.find(m => lib.includes(m));
@@ -1510,7 +1612,7 @@ function corrigerComptesErreurs(lignes) {
 }
 
 // ══════════════════════════════════════════
-// COMEO AI — Clés chargées depuis Firestore
+// COMEO AI
 // ══════════════════════════════════════════
 function handleAiKey(e, ctx) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendToAI(ctx); } }
 
@@ -1524,19 +1626,19 @@ function quickAI(text) {
 function buildAIContext() {
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const map = getMap();
+  const map          = getMap();
   const comptesSoldes = Object.entries(map).slice(0, 12).map(([c, a]) => {
     const s = a.debit - a.credit;
     return `${c}:${s >= 0 ? 'Sd' : 'Sc'}${fn(Math.abs(s))}FCFA`;
   }).join(' | ');
   const dernieres = ecritures.slice(-5).map(e => `${e.date}[${e.journal}]${e.libelle || '—'}`).join('; ');
-  const allDates = [...new Set(ecritures.map(e => e.date))].sort().join(', ');
+  const allDates  = [...new Set(ecritures.map(e => e.date))].sort().join(', ');
   return {
-    nbEcritures: ecritures.length,
-    companyName: currentProfile?.company || 'Entreprise',
-    exercice: document.getElementById('exerciceYear')?.value || '2024',
-    totalDebit: fn(tD),
-    totalCredit: fn(tC),
+    nbEcritures:    ecritures.length,
+    companyName:    currentProfile?.company || 'Entreprise',
+    exercice:       document.getElementById('exerciceYear')?.value || '2024',
+    totalDebit:     fn(tD),
+    totalCredit:    fn(tC),
     comptesSoldes,
     ecrituresResume: dernieres,
     allDates
@@ -1545,35 +1647,26 @@ function buildAIContext() {
 
 async function sendToAI(context) {
   if (isAILoading) return;
-
-  // ── Vérification clés disponibles ──
   if (GROQ_API_KEYS.length === 0) {
-    appendMsg(context, 'ai',
-      '⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. ' +
-      'Rendez-vous sur <strong>server.html</strong> (interface administrateur) pour ajouter vos clés API Groq.'
-    );
+    appendMsg(context, 'ai', '⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. Rendez-vous sur <strong>server.html</strong> pour ajouter vos clés API Groq.');
     return;
   }
-
-  const inputId = context === 'dashboard' ? 'aiInput' : `aiInput-${context}`;
-  const input = document.getElementById(inputId);
-  const msg = input?.value?.trim();
+  const inputId  = context === 'dashboard' ? 'aiInput' : `aiInput-${context}`;
+  const input    = document.getElementById(inputId);
+  const msg      = input?.value?.trim();
   if (!msg) return;
   isAILoading = true; input.value = '';
   const sendBtnId = context === 'dashboard' ? 'aiSendBtn' : null;
   if (sendBtnId) { const btn = document.getElementById(sendBtnId); if (btn) btn.disabled = true; }
   appendMsg(context, 'user', msg);
-  const tid = appendTyping(context);
-  const ctxData = buildAIContext();
+  const tid       = appendTyping(context);
+  const ctxData   = buildAIContext();
   const systemPrompt = buildSystemPrompt(ctxData);
-
   conversationHistory.push({ role: 'user', content: msg });
   if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
 
   try {
     let response, lastError;
-
-    // Rotation clés × rotation modèles
     const totalAttempts = GROQ_API_KEYS.length * GROQ_MODELS.length;
     for (let attempt = 0; attempt < Math.min(totalAttempts, 6); attempt++) {
       const keyToUse   = GROQ_API_KEYS[(groqKeyIdx + attempt) % GROQ_API_KEYS.length];
@@ -1611,35 +1704,32 @@ async function sendToAI(context) {
     removeTyping(context, tid);
     if (!response || !response.ok) throw new Error(lastError || 'Toutes les clés/modèles sont indisponibles');
 
-    const data = await response.json();
+    const data     = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
-
     conversationHistory.push({ role: 'assistant', content: fullText });
 
-    // Traitement FILTRE
     const filtreMarker = fullText.indexOf('###FILTRE###');
     if (filtreMarker !== -1) {
       const displayText = fullText.substring(0, filtreMarker).trim();
-      const jsonStr = fullText.substring(filtreMarker + 12).trim();
+      const jsonStr     = fullText.substring(filtreMarker + 12).trim();
       if (displayText) appendMsg(context, 'ai', displayText);
       try {
-        const clean = jsonStr.replace(/```json|```/g, '').trim();
+        const clean     = jsonStr.replace(/```json|```/g, '').trim();
         const jsonMatch = clean.match(/(\{[\s\S]*?\})/);
         if (jsonMatch) { const filtre = JSON.parse(jsonMatch[1]); applyFiltreAndNavigate(filtre, context); }
       } catch (pe) { console.warn('Filtre parse error:', pe); }
 
-    // Traitement ÉCRITURE
     } else if (fullText.includes('###ECRITURE###')) {
-      const parts = fullText.split('###ECRITURE###');
-      const textBeforeFirst = parts[0].trim();
-      const ecrituresAI = [];
+      const parts            = fullText.split('###ECRITURE###');
+      const textBeforeFirst  = parts[0].trim();
+      const ecrituresAI      = [];
       for (let i = 1; i < parts.length; i++) {
-        const segment = parts[i].trim();
+        const segment   = parts[i].trim();
         const jsonMatch = segment.match(/(\{[\s\S]*\})/);
         if (jsonMatch) {
           try {
             const cleanJson = jsonMatch[1].replace(/```json|```/g, '').trim();
-            const ecr = JSON.parse(cleanJson);
+            const ecr       = JSON.parse(cleanJson);
             if (ecr.lignes && ecr.lignes.length >= 2) {
               let d = 0, c = 0;
               ecr.lignes.forEach(l => { d += Math.round(parseFloat(l.debit) || 0); c += Math.round(parseFloat(l.credit) || 0); });
@@ -1687,8 +1777,8 @@ function applyFiltreAndNavigate(filtre, context) {
   if (type === 'journal') {
     navigate('journal');
     if (dateDebut) document.getElementById('jnl-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('jnl-date-fin').value = dateFin;
-    if (journal) document.getElementById('journalFilter').value = journal;
+    if (dateFin)   document.getElementById('jnl-date-fin').value   = dateFin;
+    if (journal)   document.getElementById('journalFilter').value  = journal;
     renderJournal();
     const analyseEl = document.getElementById('journal-analyse');
     if (analyseEl) {
@@ -1699,14 +1789,14 @@ function applyFiltreAndNavigate(filtre, context) {
   } else if (type === 'balance') {
     navigate('balance');
     if (dateDebut) document.getElementById('bal-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('bal-date-fin').value = dateFin;
-    if (journal) document.getElementById('bal-journal').value = journal;
+    if (dateFin)   document.getElementById('bal-date-fin').value   = dateFin;
+    if (journal)   document.getElementById('bal-journal').value    = journal;
     renderBalance();
   } else if (type === 'grandlivre') {
     navigate('grandlivre');
     if (dateDebut) document.getElementById('gl-date-debut').value = dateDebut;
-    if (dateFin) document.getElementById('gl-date-fin').value = dateFin;
-    if (compte) document.getElementById('glSearch').value = compte;
+    if (dateFin)   document.getElementById('gl-date-fin').value   = dateFin;
+    if (compte)    document.getElementById('glSearch').value       = compte;
     renderGrandLivre();
     if (compte) setTimeout(() => { const el = document.getElementById('gl-' + compte); if (el) el.style.display = 'block'; }, 200);
   } else if (type === 'bilan') {
@@ -1716,7 +1806,6 @@ function applyFiltreAndNavigate(filtre, context) {
   }
 }
 
-// ── Affichage messages ──
 function appendMsg(context, role, text) {
   const msgId = context === 'dashboard' ? 'aiMessages' : `aiMessages-${context}`;
   const c = document.getElementById(msgId);
@@ -1727,9 +1816,9 @@ function appendMsg(context, role, text) {
   c.appendChild(d); c.scrollTop = c.scrollHeight;
 }
 function appendTyping(context) {
-  const id = 't' + Date.now();
+  const id    = 't' + Date.now();
   const msgId = context === 'dashboard' ? 'aiMessages' : `aiMessages-${context}`;
-  const c = document.getElementById(msgId);
+  const c     = document.getElementById(msgId);
   if (!c) return id;
   const d = document.createElement('div');
   d.className = 'msg ai'; d.id = id;
@@ -1761,20 +1850,17 @@ function fmt(text) {
     .replace(/&lt;br&gt;/gi, '<br>').replace(/&lt;br\/&gt;/gi, '<br>');
 }
 
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 // COMEO ROBOT — Assistant Vocal IA
-// STT (Web Speech API) → Groq LLM → TTS (Web Speech API)
-// ══════════════════════════════════════════════════════════
-
-let robotOpen       = false;
-let robotListening  = false;
-let robotSpeaking   = false;
-let robotRecog      = null;
-let robotSynth      = window.speechSynthesis;
-let robotVoice      = null;
+// ══════════════════════════════════════════
+let robotOpen        = false;
+let robotListening   = false;
+let robotSpeaking    = false;
+let robotRecog       = null;
+let robotSynth       = window.speechSynthesis;
+let robotVoice       = null;
 let robotConvHistory = [];
 
-// ── Initialiser les barres visualiseur ──
 function initRobotVisualizer() {
   const viz = document.getElementById('robotViz');
   if (!viz || viz.children.length > 0) return;
@@ -1786,8 +1872,6 @@ function initRobotVisualizer() {
     b.style.cssText = `--max:${peaks[i]||20}px;--spd:${0.4 + Math.random()*0.5}s;animation-delay:${i*0.04}s`;
     viz.appendChild(b);
   }
-
-  // Animation JS des barres (remplace les keyframes CSS)
   let animId;
   function animBars() {
     const avatar = document.getElementById('robotAvatar');
@@ -1804,12 +1888,11 @@ function initRobotVisualizer() {
   animBars();
 }
 
-// ── Fond particules ──
 function initRobotBg() {
   const bg = document.getElementById('robotBg');
   if (!bg || bg.children.length > 0) return;
   for (let i = 0; i < 14; i++) {
-    const d = document.createElement('div');
+    const d  = document.createElement('div');
     const sz = 40 + Math.random() * 120;
     d.className = 'robot-bg-dot';
     d.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--spd:${8+Math.random()*14}s;animation-delay:${Math.random()*8}s`;
@@ -1817,46 +1900,31 @@ function initRobotBg() {
   }
 }
 
-// ── Choisir meilleure voix française ──
 function pickRobotVoice() {
   const voices = robotSynth.getVoices();
   if (!voices.length) return;
-
-  // Priorité 1 — Voix Google masculines françaises (qualité Gemini)
-  const googleMale = voices.find(v =>
-    v.name === 'Google français' && v.lang.startsWith('fr')
-  );
+  const googleMale = voices.find(v => v.name === 'Google français' && v.lang.startsWith('fr'));
   if (googleMale) { robotVoice = googleMale; return; }
-
-  // Priorité 2 — Microsoft masculines françaises (Windows / Edge)
-  const msPref = ['Microsoft Paul', 'Microsoft Guillaume', 'Microsoft Henri', 'Microsoft Remy'];
+  const msPref = ['Microsoft Paul','Microsoft Guillaume','Microsoft Henri','Microsoft Remy'];
   for (const name of msPref) {
     const v = voices.find(v => v.name.includes(name));
     if (v) { robotVoice = v; return; }
   }
-
-  // Priorité 3 — Voix systèmes masculines françaises connues
-  const maleFrNames = ['Thomas', 'Nicolas', 'Remy', 'Guillaume', 'Henri', 'Pierre'];
+  const maleFrNames = ['Thomas','Nicolas','Remy','Guillaume','Henri','Pierre'];
   for (const name of maleFrNames) {
     const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('fr'));
     if (v) { robotVoice = v; return; }
   }
-
-  // Priorité 4 — N'importe quelle voix française disponible
   const anyFr = voices.find(v => v.lang.startsWith('fr'));
   if (anyFr) { robotVoice = anyFr; return; }
-
-  // Fallback ultime
   robotVoice = voices[0] || null;
 }
 
-// Recharger dès que les voix sont disponibles (délai navigateur)
 speechSynthesis.addEventListener('voiceschanged', pickRobotVoice);
 setTimeout(pickRobotVoice, 200);
 setTimeout(pickRobotVoice, 800);
 pickRobotVoice();
 
-// ── Ouvrir / Fermer le robot ──
 function openRobot() {
   const panel = document.getElementById('robotPanel');
   if (!panel) return;
@@ -1865,23 +1933,20 @@ function openRobot() {
   document.body.style.overflow = 'hidden';
   initRobotVisualizer();
   initRobotBg();
-  // Message de bienvenue vocal avec données contextuelles
- setTimeout(() => {
-  const company = currentProfile?.company || 'votre entreprise';
-  const nb = ecritures.length;
-  const greetings_with_data = [
-    `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
-    `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
-    `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
-  ];
-  const greetings_empty = [
-    `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
-    `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
-  ];
-  const pool = nb > 0 ? greetings_with_data : greetings_empty;
-  const greeting = pool[Math.floor(Math.random() * pool.length)];
-  robotSpeak(greeting); // ✅ LIGNE MANQUANTE — appel effectif du TTS
-}, 400);
+  setTimeout(() => {
+    const company = currentProfile?.company || 'votre entreprise';
+    const nb      = ecritures.length;
+    const greetings_with_data = [
+      `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
+      `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`
+    ];
+    const greetings_empty = [
+      `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`
+    ];
+    const pool    = nb > 0 ? greetings_with_data : greetings_empty;
+    const greeting = pool[Math.floor(Math.random() * pool.length)];
+    robotSpeak(greeting);
+  }, 400);
 }
 
 function closeRobot() {
@@ -1890,26 +1955,24 @@ function closeRobot() {
   stopRobotListening();
   robotSynth.cancel();
   panel.classList.remove('open');
-  robotOpen = false;
+  robotOpen   = false;
   document.body.style.overflow = '';
   robotSpeaking = false;
   setRobotStatus('online');
 }
 
-// ── Statuts visuels ──
 function setRobotStatus(state) {
-  const pill    = document.getElementById('robotStatusPill');
-  const avatar  = document.getElementById('robotAvatar');
-  const hint    = document.getElementById('robotHint');
-  const mic     = document.getElementById('robotMicBtn');
-  const bars    = document.querySelectorAll('.rv-bar');
+  const pill   = document.getElementById('robotStatusPill');
+  const avatar = document.getElementById('robotAvatar');
+  const hint   = document.getElementById('robotHint');
+  const mic    = document.getElementById('robotMicBtn');
+  const bars   = document.querySelectorAll('.rv-bar');
   if (!pill) return;
-
   const cfg = {
-    online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
-    listening: { text:'Écoute…',       cls:'listening', hint:'Je vous écoute…',        micOn:true  },
-    thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
-    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Je vous réponds…',       micOn:false }
+    online:    { text:'En ligne',   cls:'',          hint:'Appuyez pour parler',  micOn:false },
+    listening: { text:'Écoute…',    cls:'listening', hint:'Je vous écoute…',       micOn:true  },
+    thinking:  { text:'Réflexion…', cls:'thinking',  hint:'Analyse en cours…',     micOn:false },
+    speaking:  { text:'Répond…',    cls:'speaking',  hint:'Je vous réponds…',      micOn:false }
   };
   const s = cfg[state] || cfg.online;
   pill.textContent = s.text;
@@ -1917,13 +1980,7 @@ function setRobotStatus(state) {
   if (avatar) avatar.className = 'robot-avatar-main ' + (state !== 'online' ? state : '');
   if (hint)   hint.textContent = s.hint;
   if (mic)    mic.classList.toggle('active', s.micOn);
-
-  // Animer les barres
-  if (bars.length) {
-    bars.forEach(b => {
-      b.style.opacity = (state === 'online') ? '.3' : '.85';
-    });
-  }
+  if (bars.length) bars.forEach(b => { b.style.opacity = (state === 'online') ? '.3' : '.85'; });
 }
 
 function setRobotBubble(text) {
@@ -1938,82 +1995,46 @@ function setRobotBubble(text) {
     if (bubble) bubble.scrollTop = bubble.scrollHeight;
   }, 180);
 }
-// ── Synthèse vocale (TTS) ──
+
 function robotSpeak(text) {
   robotSynth.cancel();
   robotSpeaking = true;
   setRobotStatus('speaking');
-
-  // Affichage bulle
   setRobotBubble(
-    text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
-        .replace(/\n/g, '<br>')
+    text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>').replace(/\n/g, '<br>')
   );
-
-  // Nettoyage texte pour la synthèse
   const clean = text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/[\[\]#*_~`]/g, '')
-    .replace(/FCFA/g, 'francs CFA')
-    .replace(/\bXA\b/g, 'marge commerciale')
-    .replace(/\bXB\b/g, 'chiffre d\'affaires')
-    .replace(/\bXC\b/g, 'valeur ajoutée')
-    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bDAP\b/g, 'dotations aux amortissements')
-    .replace(/\bTVA\b/g, 'T.V.A')
-    .replace(/\n/g, ' . ');
-
-  // Découper en phrases pour un débit naturel (comme Gemini)
+    .replace(/\*\*(.*?)\*\*/g, '$1').replace(/[\[\]#*_~`]/g, '')
+    .replace(/FCFA/g, 'francs CFA').replace(/\bTVA\b/g, 'T.V.A').replace(/\n/g, ' . ');
   const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
-
   let idx = 0;
-
   function speakNext() {
     if (idx >= sentences.length || !robotSpeaking) {
       robotSpeaking = false;
       setRobotStatus('online');
-      setTimeout(() => {
-        if (robotOpen && !robotListening) startRobotListening();
-      }, 700);
+      setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 700);
       return;
     }
-
     const chunk = sentences[idx].trim();
     if (!chunk) { idx++; speakNext(); return; }
-
-    const utter = new SpeechSynthesisUtterance(chunk);
-
-    // Voix masculine
+    const utter   = new SpeechSynthesisUtterance(chunk);
     if (robotVoice) utter.voice = robotVoice;
-    utter.lang   = 'fr-FR';
-
-    // Réglages clés pour sonner comme Gemini :
-    // - rate 0.92  → légèrement plus lent qu'un robot, plus humain
-    // - pitch 0.88 → voix grave et posée (masculin)
-    // - volume 1   → plein volume
-    utter.rate   = 0.92;
-    utter.pitch  = 0.88;
-    utter.volume = 1;
-
+    utter.lang    = 'fr-FR';
+    utter.rate    = 0.92;
+    utter.pitch   = 0.88;
+    utter.volume  = 1;
     utter.onend   = () => { idx++; speakNext(); };
     utter.onerror = () => { idx++; speakNext(); };
-
     robotSynth.speak(utter);
   }
-
   speakNext();
 }
 
-// ── Reconnaissance vocale (STT) ──
 function initRobotSTT() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
-  recog.lang = 'fr-FR';
-  recog.continuous = false;
-  recog.interimResults = false;
-  recog.maxAlternatives = 1;
+  recog.lang = 'fr-FR'; recog.continuous = false; recog.interimResults = false; recog.maxAlternatives = 1;
   recog.onresult = (e) => {
     const transcript = e.results[0][0].transcript.trim();
     if (transcript.length > 1) { robotListening = false; handleRobotQuery(transcript); }
@@ -2025,9 +2046,7 @@ function initRobotSTT() {
       setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
     } else { setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000); }
   };
-  recog.onend = () => {
-    if (robotListening) { robotListening = false; setRobotStatus('online'); }
-  };
+  recog.onend = () => { if (robotListening) { robotListening = false; setRobotStatus('online'); } };
   return recog;
 }
 
@@ -2035,11 +2054,8 @@ function startRobotListening() {
   if (robotSpeaking || robotListening) return;
   if (!robotRecog) robotRecog = initRobotSTT();
   if (!robotRecog) { setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.'); return; }
-  try {
-    robotRecog.start();
-    robotListening = true;
-    setRobotStatus('listening');
-  } catch(e) { robotListening = false; }
+  try { robotRecog.start(); robotListening = true; setRobotStatus('listening'); }
+  catch(e) { robotListening = false; }
 }
 
 function stopRobotListening() {
@@ -2055,53 +2071,39 @@ function toggleRobotMic() {
   else { startRobotListening(); }
 }
 
-// ── Envoi à Groq avec contexte comptable ──
 async function handleRobotQuery(query) {
   if (!query) return;
   setRobotStatus('thinking');
   setRobotBubble('Je réfléchis…');
-
   if (GROQ_API_KEYS.length === 0) {
     robotSpeak('Les clés API ne sont pas configurées. Veuillez contacter l\'administrateur.');
     return;
   }
-
-  // Construire un résumé rapide des données
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
-  const map = getMap();
-  const nb = ecritures.length;
+  const map     = getMap();
+  const nb      = ecritures.length;
   const company = currentProfile?.company || 'Entreprise';
-  const yr = document.getElementById('exerciceYear')?.value || '2024';
-
-  // Résumé journal — 10 dernières opérations
+  const yr      = document.getElementById('exerciceYear')?.value || '2024';
   const jrnlResume = ecritures.slice(-10).map(e => {
     let d=0,c=0; e.lignes.forEach(l=>{d+=l.debit||0;c+=l.credit||0;});
     return `[${e.date}][${e.journal}] ${e.libelle||'—'} — Débit:${fn(d)} Crédit:${fn(c)}`;
   }).join('\n');
-
-  // Soldes des comptes principaux
   const soldes = Object.entries(map).slice(0, 20).map(([code, acc]) => {
     const s = acc.debit - acc.credit;
     return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
   }).join(', ');
 
- const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
+  const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
 
-IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé, qui es-tu, ou qui est ton concepteur :
+IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé :
 "J'ai été créé par le système MarcioAI dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
 
-FAÇON DE PARLER — tu parles exactement comme un humain cultivé et chaleureux, pas comme un robot :
-- Utilise des petites hésitations naturelles comme "eh bien", "voyons voir", "tout à fait", "exactement", "bien sûr"
-- Varie tes formules : ne commence jamais deux phrases de la même façon
-- Montre de l'enthousiasme quand c'est positif : "Très bonne nouvelle !", "Parfait !", "Excellent !"
-- Montre de l'empathie quand c'est négatif : "Je vois, c'est un point important à surveiller", "Ne vous inquiétez pas, on va arranger ça"
-- Pose parfois une petite question de suivi pour engager la conversation
-- Utilise "vous" avec respect et professionnalisme
-- Tu peux dire "écoutez", "regardons ensemble", "je vous explique"
-- Articule clairement les chiffres : dis "cinq cent mille francs CFA" pas "500000 FCFA"
+FAÇON DE PARLER — parle exactement comme un humain cultivé et chaleureux.
+- Utilise des hésitations naturelles : "eh bien", "voyons voir", "tout à fait", "exactement"
+- Montre de l'enthousiasme quand c'est positif : "Très bonne nouvelle !", "Parfait !"
 - N'utilise JAMAIS de markdown, tirets, tableaux, astérisques — parle uniquement
-- Sois concis et naturel : 3 à 5 phrases maximum par réponse
+- Sois concis : 3 à 5 phrases maximum par réponse
 - Arrondis toujours les grands chiffres pour la fluidité orale
 
 DONNÉES COMPTABLES EN TEMPS RÉEL pour ${company} (exercice ${yr}) :
@@ -2110,10 +2112,7 @@ Total des débits : ${fn(tD)} francs CFA
 Total des crédits : ${fn(tC)} francs CFA
 Situation : ${Math.abs(tD-tC)<1 ? 'les comptes sont parfaitement équilibrés' : 'attention, déséquilibre de '+fn(Math.abs(tD-tC))+' francs CFA'}
 Soldes des comptes principaux : ${soldes}
-Dernières opérations enregistrées : ${jrnlResume || 'Aucune écriture saisie pour le moment'}
-
-Tu peux donner des conseils comptables, fiscaux, analyser les données, et répondre à toutes les questions sur le travail comptable.
-Réponds directement sans te présenter à nouveau sauf demande explicite.`;
+Dernières opérations : ${jrnlResume || 'Aucune écriture saisie'}`;
 
   robotConvHistory.push({ role: 'user', content: query });
   if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
@@ -2139,7 +2138,7 @@ Réponds directement sans te présenter à nouveau sauf demande explicite.`;
       if (response.ok) break;
     }
     if (!response || !response.ok) throw new Error('Erreur API');
-    const data = await response.json();
+    const data  = await response.json();
     const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu générer de réponse.';
     robotConvHistory.push({ role: 'assistant', content: reply });
     robotSpeak(reply);
@@ -2148,10 +2147,10 @@ Réponds directement sans te présenter à nouveau sauf demande explicite.`;
   }
 }
 
-// Exposer
-window.openRobot        = openRobot;
-window.closeRobot       = closeRobot;
-window.toggleRobotMic   = toggleRobotMic;
+window.openRobot      = openRobot;
+window.closeRobot     = closeRobot;
+window.toggleRobotMic = toggleRobotMic;
+
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
@@ -2160,7 +2159,7 @@ function toast(message, type = 'info') {
   if (!c) return;
   const d = document.createElement('div');
   d.className = 'toast ' + type;
-  const icons = { success: '✓', error: '✕', info: 'i' };
+  const icons  = { success: '✓', error: '✕', info: 'i' };
   const colors = { success: '#4ade80', error: '#f87171', info: '#d4a853' };
   d.innerHTML = `<span style="font-weight:700;color:${colors[type] || colors.info}">${icons[type] || 'i'}</span><span>${message}</span>`;
   c.appendChild(d);
@@ -2172,18 +2171,25 @@ function toast(message, type = 'info') {
 // INIT SESSION
 // ══════════════════════════════════════════
 document.addEventListener('firebase-ready', async () => {
-  // Charger la config serveur dès le démarrage (avant même le login)
   await loadServerConfig();
   const session = localStorage.getItem('syscohada_session');
   if (session) {
     try {
       const { profileId } = JSON.parse(session);
       const docRef = window._fbDoc(window._db, 'profiles', profileId);
-      const snap = await window._fbGetDoc(docRef);
+      const snap   = await window._fbGetDoc(docRef);
       if (snap.exists()) {
+        // Vérifier l'abonnement avant de restaurer la session
+        const subResult = await checkSubscription(profileId);
+        if (!subResult.allowed) {
+          currentProfile = { ...snap.data(), id: profileId };
+          document.getElementById('authOverlay').style.display = 'none';
+          showPaywall(subResult.status, subResult.expiry);
+          return;
+        }
         currentProfile = { ...snap.data(), id: profileId };
         conversationHistory = [];
-        await loadApp();
+        await loadApp(subResult);
       }
     } catch (e) { localStorage.removeItem('syscohada_session'); }
   }
