@@ -431,3 +431,25 @@ mark { background: rgba(201,168,76,.28); color: var(--gold-light); border-radius
   .header-inner { padding: 12px 24px; }
   .library-grid { grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); }
 }
+/* Logo image */
+.logo-image {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
+  animation: logoFadeIn 1.2s ease forwards;
+}
+
+@keyframes logoFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
