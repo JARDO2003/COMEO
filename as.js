@@ -2799,6 +2799,40 @@ ANALYSE AUTOMATIQUE :
       } catch(e) {}
       return;
     }
+    // 3b. Ouvrir URL / moteur de recherche
+    if (reply.includes('###OPEN_URL###')) {
+      const parts = reply.split('###OPEN_URL###');
+      const texteBefore = parts[0].trim();
+      try {
+        const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
+        if (jsonMatch) {
+          const p = JSON.parse(jsonMatch[1]);
+          const url   = p.url;
+          const label = p.label || url;
+          if (texteBefore) robotSpeak(texteBefore);
+          const inner = document.getElementById('robotBubbleText');
+          if (inner) {
+            inner.innerHTML = `
+              <div style="text-align:center;padding:8px 0">
+                <div style="font-size:28px;margin-bottom:10px">🌐</div>
+                <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">${label}</div>
+                <a href="${url}" target="_blank" rel="noopener"
+                  style="display:inline-block;background:var(--warm);color:#000;border:none;
+                  padding:10px 22px;border-radius:8px;cursor:pointer;
+                  font-size:13px;font-family:var(--font-body);font-weight:700;
+                  text-decoration:none">
+                  → Ouvrir
+                </a>
+              </div>
+              <span class="blink-cur"></span>`;
+          }
+          setTimeout(() => {
+            if (!texteBefore) robotSpeak(`Voici le lien pour ${label}. Cliquez sur le bouton pour ouvrir.`);
+          }, 200);
+        }
+      } catch(e) { console.warn('URL parse error:', e); }
+      return;
+    }
 
     // 4. Réponse normale
     if (!isAction) await robotCacheSet(cacheKey, reply);
@@ -2808,40 +2842,16 @@ ANALYSE AUTOMATIQUE :
     robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
   }
 }
-// 3b. Ouvrir URL / moteur de recherche
-if (reply.includes('###OPEN_URL###')) {
-  const parts = reply.split('###OPEN_URL###');
-  const texteBefore = parts[0].trim();
-  try {
-    const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
-    if (jsonMatch) {
-      const p = JSON.parse(jsonMatch[1]);
-      const url   = p.url;
-      const label = p.label || url;
-      if (texteBefore) robotSpeak(texteBefore);
-      // Afficher bouton cliquable dans la bulle (obligatoire — navigateurs bloquent window.open sans clic)
-      const inner = document.getElementById('robotBubbleText');
-      if (inner) {
-        inner.innerHTML = `
-          <div style="text-align:center;padding:8px 0">
-            <div style="font-size:28px;margin-bottom:10px">🌐</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">${label}</div>
-            <a href="${url}" target="_blank" rel="noopener"
-              style="display:inline-block;background:var(--warm);color:#000;border:none;
-              padding:10px 22px;border-radius:8px;cursor:pointer;
-              font-size:13px;font-family:var(--font-body);font-weight:700;
-              text-decoration:none">
-              → Ouvrir
-            </a>
-          </div>
-          <span class="blink-cur"></span>`;
-      }
-      setTimeout(() => {
-        if (!texteBefore) robotSpeak(`Voici le lien pour ${label}. Cliquez sur le bouton pour ouvrir.`);
-      }, 200);
-    }
-  } catch(e) { console.warn('URL parse error:', e); }
-  return;
+// Exposer
+window.openRobot      = openRobot;
+
+    // 4. Réponse normale
+    if (!isAction) await robotCacheSet(cacheKey, reply);
+    robotSpeak(reply);
+
+  } catch(err) {
+    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
+  }
 }
 
 // Exposer
