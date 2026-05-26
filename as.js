@@ -597,12 +597,11 @@ function updateStats() {
   if (ry) ry.textContent = yr;
 }
 function fn(n) { return Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }); }
-
-// Version spéciale pour jsPDF — sans caractères non-ASCII
 function fnPDF(n) {
   const num = Math.round(Number(n) || 0);
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
+window.fnPDF = fnPDF;
 function fs(n) {
   const a = Math.abs(n);
   if (a >= 1e9) return (n / 1e9).toFixed(1) + ' Md FCFA';
@@ -2287,175 +2286,516 @@ function showCreatorImage() {
     <span class="blink-cur"></span>`;
 }
 
+// ══════════════════════════════════════════
+// ROBOT — AFFICHAGE 3D JOURNAL
+// ══════════════════════════════════════════
+function showRobot3DJournal(ecrituresData) {
+  // Créer un overlay 3D par-dessus le robot panel
+  const existing = document.getElementById('robot3DOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'robot3DOverlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9999;background:rgba(6,7,15,.97);
+    display:flex;flex-direction:column;overflow:hidden;
+    animation:fadein .3s ease`;
+
+  // Grouper par opération
+  const groupes = {};
+  ecrituresData.forEach(e => {
+    const key = e.groupId || ('solo_' + e.id);
+    if (!groupes[key]) groupes[key] = [];
+    groupes[key].push(e);
+  });
+
+  const groupList = Object.values(groupes).sort((a,b) =>
+    a[0].date.localeCompare(b[0].date));
+
+  const cardsHTML = groupList.slice(0, 20).map((grp, gi) => {
+    const mainEcr = grp[0];
+    let totalD = 0, totalC = 0;
+    grp.forEach(e => e.lignes.forEach(l => {
+      totalD += l.debit || 0; totalC += l.credit || 0;
+    }));
+    const jnlColors = {
+      AC:'#f59e0b', VE:'#22c55e', BQ:'#3b82f6',
+      CA:'#8b5cf6', OD:'#ec4899', IN:'#06b6d4', AN:'#d4a853'
+    };
+    const color = jnlColors[mainEcr.journal] || '#d4a853';
+    const lignesHTML = grp.flatMap(e =>
+      sortLignesDebitAvantCredit(e.lignes).map(l => `
+        <div style="display:flex;justify-content:space-between;
+          padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);
+          font-size:10px;font-family:var(--font-mono)">
+          <span style="color:rgba(255,255,255,.5)">${l.compte}</span>
+          <span style="flex:1;margin:0 8px;color:rgba(255,255,255,.7);
+            font-family:var(--font-body);font-size:10px;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${l.libelle || PC[l.compte] || ''}
+          </span>
+          <span style="color:#60a5fa;min-width:70px;text-align:right">
+            ${l.debit ? fnPDF(l.debit) : ''}
+          </span>
+          <span style="color:#4ade80;min-width:70px;text-align:right">
+            ${l.credit ? fnPDF(l.credit) : ''}
+          </span>
+        </div>`)
+    ).join('');
+
+    return `
+      <div class="r3d-card" style="
+        background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.01) 100%);
+        border:1px solid ${color}44;border-radius:12px;padding:16px;
+        min-width:320px;max-width:380px;flex-shrink:0;
+        transform:perspective(800px) rotateY(${(gi - groupList.length/2) * 3}deg);
+        box-shadow:0 8px 32px ${color}22;
+        transition:transform .3s ease,box-shadow .3s ease;cursor:pointer"
+        onmouseover="this.style.transform='perspective(800px) rotateY(0deg) scale(1.04)';
+          this.style.boxShadow='0 16px 48px ${color}44'"
+        onmouseout="this.style.transform='perspective(800px) rotateY(${(gi - groupList.length/2) * 3}deg)';
+          this.style.boxShadow='0 8px 32px ${color}22'">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="background:${color};color:#000;padding:2px 8px;
+            border-radius:4px;font-size:9px;font-weight:700;
+            font-family:var(--font-mono)">${mainEcr.journal}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,.4);
+            font-family:var(--font-mono)">${mainEcr.date}</span>
+          <span style="margin-left:auto;font-size:10px;color:${color};
+            font-family:var(--font-mono);font-weight:700">${fnPDF(totalD)} FCFA</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:8px;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${mainEcr.groupLibelle || mainEcr.libelle || '—'}
+        </div>
+        <div style="max-height:120px;overflow:hidden">${lignesHTML}</div>
+        ${grp.length > 1 ? `<div style="margin-top:6px;font-size:9px;
+          color:${color};opacity:.7">${grp.length} écritures liées</div>` : ''}
+      </div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+      padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:8px;height:8px;border-radius:50%;
+          background:#d4a853;box-shadow:0 0 8px #d4a853;animation:pulse 1.5s infinite"></div>
+        <span style="font-family:var(--font-body);font-size:14px;
+          font-weight:600;color:#d4a853">Journal 3D — COMEO AI</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.4)">
+          ${groupList.length} opération${groupList.length>1?'s':''} · 
+          ${ecrituresData.length} écriture${ecrituresData.length>1?'s':''}
+        </span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="navigate('journal');closeRobot3D()"
+          style="background:rgba(212,168,83,.15);border:1px solid rgba(212,168,83,.3);
+          color:#d4a853;padding:6px 14px;border-radius:6px;cursor:pointer;
+          font-size:11px;font-family:var(--font-body)">
+          → Voir journal complet
+        </button>
+        <button onclick="closeRobot3D()"
+          style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+          color:rgba(255,255,255,.6);padding:6px 14px;border-radius:6px;
+          cursor:pointer;font-size:11px;font-family:var(--font-body)">
+          ✕ Fermer
+        </button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-x:auto;overflow-y:hidden;padding:24px;
+      display:flex;align-items:center;gap:16px;
+      scroll-snap-type:x mandatory">
+      ${cardsHTML || '<div style="color:rgba(255,255,255,.3);margin:auto">Aucune écriture</div>'}
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid rgba(255,255,255,.06);
+      display:flex;gap:8px;flex-wrap:wrap">
+      <span style="font-size:10px;color:rgba(255,255,255,.3)">
+        Défilez horizontalement pour voir toutes les opérations · 
+        Survolez une carte pour agrandir
+      </span>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+function closeRobot3D() {
+  const el = document.getElementById('robot3DOverlay');
+  if (el) { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }
+}
+window.closeRobot3D = closeRobot3D;
+
+// ══════════════════════════════════════════
+// ROBOT — ACTIONS DIRECTES SUR LES DONNÉES
+// ══════════════════════════════════════════
+
+// Créer une facture depuis le robot
+async function robotCreateFacture(params) {
+  const { clientNom, lignes, notes, modeReglement } = params;
+
+  // Chercher ou créer le client
+  let client = clientsList.find(c =>
+    c.nom.toLowerCase().includes(clientNom.toLowerCase()));
+
+  if (!client && clientNom) {
+    const newClient = {
+      id: Date.now(),
+      code: 'CLI-' + String(clientCounter).padStart(3,'0'),
+      nom: clientNom, tel: '', email: '', ville: 'Abidjan',
+      adresse: '', nif: '', notes: 'Créé par COMEO AI Robot',
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'clients');
+      const ref = await window._fbAddDoc(col, newClient);
+      newClient._docId = ref.id;
+      clientsList.push(newClient);
+      clientCounter++;
+      client = newClient;
+    } catch(e) {}
+  }
+
+  // Calculer totaux
+  let ht = 0, tva = 0;
+  const facLignesData = (lignes || []).map(l => {
+    const lineHT = Math.round((l.qte || 1) * (l.pu || 0) * (1 - (l.remise||0)/100));
+    const lineTVA = Math.round(lineHT * (l.tva||18) / 100);
+    ht += lineHT; tva += lineTVA;
+    return { designation: l.designation, qte: l.qte||1, pu: l.pu||0, remise: l.remise||0, tva: l.tva||18 };
+  });
+  const ttc = ht + tva;
+  const today = new Date().toISOString().split('T')[0];
+  const echeance = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+  const numero = 'FAC-' + new Date().getFullYear() + '-' + String(factureCounter).padStart(4,'0');
+
+  const facture = {
+    id: Date.now(), numero, type: 'facture',
+    dateEmission: today, dateEcheance: echeance,
+    clientId: client?.id || 0, clientNom: client?.nom || clientNom,
+    clientAdresse: client?.adresse || '', clientEmail: client?.email || '',
+    clientTel: client?.tel || '', reference: '',
+    notes: notes || 'Facture créée par COMEO AI Robot',
+    modeReglement: modeReglement || 'virement',
+    conditions: '30j', monnaie: 'FCFA', remiseGlobale: 0,
+    lignes: facLignesData, ht, tva, ttc,
+    statut: 'envoyee', montantPaye: 0,
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'factures');
+    const ref = await window._fbAddDoc(col, facture);
+    facture._docId = ref.id;
+    facturesList.push(facture);
+    factureCounter++;
+    // Auto-comptabilisation
+    await autoComptabiliserFacture(facture);
+    return facture;
+  } catch(e) {
+    console.error('Erreur création facture robot:', e);
+    return null;
+  }
+}
+
+// Modifier une écriture depuis le robot
+async function robotModifyEcriture(docId, changes) {
+  try {
+    const idx = ecritures.findIndex(e => e._docId === docId);
+    if (idx === -1) return false;
+    const updated = { ...ecritures[idx], ...changes };
+    await window._fbSetDoc(
+      window._fbDoc(window._db, 'profiles', currentProfile.id, 'ecritures', docId),
+      updated
+    );
+    ecritures[idx] = updated;
+    updateStats();
+    return true;
+  } catch(e) { return false; }
+}
+
+// ══════════════════════════════════════════
+// ROBOT — HANDLE QUERY (VERSION COMPLÈTE)
+// ══════════════════════════════════════════
 async function handleRobotQuery(query) {
   if (!query) return;
   setRobotStatus('thinking');
   setRobotBubble('Je réfléchis…');
 
   if (GROQ_API_KEYS.length === 0) {
-    robotSpeak('Les clés API ne sont pas configurées. Veuillez contacter l\'administrateur.');
+    robotSpeak('Les clés API ne sont pas configurées. Contactez l administrateur.');
     return;
   }
 
-  // ── Détection question sur le créateur ──
   const queryLow = query.toLowerCase();
-  const isAboutCreator = ['créateur','createur','créé','cree','marcio','zinzindohoue','qui t\'a','qui vous a','concepteur','développeur','developpeur','fondateur','auteur'].some(k => queryLow.includes(k));
+
+  // ── Détection créateur ──
+  const isAboutCreator = ['créateur','createur','marcio','zinzindohoue',
+    'qui t\'a','concepteur','développeur','developpeur','fondateur']
+    .some(k => queryLow.includes(k));
 
   if (isAboutCreator) {
-    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo , c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace Ouémoa et Cédéao. J\'ai été créée par le système Marcio Dev et je suis fière de mon existence. Merci de vous y intéresser.';
-    
-    // Démarrer les lumières et le statut
+    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur, cofondateur de Groupe Express et créateur de COMEO. Je suis fière de mon existence.';
     startRobotLights();
     setRobotStatus('speaking');
     robotSpeaking = true;
-
-    // Afficher l'image dans la bulle SANS appeler setRobotBubble
-    const bubble = document.getElementById('robotBubble');
-    const inner  = document.getElementById('robotBubbleText');
-    if (inner) {
-      inner.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-          <img src="images/marcioAI.jpg"
-            style="width:120px;height:120px;border-radius:50%;border:3px solid var(--warm);
-                   object-fit:cover;box-shadow:0 0 30px rgba(212,168,83,.5);
-                   animation:fadein .5s ease"
-            onerror="this.outerHTML='<div style=font-size:48px>👨‍💼</div>'">
-          <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85);text-align:center">
-            <strong style="color:var(--warm);font-size:15px">Marcio Jardel ZINZINDOHOUE</strong><br>
-            <span style="color:rgba(255,255,255,.5);font-size:11px">Jeune entrepreneur · Cofondateur</span><br>
-            Groupe Express · COMEO AI
-          </div>
+    const inner = document.getElementById('robotBubbleText');
+    if (inner) inner.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <img src="images/marcioAI.jpg" style="width:120px;height:120px;border-radius:50%;
+          border:3px solid var(--warm);object-fit:cover;
+          box-shadow:0 0 30px rgba(212,168,83,.5)"
+          onerror="this.outerHTML='<div style=font-size:48px>👨‍💼</div>'">
+        <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85);text-align:center">
+          <strong style="color:var(--warm);font-size:15px">Marcio Jardel ZINZINDOHOUE</strong><br>
+          Jeune entrepreneur · Cofondateur<br>Groupe Express · COMEO AI
         </div>
-        <span class="blink-cur"></span>`;
-    }
-
-    // Lire le texte SANS écraser la bulle (passer par SpeechSynthesisUtterance directement)
+      </div><span class="blink-cur"></span>`;
     robotSynth.cancel();
-    const clean = cleanTextForSpeech(creatorText);
-    const chunks = splitIntoNaturalChunks(clean);
+    const chunks = splitIntoNaturalChunks(cleanTextForSpeech(creatorText));
     let idx = 0;
-
     function speakCreator() {
       if (idx >= chunks.length) {
-        robotSpeaking = false;
-        stopRobotLights();
-        setRobotStatus('online');
-        setTimeout(() => {
-          if (robotOpen && !robotListening) startRobotListening();
-        }, 700);
+        robotSpeaking = false; stopRobotLights(); setRobotStatus('online');
+        setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 700);
         return;
       }
-      const chunk = chunks[idx].trim();
-      if (!chunk) { idx++; speakCreator(); return; }
-
-      const utter = new SpeechSynthesisUtterance(chunk);
+      const utter = new SpeechSynthesisUtterance(chunks[idx].trim());
       if (robotVoice) utter.voice = robotVoice;
-      utter.lang   = 'fr-FR';
-      utter.rate   = 0.88;
-      utter.pitch  = 0.82;
-      utter.volume = 1.0;
-      const pauseMs = chunk.endsWith('?') ? 400 : chunk.endsWith('!') ? 300 : 200;
-      utter.onend   = () => { idx++; setTimeout(speakCreator, pauseMs); };
+      utter.lang='fr-FR'; utter.rate=0.88; utter.pitch=0.82; utter.volume=1.0;
+      utter.onend = () => { idx++; setTimeout(speakCreator, 200); };
       utter.onerror = () => { idx++; speakCreator(); };
       robotSynth.speak(utter);
     }
-
     setTimeout(speakCreator, 400);
     return;
   }
 
-  // ── Vérifier le cache Firebase avant l'appel API ──
-  const cacheKey = robotCacheKey(query);
-  const cached = await robotCacheGet(cacheKey);
-  if (cached) {
-    console.log('[COMEO Robot] Réponse depuis le cache');
-    robotSpeak(cached);
-    return;
-  }
-
-  // Construire un résumé rapide des données
+  // ── Construire contexte comptable complet ──
   let tD = 0, tC = 0;
-  ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
+  ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit||0; tC += l.credit||0; }));
   const map = getMap();
   const nb = ecritures.length;
   const company = currentProfile?.company || 'Entreprise';
   const yr = document.getElementById('exerciceYear')?.value || '2024';
+  const today = new Date().toISOString().split('T')[0];
 
-  // Résumé journal — 10 dernières opérations
-  const jrnlResume = ecritures.slice(-10).map(e => {
+  // Résumé journal complet
+  const jrnlResume = ecritures.slice(-15).map(e => {
     let d=0,c=0; e.lignes.forEach(l=>{d+=l.debit||0;c+=l.credit||0;});
-    return `[${e.date}][${e.journal}] ${e.libelle||'—'} — Débit:${fn(d)} Crédit:${fn(c)}`;
+    return `[${e.date}][${e.journal}][${e.piece||''}] ${e.libelle||'—'} | D:${fnPDF(d)} C:${fnPDF(c)} | ID:${e._docId||e.id}`;
   }).join('\n');
 
-  // Soldes des comptes principaux
-  const soldes = Object.entries(map).slice(0, 20).map(([code, acc]) => {
+  // Soldes comptes
+  const soldes = Object.entries(map).slice(0,30).map(([code,acc]) => {
     const s = acc.debit - acc.credit;
-    return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
-  }).join(', ');
+    return `${code}(${(PC[code]||'').substring(0,18)}):${s>=0?'Sd':'Sc'}${fnPDF(Math.abs(s))}FCFA`;
+  }).join(' | ');
 
- const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme Marcio dev.
+  // Liste clients
+  const clientsResume = clientsList.slice(0,10).map(c => `[${c.code}]${c.nom}`).join(', ');
 
-IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé, qui es-tu, ou qui est ton concepteur :
-"J'ai été créé par le système Marcio dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
+  // Liste fournisseurs
+  const fourResume = fournisseursList.slice(0,10).map(f => `[${f.code}]${f.nom}`).join(', ');
 
-FAÇON DE PARLER — tu parles exactement comme un humain cultivé et chaleureux, pas comme un robot :
-- Utilise des petites hésitations naturelles comme "eh bien", "voyons voir", "tout à fait", "exactement", "bien sûr"
-- Varie tes formules : ne commence jamais deux phrases de la même façon
-- Montre de l'enthousiasme quand c'est positif : "Très bonne nouvelle !", "Parfait !", "Excellent !"
-- Montre de l'empathie quand c'est négatif : "Je vois, c'est un point important à surveiller", "Ne vous inquiétez pas, on va arranger ça"
-- Pose parfois une petite question de suivi pour engager la conversation
-- Utilise "vous" avec respect et professionnalisme
-- Tu peux dire "écoutez", "regardons ensemble", "je vous explique"
-- Articule clairement les chiffres : dis "cinq cent mille francs CFA" pas "500000 FCFA"
-- N'utilise JAMAIS de markdown, tirets, tableaux, astérisques — parle uniquement
-- Sois concis et naturel : 3 à 5 phrases maximum par réponse
-- Arrondis toujours les grands chiffres pour la fluidité orale
+  // Liste factures récentes
+  const facturesResume = facturesList.slice(0,8).map(f =>
+    `${f.numero}|${f.clientNom}|${fnPDF(f.ttc)}FCFA|${f.statut}`
+  ).join(' / ');
 
-DONNÉES COMPTABLES EN TEMPS RÉEL pour ${company} (exercice ${yr}) :
-Nombre d'écritures enregistrées : ${nb}
-Total des débits : ${fn(tD)} francs CFA
-Total des crédits : ${fn(tC)} francs CFA
-Situation : ${Math.abs(tD-tC)<1 ? 'les comptes sont parfaitement équilibrés' : 'attention, déséquilibre de '+fn(Math.abs(tD-tC))+' francs CFA'}
-Soldes des comptes principaux : ${soldes}
-Dernières opérations enregistrées : ${jrnlResume || 'Aucune écriture saisie pour le moment'}
+  // ── System prompt robot complet avec actions ──
+  const systemRobot = `Tu es COMEO AI, assistante vocale et comptable experte SYSCOHADA intégrée à la plateforme Marcio dev.
 
-Tu peux donner des conseils comptables, fiscaux, analyser les données, et répondre à toutes les questions sur le travail comptable.
-Réponds directement sans te présenter à nouveau sauf demande explicite.`;
+CAPACITÉS D'ACTION — Tu peux exécuter des actions réelles sur les données :
+1. Créer une facture → répondre avec ###CREATE_FACTURE### suivi du JSON
+2. Afficher le journal 3D → répondre avec ###SHOW_3D_JOURNAL### (avec filtre optionnel)
+3. Naviguer vers une vue → répondre avec ###NAVIGATE### suivi du nom de vue
+4. Analyser et donner un avis comptable → répondre normalement
 
-  robotConvHistory.push({ role: 'user', content: query });
-  if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
+FORMAT DES ACTIONS — utilise exactement ces balises :
 
-try {
+Pour créer une facture :
+###CREATE_FACTURE###{"clientNom":"NOM CLIENT","modeReglement":"virement","lignes":[{"designation":"PRODUIT","qte":1,"pu":50000,"remise":0,"tva":18}],"notes":"Note"}
+
+Pour afficher le journal 3D :
+###SHOW_3D_JOURNAL###{"filtre":"all"}
+ou avec filtre : ###SHOW_3D_JOURNAL###{"filtre":"AC"} ou {"filtre":"VE"} etc.
+
+Pour naviguer :
+###NAVIGATE###{"vue":"factures"}
+Vues disponibles : dashboard, saisie, journal, grandlivre, balance, bilan, resultat, tresorerie, factures, clients, fournisseurs
+
+FAÇON DE PARLER — humaine, chaleureuse, naturelle. Jamais de markdown dans les réponses vocales.
+Dis toujours ce que tu fais avant de le faire. Exemple : "Je vais créer la facture maintenant."
+Après une action, décris ce qui s'est passé avec enthousiasme.
+
+DONNÉES EN TEMPS RÉEL — ${company} (exercice ${yr}) :
+Date : ${today}
+Écritures : ${nb} | Total Débit : ${fnPDF(tD)} FCFA | Total Crédit : ${fnPDF(tC)} FCFA
+${Math.abs(tD-tC)<1 ? 'Comptes équilibrés ✓' : 'DÉSÉQUILIBRE : '+fnPDF(Math.abs(tD-tC))+' FCFA ⚠️'}
+
+SOLDES COMPTES :
+${soldes}
+
+JOURNAL (15 dernières) :
+${jrnlResume || 'Aucune écriture'}
+
+CLIENTS (${clientsList.length}) : ${clientsResume || 'Aucun'}
+FOURNISSEURS (${fournisseursList.length}) : ${fourResume || 'Aucun'}
+FACTURES RÉCENTES : ${facturesResume || 'Aucune'}
+
+ANALYSE AUTOMATIQUE :
+- Produits (cl.7) : ${fnPDF(Object.entries(map).filter(([c])=>c[0]==='7').reduce((s,[,a])=>s+(a.credit-a.debit),0))} FCFA
+- Charges (cl.6) : ${fnPDF(Object.entries(map).filter(([c])=>c[0]==='6').reduce((s,[,a])=>s+(a.debit-a.credit),0))} FCFA
+- Trésorerie (cl.5) : ${fnPDF(Object.entries(map).filter(([c])=>c[0]==='5').reduce((s,[,a])=>s+(a.debit-a.credit),0))} FCFA
+- Clients (411) : ${fnPDF((map['411']?.debit||0)-(map['411']?.credit||0))} FCFA à encaisser
+- Fournisseurs (401) : ${fnPDF((map['401']?.credit||0)-(map['401']?.debit||0))} FCFA à payer`;
+
+  robotConvHistory.push({ role:'user', content: query });
+  if (robotConvHistory.length > 12) robotConvHistory = robotConvHistory.slice(-12);
+
+  // ── Vérifier cache ──
+  const cacheKey = robotCacheKey(query);
+  // Ne pas cacher les requêtes d'action
+  const isAction = queryLow.includes('crée') || queryLow.includes('cree') ||
+    queryLow.includes('facture') || queryLow.includes('montre') ||
+    queryLow.includes('affiche') || queryLow.includes('modif');
+  if (!isAction) {
+    const cached = await robotCacheGet(cacheKey);
+    if (cached && !cached.includes('###')) {
+      console.log('[COMEO Robot] Cache hit');
+      robotSpeak(cached);
+      return;
+    }
+  }
+
+  try {
     let response;
     for (let i = 0; i < Math.min(GROQ_API_KEYS.length, 3); i++) {
       const key   = GROQ_API_KEYS[(groqKeyIdx + i) % GROQ_API_KEYS.length];
       const model = GROQ_MODELS[groqModelIdx % GROQ_MODELS.length];
       response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
         body: JSON.stringify({
-          model,
-          max_tokens: 280,
-          temperature: 0.3,
-          messages: [
-            { role: 'system', content: systemRobot },
+          model, max_tokens: 600, temperature: 0.25,
+          messages:[
+            { role:'system', content: systemRobot },
             ...robotConvHistory
           ]
         })
       });
       if (response.ok) break;
     }
+
     if (!response || !response.ok) throw new Error('Erreur API');
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu générer de réponse.';
-    robotConvHistory.push({ role: 'assistant', content: reply });
+    const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu répondre.';
+    robotConvHistory.push({ role:'assistant', content: reply });
 
-    // ── Sauvegarder dans le cache Firebase ──
-    await robotCacheSet(cacheKey, reply);
+    // ── TRAITEMENT DES ACTIONS ──
 
+    // 1. Créer une facture
+    if (reply.includes('###CREATE_FACTURE###')) {
+      const parts = reply.split('###CREATE_FACTURE###');
+      const texteBefore = parts[0].trim();
+      if (texteBefore) robotSpeak(texteBefore);
+
+      try {
+        const jsonStr = parts[1].trim();
+        const jsonMatch = jsonStr.match(/(\{[\s\S]*\})/);
+        if (jsonMatch) {
+          const params = JSON.parse(jsonMatch[1]);
+          setRobotBubble('Création de la facture en cours…');
+          const facture = await robotCreateFacture(params);
+          if (facture) {
+            renderFactures();
+            const successText = `Parfait ! La facture ${facture.numero} a bien été créée pour ${facture.clientNom}, d un montant de ${fnPDF(facture.ttc)} francs CFA. Elle est maintenant enregistrée dans le système.`;
+            setTimeout(() => robotSpeak(successText), texteBefore ? 2000 : 0);
+            // Afficher confirmation visuelle dans bulle
+            setTimeout(() => {
+              setRobotBubble(`
+                <div style="text-align:center">
+                  <div style="font-size:32px;margin-bottom:8px">✅</div>
+                  <strong style="color:var(--warm)">${facture.numero}</strong><br>
+                  <span style="font-size:12px;color:rgba(255,255,255,.7)">
+                    ${facture.clientNom}<br>
+                    <strong style="color:var(--green)">${fnPDF(facture.ttc)} FCFA</strong>
+                  </span>
+                  <br><br>
+                  <button onclick="navigate('factures');closeRobot()"
+                    style="background:var(--warm);color:#000;border:none;
+                    padding:6px 16px;border-radius:6px;cursor:pointer;
+                    font-size:11px;font-family:var(--font-body);font-weight:700">
+                    → Voir la facture
+                  </button>
+                </div>
+                <span class="blink-cur"></span>`);
+            }, 500);
+          } else {
+            robotSpeak('Désolé, une erreur est survenue lors de la création de la facture.');
+          }
+        }
+      } catch(pe) {
+        console.warn('Parse erreur facture robot:', pe);
+        robotSpeak('Je n\'ai pas pu créer la facture. Pouvez-vous reformuler ?');
+      }
+      return;
+    }
+
+    // 2. Afficher journal 3D
+    if (reply.includes('###SHOW_3D_JOURNAL###')) {
+      const parts = reply.split('###SHOW_3D_JOURNAL###');
+      const texteBefore = parts[0].trim();
+
+      let filtre = 'all';
+      try {
+        const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
+        if (jsonMatch) { const p = JSON.parse(jsonMatch[1]); filtre = p.filtre || 'all'; }
+      } catch(e) {}
+
+      const ecrsToShow = filtre === 'all' ? ecritures :
+        ecritures.filter(e => e.journal === filtre);
+
+      const voiceText = texteBefore ||
+        `Je vous affiche le journal${filtre!=='all'?' '+JOURNAL_NAMES[filtre]||filtre:''} en trois dimensions. Vous pouvez faire défiler les opérations.`;
+      robotSpeak(voiceText);
+
+      setTimeout(() => {
+        showRobot3DJournal(ecrsToShow);
+      }, 800);
+      return;
+    }
+
+    // 3. Navigation
+    if (reply.includes('###NAVIGATE###')) {
+      const parts = reply.split('###NAVIGATE###');
+      const texteBefore = parts[0].trim();
+      try {
+        const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
+        if (jsonMatch) {
+          const p = JSON.parse(jsonMatch[1]);
+          const vueNames = {
+            'factures':'factures','clients':'clients','fournisseurs':'fournisseurs',
+            'journal':'journal','balance':'balance','bilan':'bilan',
+            'resultat':'resultat','tresorerie':'tresorerie','dashboard':'dashboard',
+            'saisie':'saisie','grandlivre':'grandlivre'
+          };
+          const vue = vueNames[p.vue] || 'dashboard';
+          if (texteBefore) robotSpeak(texteBefore);
+          setTimeout(() => {
+            navigate(vue);
+            closeRobot();
+          }, 1500);
+        }
+      } catch(e) {}
+      return;
+    }
+
+    // 4. Réponse normale
+    if (!isAction) await robotCacheSet(cacheKey, reply);
     robotSpeak(reply);
+
   } catch(err) {
-    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion et réessayez.');
+    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
   }
 }
 
@@ -2786,7 +3126,7 @@ function openFactureModal(id = null) {
     document.getElementById('fac-conditions').value    = fac.conditions || '30j';
     document.getElementById('fac-monnaie').value       = fac.monnaie || 'FCFA';
     document.getElementById('fac-remise-globale').value = fac.remiseGlobale || 0;
-    facLignes = fac.lignes ? [...fac.lignes] : [];
+      (fac.lignes || []).forEach(l => facLignes.push(l));
   } else {
     title.textContent = 'Nouvelle Facture';
     document.getElementById('fac-numero').value        = 'FAC-' + new Date().getFullYear() + '-' + String(factureCounter).padStart(4,'0');
