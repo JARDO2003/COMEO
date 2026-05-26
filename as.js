@@ -2277,7 +2277,7 @@ async function handleRobotQuery(query) {
   const isAboutCreator = ['créateur','createur','créé','cree','marcio','zinzindohoue','qui t\'a','qui vous a','concepteur','développeur','developpeur','fondateur','auteur'].some(k => queryLow.includes(k));
 
   if (isAboutCreator) {
-    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo , c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace Ouémoa et Cédéao. J\'ai été créée par le système Marcio A.I. Dev et je suis fière de mon existence. Merci de vous y intéresser.';
+    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo , c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace Ouémoa et Cédéao. J\'ai été créée par le système Marcio Dev et je suis fière de mon existence. Merci de vous y intéresser.';
     
     // Démarrer les lumières et le statut
     startRobotLights();
@@ -2368,10 +2368,10 @@ async function handleRobotQuery(query) {
     return `${code}(${(PC[code]||'').substring(0,20)}): ${s>=0?'Sd':'Sc'} ${fn(Math.abs(s))} FCFA`;
   }).join(', ');
 
- const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme MarcioAI dev.
+ const systemRobot = `Tu es COMEO AI, un assistant comptable expert SYSCOHADA intégré dans la plateforme Marcio dev.
 
 IDENTITÉ — réponds exactement ceci si on te demande qui t'a créé, qui es-tu, ou qui est ton concepteur :
-"J'ai été créé par le système MarcioAI dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
+"J'ai été créé par le système Marcio dev. Mon concepteur est Marcio Jardel ZINZINDOHOUE. Pour plus d'informations sur lui, vous pouvez consulter Google ou n'importe quel moteur de recherche."
 
 FAÇON DE PARLER — tu parles exactement comme un humain cultivé et chaleureux, pas comme un robot :
 - Utilise des petites hésitations naturelles comme "eh bien", "voyons voir", "tout à fait", "exactement", "bien sûr"
