@@ -596,8 +596,13 @@ function updateStats() {
   if (bd) bd.textContent = '31/12/' + yr;
   if (ry) ry.textContent = yr;
 }
-
 function fn(n) { return Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }); }
+
+// Version spéciale pour jsPDF — sans caractères non-ASCII
+function fnPDF(n) {
+  const num = Math.round(Number(n) || 0);
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
 function fs(n) {
   const a = Math.abs(n);
   if (a >= 1e9) return (n / 1e9).toFixed(1) + ' Md FCFA';
@@ -3200,17 +3205,16 @@ function exportFacturePDF(id) {
   doc.text('SYSCOHADA Révisé 2017 · COMEO AI v4', 14, 19);
   doc.setFontSize(13); doc.setFont('helvetica', 'bold');
   doc.text(typeLabel[fac.type] || 'FACTURE', pageW - 14, 12, { align: 'right' });
-  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(255, 200, 100);
+ doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(255, 200, 100);
   doc.text(fac.numero, pageW - 14, 19, { align: 'right' });
   doc.setTextColor(180, 180, 180); doc.setFontSize(7);
-  doc.text(`Émise le ${fac.dateEmission || '—'} · Échéance ${fac.dateEcheance || '—'}`, pageW - 14, 24, { align: 'right' });
-
+  doc.text('Emise le ' + (fac.dateEmission || '-') + ' - Echeance ' + (fac.dateEcheance || '-'), pageW - 14, 24, { align: 'right' });
   // Info émetteur / client
   doc.setTextColor(10, 11, 16); doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold'); doc.text('ÉMETTEUR', 14, 38);
+doc.setFont('helvetica', 'bold'); doc.text('EMETTEUR', 14, 38);
   doc.setFont('helvetica', 'normal'); doc.text(company, 14, 44);
-  doc.text('Abidjan, Côte d\'Ivoire', 14, 49);
-  doc.setFont('helvetica', 'bold'); doc.text('CLIENT / DÉBITEUR', 110, 38);
+  doc.text('Abidjan, Cote d\'Ivoire', 14, 49);
+  doc.setFont('helvetica', 'bold'); doc.text('CLIENT / DEBITEUR', 110, 38);
   doc.setFont('helvetica', 'normal'); doc.text(fac.clientNom || '—', 110, 44);
   if (fac.clientAdresse) doc.text(fac.clientAdresse, 110, 49);
   if (fac.clientEmail)   doc.text(fac.clientEmail, 110, 54);
@@ -3220,13 +3224,13 @@ function exportFacturePDF(id) {
   doc.setDrawColor(212, 168, 83); doc.setLineWidth(0.4); doc.line(14, 62, pageW - 14, 62);
 
   // Tableau des lignes
-  const rows = (fac.lignes || []).filter(l => l.designation).map(l => [
+ const rows = (fac.lignes || []).filter(l => l.designation).map(l => [
     l.designation,
     String(l.qte),
-    fn(l.pu),
+    fnPDF(l.pu),
     (l.remise || 0) + '%',
     (l.tva || 18) + '%',
-    fn(calcLigneHT(l)) + ' ' + monnaie
+    fnPDF(calcLigneHT(l)) + ' ' + monnaie
   ]);
 
   doc.autoTable({
@@ -3249,9 +3253,9 @@ function exportFacturePDF(id) {
 
   // Totaux
   const totaux = [
-    ['Sous-total HT', fn(fac.ht) + ' ' + monnaie],
-    ['TVA',           fn(fac.tva) + ' ' + monnaie],
-    ['TOTAL TTC',     fn(fac.ttc) + ' ' + monnaie]
+    ['Sous-total HT', fnPDF(fac.ht) + ' ' + monnaie],
+    ['TVA',           fnPDF(fac.tva) + ' ' + monnaie],
+    ['TOTAL TTC',     fnPDF(fac.ttc) + ' ' + monnaie]
   ];
   const xRight = pageW - 14;
   totaux.forEach(([label, val], i) => {
@@ -3275,7 +3279,7 @@ function exportFacturePDF(id) {
   y = Math.max(y + 10, 270);
   doc.setDrawColor(200,192,176); doc.setLineWidth(0.3); doc.line(14, y, pageW-14, y);
   doc.setTextColor(150,150,150); doc.setFontSize(7); doc.setFont('helvetica','normal');
-  doc.text(`Règlement par ${fac.modeReglement||'virement'} · Document généré par COMEO AI v4 · SYSCOHADA`, 14, y+5);
+  doc.text('Reglement par ' + (fac.modeReglement||'virement') + ' - Document genere par COMEO AI v4 - SYSCOHADA', 14, y+5);
   doc.text(`Page 1/1`, pageW-14, y+5, { align:'right' });
 
   doc.save(`${fac.type.toUpperCase()}_${fac.numero}_${fac.clientNom?.replace(/\s+/g,'_')}.pdf`);
