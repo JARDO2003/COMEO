@@ -500,9 +500,13 @@ async function loadApp() {
   document.getElementById('appShell').style.display = 'grid';
   document.getElementById('topCompanyName').textContent = currentProfile.company;
   document.getElementById('exerciceYear').value = currentProfile.exercice || '2024';
-  // Charger la config serveur (clés API) si pas encore fait
   if (!serverConfigLoaded) await loadServerConfig();
-  await loadEcrituresFromFirestore();
+  await Promise.all([
+    loadEcrituresFromFirestore(),
+    loadClientsFromFirestore(),
+    loadFournisseursFromFirestore(),
+    loadFacturesFromFirestore()
+  ]);
   updateStats(); renderPlanComptable(); initSaisie();
 }
 
@@ -541,12 +545,15 @@ async function deleteEcritureFromFirestore(docId) {
 const VIEW_KEYS = {
   dashboard: 'tableau', saisie: 'saisie', journal: 'journal',
   grandlivre: 'grand', balance: 'balance', bilan: 'bilan',
-  resultat: 'résultat', tresorerie: 'trésor', plancomptable: 'plan'
+  resultat: 'résultat', tresorerie: 'trésor', plancomptable: 'plan',
+  factures: 'factur', devis: 'devis', clients: 'client', fournisseurs: 'fourniss'
 };
 const RENDERERS = {
   journal: renderJournal, grandlivre: renderGrandLivre, balance: renderBalance,
   bilan: renderBilan, resultat: renderResultat, tresorerie: renderTresorerie,
-  plancomptable: renderPlanComptable, saisie: initSaisie
+  plancomptable: renderPlanComptable, saisie: initSaisie,
+  factures: renderFactures, devis: renderDevis,
+  clients: renderClients, fournisseurs: renderFournisseurs
 };
 
 function navigate(view) {
@@ -1450,14 +1457,27 @@ function renderPlanComptable() {
 // ══════════════════════════════════════════
 // EXPORT PDF / WORD
 // ══════════════════════════════════════════
-function openExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'flex'; selectExport('pdf'); }
+function openExportModal() {
+  const m = document.getElementById('exportModal');
+  if (m) m.style.display = 'flex';
+  selectExport('pdf');
+  updateExportOptions();
+}
 function closeExportModal() { const m = document.getElementById('exportModal'); if (m) m.style.display = 'none'; }
 function selectExport(fmt) {
   exportFormat = fmt;
-  document.getElementById('opt-pdf')?.classList.toggle('selected', fmt === 'pdf');
-  document.getElementById('opt-word')?.classList.toggle('selected', fmt === 'word');
+  ['pdf','word','excel'].forEach(f => {
+    document.getElementById('opt-' + f)?.classList.toggle('selected', fmt === f);
+  });
 }
-function doExport() { closeExportModal(); if (exportFormat === 'pdf') exportPDF(); else exportWord(); }
+function doExport() {
+  const docType = document.getElementById('export-doc-type')?.value || 'journal';
+  closeExportModal();
+  if (docType === 'facture_single') { toast('Sélectionnez une facture dans la liste pour l\'imprimer', 'info'); navigate('factures'); return; }
+  if (exportFormat === 'pdf')   exportPDFAvance();
+  else if (exportFormat === 'word')  exportWordAvance();
+  else if (exportFormat === 'excel') exportExcelAvance();
+}
 
 function exportPDF() {
   const { jsPDF } = window.jspdf;
@@ -2453,7 +2473,1107 @@ function toast(message, type = 'info') {
   setTimeout(() => d.style.opacity = '0', 3500);
   setTimeout(() => d.remove(), 4100);
 }
+// ══════════════════════════════════════════
+// DONNÉES EN MÉMOIRE — CLIENTS, FOURNISSEURS, FACTURES
+// ══════════════════════════════════════════
+let clientsList      = [];
+let fournisseursList = [];
+let facturesList     = [];
+let devisList        = [];
+let facLignes        = [];
+let editingFactureId = null;
+let editingClientId  = null;
+let clientCounter    = 1;
+let fournisseurCounter = 1;
+let factureCounter   = 1;
+let devisCounter     = 1;
 
+// ─── Chargement depuis Firestore ───
+async function loadClientsFromFirestore() {
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'clients');
+    const snap = await window._fbGetDocs(col);
+    clientsList = [];
+    snap.forEach(d => clientsList.push({ ...d.data(), _docId: d.id }));
+    clientCounter = clientsList.length + 1;
+  } catch(e) {}
+}
+async function loadFournisseursFromFirestore() {
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'fournisseurs');
+    const snap = await window._fbGetDocs(col);
+    fournisseursList = [];
+    snap.forEach(d => fournisseursList.push({ ...d.data(), _docId: d.id }));
+    fournisseurCounter = fournisseursList.length + 1;
+  } catch(e) {}
+}
+async function loadFacturesFromFirestore() {
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'factures');
+    const q   = window._fbQuery(col, window._fbOrderBy('dateEmission', 'desc'));
+    const snap = await window._fbGetDocs(q);
+    facturesList = [];
+    snap.forEach(d => facturesList.push({ ...d.data(), _docId: d.id }));
+    factureCounter = facturesList.length + 1;
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════
+// CLIENTS
+// ══════════════════════════════════════════
+function openClientModal(id = null) {
+  editingClientId = id;
+  const modal = document.getElementById('clientModal');
+  const title = document.getElementById('clientModalTitle');
+  if (!modal) return;
+  if (id) {
+    const cli = clientsList.find(c => c.id === id);
+    if (!cli) return;
+    title.textContent = 'Modifier le client';
+    document.getElementById('cli-code').value    = cli.code || '';
+    document.getElementById('cli-nom').value     = cli.nom || '';
+    document.getElementById('cli-tel').value     = cli.tel || '';
+    document.getElementById('cli-email').value   = cli.email || '';
+    document.getElementById('cli-ville').value   = cli.ville || '';
+    document.getElementById('cli-adresse').value = cli.adresse || '';
+    document.getElementById('cli-nif').value     = cli.nif || '';
+    document.getElementById('cli-notes').value   = cli.notes || '';
+  } else {
+    title.textContent = 'Nouveau client';
+    document.getElementById('cli-code').value  = 'CLI-' + String(clientCounter).padStart(3, '0');
+    document.getElementById('cli-nom').value   = '';
+    document.getElementById('cli-tel').value   = '';
+    document.getElementById('cli-email').value = '';
+    document.getElementById('cli-ville').value = '';
+    document.getElementById('cli-adresse').value = '';
+    document.getElementById('cli-nif').value   = '';
+    document.getElementById('cli-notes').value = '';
+  }
+  modal.style.display = 'flex';
+}
+function closeClientModal() { document.getElementById('clientModal').style.display = 'none'; }
+
+async function saveClient() {
+  const nom = document.getElementById('cli-nom').value.trim();
+  if (!nom) { toast('Le nom du client est obligatoire', 'error'); return; }
+  const client = {
+    id:      editingClientId || Date.now(),
+    code:    document.getElementById('cli-code').value,
+    nom,
+    tel:     document.getElementById('cli-tel').value,
+    email:   document.getElementById('cli-email').value,
+    ville:   document.getElementById('cli-ville').value,
+    adresse: document.getElementById('cli-adresse').value,
+    nif:     document.getElementById('cli-nif').value,
+    notes:   document.getElementById('cli-notes').value,
+    createdAt: new Date().toISOString()
+  };
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'clients');
+    if (editingClientId) {
+      const existing = clientsList.find(c => c.id === editingClientId);
+      if (existing?._docId) {
+        await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'clients', existing._docId), client);
+        const idx = clientsList.findIndex(c => c.id === editingClientId);
+        clientsList[idx] = { ...client, _docId: existing._docId };
+      }
+    } else {
+      const ref = await window._fbAddDoc(col, client);
+      clientsList.push({ ...client, _docId: ref.id });
+      clientCounter++;
+    }
+    closeClientModal(); renderClients();
+    toast('✓ Client enregistré', 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
+function renderClients() {
+  const search = (document.getElementById('cli-search')?.value || '').toLowerCase();
+  const tbody  = document.getElementById('clientsBody');
+  if (!tbody) return;
+  const filtered = clientsList.filter(c =>
+    !search || c.nom?.toLowerCase().includes(search) ||
+    c.email?.toLowerCase().includes(search) || c.tel?.includes(search)
+  );
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun client enregistré</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(c => {
+    // Calculer CA total depuis les factures
+    const caTotal = facturesList.filter(f => f.clientId === c.id && f.statut !== 'annulee')
+      .reduce((s, f) => s + (f.ttc || 0), 0);
+    const soldeDu = facturesList.filter(f => f.clientId === c.id && ['envoyee','partielle','retard'].includes(f.statut))
+      .reduce((s, f) => s + ((f.ttc || 0) - (f.montantPaye || 0)), 0);
+    return `<tr>
+      <td><span class="ct">${c.code}</span></td>
+      <td style="font-weight:500">${c.nom}</td>
+      <td style="font-size:11px;font-family:var(--font-mono)">${c.tel || '—'}</td>
+      <td style="font-size:11px">${c.email || '—'}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:var(--green)">${fn(caTotal)}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:${soldeDu > 0 ? 'var(--red)' : 'var(--muted)'}">${fn(soldeDu)}</td>
+      <td>
+        <button class="btn-action" onclick="openClientModal(${c.id})">✎ Modifier</button>
+        <button class="btn-action" onclick="newFactureForClient(${c.id})">+ Facture</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// FOURNISSEURS
+// ══════════════════════════════════════════
+function openFournisseurModal(id = null) {
+  const modal = document.getElementById('fournisseurModal');
+  if (!modal) return;
+  if (!id) {
+    document.getElementById('four-code').value    = 'FRN-' + String(fournisseurCounter).padStart(3, '0');
+    document.getElementById('four-nom').value     = '';
+    document.getElementById('four-tel').value     = '';
+    document.getElementById('four-email').value   = '';
+    document.getElementById('four-ville').value   = '';
+    document.getElementById('four-adresse').value = '';
+    document.getElementById('four-nif').value     = '';
+    document.getElementById('four-notes').value   = '';
+  }
+  modal.style.display = 'flex';
+}
+function closeFournisseurModal() { document.getElementById('fournisseurModal').style.display = 'none'; }
+
+async function saveFournisseur() {
+  const nom = document.getElementById('four-nom').value.trim();
+  if (!nom) { toast('Le nom du fournisseur est obligatoire', 'error'); return; }
+  const fournisseur = {
+    id: Date.now(),
+    code:    document.getElementById('four-code').value,
+    nom,
+    tel:     document.getElementById('four-tel').value,
+    email:   document.getElementById('four-email').value,
+    ville:   document.getElementById('four-ville').value,
+    adresse: document.getElementById('four-adresse').value,
+    nif:     document.getElementById('four-nif').value,
+    notes:   document.getElementById('four-notes').value,
+    createdAt: new Date().toISOString()
+  };
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'fournisseurs');
+    const ref = await window._fbAddDoc(col, fournisseur);
+    fournisseursList.push({ ...fournisseur, _docId: ref.id });
+    fournisseurCounter++;
+    closeFournisseurModal(); renderFournisseurs();
+    toast('✓ Fournisseur enregistré', 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
+function renderFournisseurs() {
+  const search = (document.getElementById('four-search')?.value || '').toLowerCase();
+  const tbody  = document.getElementById('fournisseursBody');
+  if (!tbody) return;
+  const filtered = fournisseursList.filter(f =>
+    !search || f.nom?.toLowerCase().includes(search) || f.tel?.includes(search)
+  );
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun fournisseur enregistré</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(f => {
+    const totalAchats = ecritures
+      .filter(e => e.journal === 'AC' && e.lignes.some(l => l.libelle?.toLowerCase().includes(f.nom.toLowerCase())))
+      .reduce((s, e) => s + e.lignes.filter(l => l.compte === '401').reduce((ss, l) => ss + (l.credit || 0), 0), 0);
+    return `<tr>
+      <td><span class="ct">${f.code}</span></td>
+      <td style="font-weight:500">${f.nom}</td>
+      <td style="font-size:11px;font-family:var(--font-mono)">${f.tel || '—'}</td>
+      <td style="font-size:11px">${f.email || '—'}</td>
+      <td style="text-align:right;font-family:var(--font-mono)">${fn(totalAchats)}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:var(--muted)">—</td>
+      <td><button class="btn-action" onclick="openFournisseurModal(${f.id})">✎</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// FACTURES — LIGNES
+// ══════════════════════════════════════════
+function addFacLigne(des = '', qte = 1, pu = 0, remise = 0, tva = 18) {
+  facLignes.push({ designation: des, qte, pu, remise, tva });
+  renderFacLignes();
+}
+function removeFacLigne(i) { facLignes.splice(i, 1); renderFacLignes(); }
+
+function renderFacLignes() {
+  const tbody = document.getElementById('facLignesBody');
+  if (!tbody) return;
+  if (facLignes.length === 0) addFacLigne();
+  tbody.innerHTML = facLignes.map((l, i) => `
+    <tr>
+      <td style="padding:4px 6px"><input type="text" value="${l.designation || ''}" placeholder="Description du produit/service…"
+        style="width:100%;background:transparent;border:none;color:var(--ink);font-size:12px;font-family:var(--font-body);outline:none;padding:4px 6px"
+        oninput="facLignes[${i}].designation=this.value"></td>
+      <td style="padding:4px 6px"><input type="number" value="${l.qte}" min="0" step="0.001"
+        style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-size:12px;font-family:var(--font-mono);outline:none;text-align:right;padding:4px 6px"
+        oninput="facLignes[${i}].qte=parseFloat(this.value)||0;updateFacTotaux()"></td>
+      <td style="padding:4px 6px"><input type="number" value="${l.pu}" min="0"
+        style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-size:12px;font-family:var(--font-mono);outline:none;text-align:right;padding:4px 6px"
+        oninput="facLignes[${i}].pu=parseFloat(this.value)||0;updateFacTotaux()"></td>
+      <td style="padding:4px 6px"><input type="number" value="${l.remise}" min="0" max="100"
+        style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-size:12px;font-family:var(--font-mono);outline:none;text-align:right;padding:4px 6px"
+        oninput="facLignes[${i}].remise=parseFloat(this.value)||0;updateFacTotaux()"></td>
+      <td style="padding:4px 6px"><input type="number" value="${l.tva}" min="0" max="100"
+        style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-size:12px;font-family:var(--font-mono);outline:none;text-align:right;padding:4px 6px"
+        oninput="facLignes[${i}].tva=parseFloat(this.value)||18;updateFacTotaux()"></td>
+      <td style="padding:4px 6px;text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--ink)">
+        ${fn(calcLigneHT(l))}
+      </td>
+      <td style="padding:4px 6px"><button class="del-line" onclick="removeFacLigne(${i})">✕</button></td>
+    </tr>`).join('');
+  updateFacTotaux();
+}
+
+function calcLigneHT(l) {
+  const base = (l.qte || 0) * (l.pu || 0);
+  return Math.round(base * (1 - (l.remise || 0) / 100));
+}
+function calcLigneTVA(l) { return Math.round(calcLigneHT(l) * (l.tva || 0) / 100); }
+
+function updateFacTotaux() {
+  const remiseG = parseFloat(document.getElementById('fac-remise-globale')?.value || 0);
+  let ht = 0, tvaTotal = 0;
+  facLignes.forEach(l => { ht += calcLigneHT(l); tvaTotal += calcLigneTVA(l); });
+  const remiseGMontant = Math.round(ht * remiseG / 100);
+  const htNet  = ht - remiseGMontant;
+  const tvaNet = Math.round(tvaTotal * (1 - remiseG / 100));
+  const ttc    = htNet + tvaNet;
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('fac-subtotal',  fn(ht)     + ' FCFA');
+  el('fac-tva-total', fn(tvaNet) + ' FCFA');
+  el('fac-ttc-total', fn(ttc)    + ' FCFA');
+}
+
+// ══════════════════════════════════════════
+// FACTURES — MODAL
+// ══════════════════════════════════════════
+function openFactureModal(id = null) {
+  editingFactureId = id;
+  facLignes = [];
+  const modal = document.getElementById('factureModal');
+  const title = document.getElementById('factureModalTitle');
+  if (!modal) return;
+  const today = new Date().toISOString().split('T')[0];
+  const echeance = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+
+  if (id) {
+    const fac = facturesList.find(f => f.id === id);
+    if (!fac) return;
+    title.textContent = 'Modifier la facture ' + fac.numero;
+    document.getElementById('fac-numero').value        = fac.numero;
+    document.getElementById('fac-type').value          = fac.type || 'facture';
+    document.getElementById('fac-date-emission').value = fac.dateEmission || today;
+    document.getElementById('fac-date-echeance').value = fac.dateEcheance || echeance;
+    document.getElementById('fac-client-search').value = fac.clientNom || '';
+    document.getElementById('fac-ref').value           = fac.reference || '';
+    document.getElementById('fac-client-adresse').value = fac.clientAdresse || '';
+    document.getElementById('fac-client-email').value  = fac.clientEmail || '';
+    document.getElementById('fac-client-tel').value    = fac.clientTel || '';
+    document.getElementById('fac-notes').value         = fac.notes || '';
+    document.getElementById('fac-mode-reglement').value = fac.modeReglement || 'virement';
+    document.getElementById('fac-conditions').value    = fac.conditions || '30j';
+    document.getElementById('fac-monnaie').value       = fac.monnaie || 'FCFA';
+    document.getElementById('fac-remise-globale').value = fac.remiseGlobale || 0;
+    facLignes = fac.lignes ? [...fac.lignes] : [];
+  } else {
+    title.textContent = 'Nouvelle Facture';
+    document.getElementById('fac-numero').value        = 'FAC-' + new Date().getFullYear() + '-' + String(factureCounter).padStart(4,'0');
+    document.getElementById('fac-type').value          = 'facture';
+    document.getElementById('fac-date-emission').value = today;
+    document.getElementById('fac-date-echeance').value = echeance;
+    document.getElementById('fac-client-search').value = '';
+    document.getElementById('fac-ref').value           = '';
+    document.getElementById('fac-client-adresse').value = '';
+    document.getElementById('fac-client-email').value  = '';
+    document.getElementById('fac-client-tel').value    = '';
+    document.getElementById('fac-notes').value         = '';
+    document.getElementById('fac-remise-globale').value = 0;
+  }
+  renderFacLignes();
+  modal.style.display = 'flex';
+}
+function closeFactureModal() { document.getElementById('factureModal').style.display = 'none'; }
+
+function newFactureForClient(clientId) {
+  const cli = clientsList.find(c => c.id === clientId);
+  openFactureModal();
+  if (cli) {
+    setTimeout(() => {
+      document.getElementById('fac-client-search').value  = cli.nom;
+      document.getElementById('fac-client-email').value   = cli.email || '';
+      document.getElementById('fac-client-tel').value     = cli.tel || '';
+      document.getElementById('fac-client-adresse').value = cli.adresse || '';
+    }, 100);
+  }
+  navigate('factures');
+}
+
+function openDevisModal() { openFactureModal(); document.getElementById('fac-type').value = 'proforma'; }
+
+// Autocomplétion client dans le modal facture
+function searchClientDrop(q) {
+  const drop = document.getElementById('drop-client');
+  if (!drop) return;
+  if (!q || q.length < 1) { drop.classList.remove('open'); return; }
+  const matches = clientsList.filter(c =>
+    c.nom.toLowerCase().includes(q.toLowerCase()) || c.code.toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 8);
+  if (!matches.length) { drop.classList.remove('open'); return; }
+  drop.innerHTML = matches.map(c => `
+    <div class="aoption" onmousedown="selectClientForFac(${c.id})">
+      <span class="code">${c.code}</span>
+      <span class="name">${c.nom}</span>
+    </div>`).join('');
+  drop.classList.add('open');
+}
+function selectClientForFac(id) {
+  const cli = clientsList.find(c => c.id === id);
+  if (!cli) return;
+  document.getElementById('fac-client-search').value   = cli.nom;
+  document.getElementById('fac-client-email').value    = cli.email || '';
+  document.getElementById('fac-client-tel').value      = cli.tel || '';
+  document.getElementById('fac-client-adresse').value  = cli.adresse || '';
+  document.getElementById('drop-client').classList.remove('open');
+  document.getElementById('fac-client-search').dataset.clientId = id;
+}
+
+// ══════════════════════════════════════════
+// FACTURES — SAUVEGARDE
+// ══════════════════════════════════════════
+async function saveFacture(statut = 'brouillon') {
+  const clientNom = document.getElementById('fac-client-search').value.trim();
+  if (!clientNom) { toast('Le client est obligatoire', 'error'); return; }
+  if (facLignes.filter(l => l.designation).length === 0) { toast('Ajoutez au moins une ligne', 'error'); return; }
+
+  const remiseG = parseFloat(document.getElementById('fac-remise-globale').value || 0);
+  let ht = 0, tvaTotal = 0;
+  facLignes.forEach(l => { ht += calcLigneHT(l); tvaTotal += calcLigneTVA(l); });
+  const remiseGMontant = Math.round(ht * remiseG / 100);
+  const htNet  = ht - remiseGMontant;
+  const tvaNet = Math.round(tvaTotal * (1 - remiseG / 100));
+  const ttc    = htNet + tvaNet;
+
+  const clientId = parseInt(document.getElementById('fac-client-search').dataset?.clientId || 0);
+  const facture  = {
+    id:            editingFactureId || Date.now(),
+    numero:        document.getElementById('fac-numero').value,
+    type:          document.getElementById('fac-type').value,
+    dateEmission:  document.getElementById('fac-date-emission').value,
+    dateEcheance:  document.getElementById('fac-date-echeance').value,
+    clientId,
+    clientNom,
+    clientAdresse: document.getElementById('fac-client-adresse').value,
+    clientEmail:   document.getElementById('fac-client-email').value,
+    clientTel:     document.getElementById('fac-client-tel').value,
+    reference:     document.getElementById('fac-ref').value,
+    notes:         document.getElementById('fac-notes').value,
+    modeReglement: document.getElementById('fac-mode-reglement').value,
+    conditions:    document.getElementById('fac-conditions').value,
+    monnaie:       document.getElementById('fac-monnaie').value,
+    remiseGlobale: remiseG,
+    lignes:        facLignes.filter(l => l.designation),
+    ht: htNet, tva: tvaNet, ttc,
+    statut,
+    montantPaye: 0,
+    createdAt: new Date().toISOString()
+  };
+
+  // Vérifier retard
+  if (statut === 'envoyee' && facture.dateEcheance < new Date().toISOString().split('T')[0]) {
+    facture.statut = 'retard';
+  }
+
+  try {
+    const col = window._fbCollection(window._db, 'profiles', currentProfile.id, 'factures');
+    if (editingFactureId) {
+      const existing = facturesList.find(f => f.id === editingFactureId);
+      if (existing?._docId) {
+        await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'factures', existing._docId), facture);
+        const idx = facturesList.findIndex(f => f.id === editingFactureId);
+        facturesList[idx] = { ...facture, _docId: existing._docId };
+      }
+    } else {
+      const ref = await window._fbAddDoc(col, facture);
+      facturesList.push({ ...facture, _docId: ref.id });
+      factureCounter++;
+    }
+
+    // Auto-comptabilisation si validée
+    if (statut === 'envoyee' && facture.type === 'facture') {
+      await autoComptabiliserFacture(facture);
+    }
+
+    closeFactureModal(); renderFactures();
+    toast(`✓ Facture ${facture.numero} enregistrée (${statut})`, 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
+// ─── Auto-comptabilisation lors de la validation ───
+async function autoComptabiliserFacture(fac) {
+  const date   = fac.dateEmission;
+  const groupId = 'grp_fac_' + fac.id;
+  const piece   = fac.numero;
+  // Écriture VE — Constatation vente
+  const ecr = {
+    id: Date.now(), date, journal: 'VE', piece,
+    libelle: `Facture ${fac.numero} — ${fac.clientNom}`,
+    groupId, groupLibelle: `Vente — ${fac.clientNom}`, groupSize: 1, groupIdx: 0,
+    createdAt: new Date().toISOString(),
+    lignes: sortLignesDebitAvantCredit([
+      { compte: '411', libelle: `Client ${fac.clientNom}`, debit: fac.ttc, credit: 0 },
+      { compte: '701', libelle: 'Ventes de marchandises', debit: 0, credit: fac.ht },
+      { compte: '4431', libelle: 'TVA facturée sur ventes', debit: 0, credit: fac.tva }
+    ])
+  };
+  const docId = await saveEcritureToFirestore(ecr);
+  if (docId) { ecritures.push(ecr); pieceCounter++; updateStats(); }
+}
+
+async function marquerPayee(id) {
+  const fac = facturesList.find(f => f.id === id);
+  if (!fac) return;
+  fac.statut = 'payee';
+  fac.montantPaye = fac.ttc;
+  try {
+    if (fac._docId) {
+      await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'factures', fac._docId), fac);
+    }
+    // Écriture BQ — Encaissement
+    const ecr = {
+      id: Date.now(), date: new Date().toISOString().split('T')[0], journal: 'BQ',
+      piece: fac.numero, libelle: `Règlement facture ${fac.numero} — ${fac.clientNom}`,
+      groupId: 'grp_regfac_' + fac.id, groupLibelle: 'Règlement client', groupSize: 1, groupIdx: 0,
+      createdAt: new Date().toISOString(),
+      lignes: sortLignesDebitAvantCredit([
+        { compte: '521', libelle: 'Banques locales', debit: fac.ttc, credit: 0 },
+        { compte: '411', libelle: `Client ${fac.clientNom}`, debit: 0, credit: fac.ttc }
+      ])
+    };
+    const docId = await saveEcritureToFirestore(ecr);
+    if (docId) { ecritures.push(ecr); updateStats(); }
+    renderFactures();
+    toast(`✓ Facture ${fac.numero} marquée payée + écriture banque générée`, 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
+async function supprimerFacture(id) {
+  if (!confirm('Supprimer cette facture ?')) return;
+  const fac = facturesList.find(f => f.id === id);
+  if (fac?._docId) {
+    await window._fbDeleteDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'factures', fac._docId));
+  }
+  facturesList = facturesList.filter(f => f.id !== id);
+  renderFactures();
+  toast('Facture supprimée', 'info');
+}
+
+// ══════════════════════════════════════════
+// FACTURES — AFFICHAGE
+// ══════════════════════════════════════════
+function resetFactureFiltre() {
+  document.getElementById('fac-date-debut').value = '';
+  document.getElementById('fac-date-fin').value = '';
+  document.getElementById('fac-statut').value = '';
+  document.getElementById('fac-search').value = '';
+  renderFactures();
+}
+
+function renderFactures() {
+  const dateDebut = document.getElementById('fac-date-debut')?.value || '';
+  const dateFin   = document.getElementById('fac-date-fin')?.value || '';
+  const statut    = document.getElementById('fac-statut')?.value || '';
+  const search    = (document.getElementById('fac-search')?.value || '').toLowerCase();
+  const tbody     = document.getElementById('facturesBody');
+  if (!tbody) return;
+
+  // MAJ statuts retard auto
+  const today = new Date().toISOString().split('T')[0];
+  facturesList.forEach(f => {
+    if (f.statut === 'envoyee' && f.dateEcheance && f.dateEcheance < today) f.statut = 'retard';
+  });
+
+  let filtered = facturesList.filter(f => {
+    if (dateDebut && f.dateEmission < dateDebut) return false;
+    if (dateFin   && f.dateEmission > dateFin)   return false;
+    if (statut    && f.statut !== statut)          return false;
+    if (search && !f.clientNom?.toLowerCase().includes(search) && !f.numero?.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // KPIs
+  const kpi = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const all = facturesList.filter(f => f.statut !== 'annulee');
+  kpi('fkpi-total',   fs(all.reduce((s,f) => s + (f.ttc||0), 0)));
+  kpi('fkpi-paye',    fs(all.filter(f => f.statut==='payee').reduce((s,f) => s+(f.ttc||0),0)));
+  kpi('fkpi-attente', fs(all.filter(f => f.statut==='envoyee').reduce((s,f) => s+(f.ttc||0),0)));
+  kpi('fkpi-retard',  fs(all.filter(f => f.statut==='retard').reduce((s,f) => s+(f.ttc||0),0)));
+  kpi('fkpi-nb', all.length);
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>Aucune facture</p></div></td></tr>';
+    return;
+  }
+
+  const STATUT_LABELS = { brouillon:'Brouillon', envoyee:'Envoyée', payee:'Payée', partielle:'Partielle', annulee:'Annulée', retard:'En retard' };
+  tbody.innerHTML = filtered.map(f => {
+    const reste = (f.ttc || 0) - (f.montantPaye || 0);
+    return `<tr class="fac-row-${f.statut}">
+      <td><strong style="font-family:var(--font-mono);font-size:11px">${f.numero}</strong></td>
+      <td style="font-size:11px;font-family:var(--font-mono)">${f.dateEmission || '—'}</td>
+      <td style="font-size:11px;font-family:var(--font-mono);color:${f.statut==='retard'?'var(--red)':'var(--muted)'}">${f.dateEcheance || '—'}</td>
+      <td style="font-weight:500">${f.clientNom || '—'}</td>
+      <td style="text-align:right;font-family:var(--font-mono)">${fn(f.ht)}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:#60a5fa">${fn(f.tva)}</td>
+      <td style="text-align:right;font-family:var(--font-mono);font-weight:700">${fn(f.ttc)}</td>
+      <td style="text-align:right;font-family:var(--font-mono);color:${reste > 0 ? 'var(--red)' : 'var(--green)'}">${fn(f.montantPaye || 0)}</td>
+      <td><span class="statut-badge statut-${f.statut}">${STATUT_LABELS[f.statut] || f.statut}</span></td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn-action" onclick="exportFacturePDF(${f.id})">📄 PDF</button>
+        <button class="btn-action" onclick="exportFactureWord(${f.id})">📝 Word</button>
+        <button class="btn-action" onclick="exportFactureExcel(${f.id})">📊 Excel</button>
+        ${f.statut !== 'payee' && f.statut !== 'annulee' ? `<button class="btn-action" onclick="marquerPayee(${f.id})">✓ Payée</button>` : ''}
+        <button class="btn-action" onclick="openFactureModal(${f.id})">✎</button>
+        <button class="btn-action danger" onclick="supprimerFacture(${f.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDevis() {
+  const tbody = document.getElementById('devisBody');
+  if (!tbody) return;
+  const devis = facturesList.filter(f => f.type === 'proforma');
+  if (!devis.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>Aucun devis</p></div></td></tr>'; return; }
+  tbody.innerHTML = devis.map(f => `<tr>
+    <td><strong style="font-family:var(--font-mono);font-size:11px">${f.numero}</strong></td>
+    <td style="font-size:11px">${f.dateEmission}</td>
+    <td style="font-size:11px">${f.dateEcheance || '—'}</td>
+    <td>${f.clientNom}</td>
+    <td style="text-align:right;font-family:var(--font-mono);font-weight:700">${fn(f.ttc)}</td>
+    <td><span class="statut-badge statut-${f.statut}">${f.statut}</span></td>
+    <td>
+      <button class="btn-action" onclick="convertirDevisEnFacture(${f.id})">→ Convertir</button>
+      <button class="btn-action" onclick="exportFacturePDF(${f.id})">📄 PDF</button>
+      <button class="btn-action danger" onclick="supprimerFacture(${f.id})">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function convertirDevisEnFacture(id) {
+  const dev = facturesList.find(f => f.id === id);
+  if (!dev) return;
+  dev.type   = 'facture';
+  dev.statut = 'envoyee';
+  dev.numero = 'FAC-' + new Date().getFullYear() + '-' + String(factureCounter).padStart(4,'0');
+  factureCounter++;
+  try {
+    if (dev._docId) await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id, 'factures', dev._docId), dev);
+    await autoComptabiliserFacture(dev);
+    renderFactures(); renderDevis();
+    toast(`✓ Devis converti en facture ${dev.numero}`, 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// EXPORT MODAL — OPTIONS AVANCÉES
+// ══════════════════════════════════════════
+function updateExportOptions() {
+  const docType = document.getElementById('export-doc-type')?.value;
+  const jnlFilter = document.getElementById('export-journal-filter');
+  if (jnlFilter) {
+    jnlFilter.style.display = (docType === 'journal') ? 'block' : 'none';
+  }
+}
+
+// ══════════════════════════════════════════
+// EXPORT — FACTURE PDF (impression pro)
+// ══════════════════════════════════════════
+function buildFactureHTMLContent(fac) {
+  const company     = currentProfile?.company || 'Mon Entreprise';
+  const monnaie     = fac.monnaie || 'FCFA';
+  const STATUT_FR   = { brouillon:'BROUILLON', envoyee:'ENVOYÉE', payee:'PAYÉE', partielle:'PARTIELLE', annulee:'ANNULÉE', retard:'EN RETARD' };
+  const typeLabel   = { facture:'FACTURE', proforma:'FACTURE PROFORMA', avoir:'AVOIR', acompte:'FACTURE D\'ACOMPTE' };
+
+  const lignesHTML = (fac.lignes || []).filter(l => l.designation).map((l, i) => `
+    <tr style="background:${i % 2 === 0 ? '#ffffff' : '#fafafa'}">
+      <td style="padding:8px 12px;border-bottom:1px solid #eee">${l.designation}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${l.qte}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${fn(l.pu)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${l.remise || 0}%</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${l.tva || 18}%</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600">${fn(calcLigneHT(l))} ${monnaie}</td>
+    </tr>`).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px">
+      <div>
+        <div style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:#0a0b10;letter-spacing:.02em">${company}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">Exercice ${document.getElementById('exerciceYear')?.value || '2024'} · SYSCOHADA Révisé 2017</div>
+      </div>
+      <div style="text-align:right">
+        <div style="background:#0a0b10;color:#d4a853;padding:6px 18px;border-radius:4px;font-size:13px;font-weight:700;letter-spacing:.04em;margin-bottom:8px">${typeLabel[fac.type] || 'FACTURE'}</div>
+        <div style="font-family:monospace;font-size:14px;font-weight:700;color:#0a0b10">${fac.numero}</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">
+          Émise le : <strong>${fac.dateEmission || '—'}</strong><br>
+          Échéance : <strong style="color:${fac.statut==='retard'?'#dc2626':'#0a0b10'}">${fac.dateEcheance || '—'}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:28px;margin-bottom:28px">
+      <div style="flex:1;background:#f8f8f8;border-radius:6px;padding:14px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#888;margin-bottom:6px">Émetteur</div>
+        <div style="font-weight:700;font-size:13px">${company}</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">Abidjan, Côte d'Ivoire</div>
+      </div>
+      <div style="flex:1;background:#f8f8f8;border-radius:6px;padding:14px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#888;margin-bottom:6px">Facturer à</div>
+        <div style="font-weight:700;font-size:13px">${fac.clientNom || '—'}</div>
+        ${fac.clientAdresse ? `<div style="font-size:11px;color:#555;margin-top:2px">${fac.clientAdresse}</div>` : ''}
+        ${fac.clientEmail ? `<div style="font-size:11px;color:#555">${fac.clientEmail}</div>` : ''}
+        ${fac.clientTel ? `<div style="font-size:11px;color:#555">${fac.clientTel}</div>` : ''}
+        ${fac.reference ? `<div style="font-size:10px;color:#999;margin-top:4px">Réf : ${fac.reference}</div>` : ''}
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead>
+        <tr style="background:#0a0b10">
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:left">Désignation</th>
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:right;width:60px">Qté</th>
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:right;width:100px">P.U. HT</th>
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:right;width:70px">Remise</th>
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:right;width:60px">TVA</th>
+          <th style="padding:10px 12px;color:#d4a853;font-size:9px;text-transform:uppercase;letter-spacing:.1em;text-align:right;width:120px">Total HT</th>
+        </tr>
+      </thead>
+      <tbody>${lignesHTML}</tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+      <div style="min-width:260px">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:#666;border-bottom:1px solid #eee">
+          <span>Sous-total HT</span><span style="font-family:monospace">${fn(fac.ht + Math.round((fac.ht/(1-fac.remiseGlobale/100||1))*fac.remiseGlobale/100))} ${monnaie}</span>
+        </div>
+        ${fac.remiseGlobale > 0 ? `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:#dc2626;border-bottom:1px solid #eee"><span>Remise globale (${fac.remiseGlobale}%)</span><span style="font-family:monospace">- ${fn(Math.round((fac.ht/(1-fac.remiseGlobale/100||1))*fac.remiseGlobale/100))} ${monnaie}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:#666;border-bottom:1px solid #eee">
+          <span>Net HT</span><span style="font-family:monospace">${fn(fac.ht)} ${monnaie}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:#2563eb;border-bottom:1px solid #eee">
+          <span>TVA</span><span style="font-family:monospace">${fn(fac.tva)} ${monnaie}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:16px;font-weight:700;color:#0a0b10">
+          <span>TOTAL TTC</span><span style="font-family:monospace">${fn(fac.ttc)} ${monnaie}</span>
+        </div>
+      </div>
+    </div>
+
+    ${fac.notes ? `<div style="background:#f8f8f8;border-radius:6px;padding:12px;margin-bottom:16px;font-size:11px;color:#666">${fac.notes}</div>` : ''}
+
+    <div style="border-top:1px solid #eee;padding-top:12px;font-size:10px;color:#999;text-align:center">
+      Règlement par ${fac.modeReglement || 'virement'} · Document généré par COMEO AI v4 · Plateforme SYSCOHADA
+    </div>`;
+}
+
+function exportFacturePDF(id) {
+  const fac = facturesList.find(f => f.id === id);
+  if (!fac) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const company = currentProfile?.company || 'Mon Entreprise';
+  const monnaie = fac.monnaie || 'FCFA';
+  const typeLabel = { facture:'FACTURE', proforma:'PROFORMA', avoir:'AVOIR', acompte:'ACOMPTE' };
+  const pageW = 210;
+
+  // En-tête
+  doc.setFillColor(10, 11, 16); doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(212, 168, 83); doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text(company, 14, 12);
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+  doc.text('SYSCOHADA Révisé 2017 · COMEO AI v4', 14, 19);
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+  doc.text(typeLabel[fac.type] || 'FACTURE', pageW - 14, 12, { align: 'right' });
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(255, 200, 100);
+  doc.text(fac.numero, pageW - 14, 19, { align: 'right' });
+  doc.setTextColor(180, 180, 180); doc.setFontSize(7);
+  doc.text(`Émise le ${fac.dateEmission || '—'} · Échéance ${fac.dateEcheance || '—'}`, pageW - 14, 24, { align: 'right' });
+
+  // Info émetteur / client
+  doc.setTextColor(10, 11, 16); doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold'); doc.text('ÉMETTEUR', 14, 38);
+  doc.setFont('helvetica', 'normal'); doc.text(company, 14, 44);
+  doc.text('Abidjan, Côte d\'Ivoire', 14, 49);
+  doc.setFont('helvetica', 'bold'); doc.text('CLIENT / DÉBITEUR', 110, 38);
+  doc.setFont('helvetica', 'normal'); doc.text(fac.clientNom || '—', 110, 44);
+  if (fac.clientAdresse) doc.text(fac.clientAdresse, 110, 49);
+  if (fac.clientEmail)   doc.text(fac.clientEmail, 110, 54);
+  if (fac.reference) { doc.setFont('helvetica', 'italic'); doc.text('Réf : ' + fac.reference, 14, 56); }
+
+  // Ligne de séparation
+  doc.setDrawColor(212, 168, 83); doc.setLineWidth(0.4); doc.line(14, 62, pageW - 14, 62);
+
+  // Tableau des lignes
+  const rows = (fac.lignes || []).filter(l => l.designation).map(l => [
+    l.designation,
+    String(l.qte),
+    fn(l.pu),
+    (l.remise || 0) + '%',
+    (l.tva || 18) + '%',
+    fn(calcLigneHT(l)) + ' ' + monnaie
+  ]);
+
+  doc.autoTable({
+    startY: 66,
+    head: [['Désignation', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT']],
+    body: rows,
+    styles: { font:'helvetica', fontSize:8, cellPadding:3 },
+    headStyles: { fillColor:[10,11,16], textColor:[212,168,83], fontStyle:'bold', fontSize:7 },
+    alternateRowStyles: { fillColor:[250,248,244] },
+    columnStyles: {
+      0: { cellWidth:'auto' },
+      1: { cellWidth:18, halign:'right' }, 2: { cellWidth:28, halign:'right' },
+      3: { cellWidth:18, halign:'right' }, 4: { cellWidth:14, halign:'right' },
+      5: { cellWidth:34, halign:'right', fontStyle:'bold' }
+    },
+    margin: { left:14, right:14 }
+  });
+
+  let y = doc.lastAutoTable.finalY + 8;
+
+  // Totaux
+  const totaux = [
+    ['Sous-total HT', fn(fac.ht) + ' ' + monnaie],
+    ['TVA',           fn(fac.tva) + ' ' + monnaie],
+    ['TOTAL TTC',     fn(fac.ttc) + ' ' + monnaie]
+  ];
+  const xRight = pageW - 14;
+  totaux.forEach(([label, val], i) => {
+    const isTotal = i === totaux.length - 1;
+    if (isTotal) { doc.setFillColor(10,11,16); doc.rect(xRight - 90, y - 4, 90, 10, 'F'); doc.setTextColor(212,168,83); }
+    else { doc.setTextColor(80,80,80); }
+    doc.setFontSize(isTotal ? 10 : 8); doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+    doc.text(label, xRight - 92, y + 2, { align:'right' });
+    doc.text(val,   xRight,      y + 2, { align:'right' });
+    y += 10;
+  });
+
+  // Notes
+  if (fac.notes) {
+    y += 6; doc.setTextColor(120,120,120); doc.setFontSize(7.5);
+    doc.text(fac.notes.substring(0, 200), 14, y);
+    y += 8;
+  }
+
+  // Pied de page
+  y = Math.max(y + 10, 270);
+  doc.setDrawColor(200,192,176); doc.setLineWidth(0.3); doc.line(14, y, pageW-14, y);
+  doc.setTextColor(150,150,150); doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text(`Règlement par ${fac.modeReglement||'virement'} · Document généré par COMEO AI v4 · SYSCOHADA`, 14, y+5);
+  doc.text(`Page 1/1`, pageW-14, y+5, { align:'right' });
+
+  doc.save(`${fac.type.toUpperCase()}_${fac.numero}_${fac.clientNom?.replace(/\s+/g,'_')}.pdf`);
+  toast('✓ PDF généré : ' + fac.numero, 'success');
+}
+
+function exportFactureWord(id) {
+  const fac = facturesList.find(f => f.id === id);
+  if (!fac) return;
+  const company = currentProfile?.company || 'Mon Entreprise';
+  const monnaie = fac.monnaie || 'FCFA';
+  const lignesHTML = (fac.lignes||[]).filter(l=>l.designation).map((l,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#fafafa'}">
+      <td>${l.designation}</td><td align="right">${l.qte}</td>
+      <td align="right">${fn(l.pu)}</td><td align="right">${l.remise||0}%</td>
+      <td align="right">${l.tva||18}%</td>
+      <td align="right"><strong>${fn(calcLigneHT(l))} ${monnaie}</strong></td>
+    </tr>`).join('');
+  const html = `<html><head><meta charset="utf-8">
+  <style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#222;margin:40pt}
+  table{width:100%;border-collapse:collapse;margin:12pt 0}
+  th{background:#0a0b10;color:#d4a853;padding:7pt 10pt;font-size:9pt;text-align:left}
+  td{padding:6pt 10pt;border-bottom:1pt solid #eee}
+  .total-row td{font-weight:bold;font-size:13pt;background:#0a0b10;color:#d4a853}</style>
+  </head><body>
+  <table><tr>
+    <td style="width:50%;border:none"><h1 style="font-size:18pt;margin:0">${company}</h1><p style="color:#888;font-size:9pt">SYSCOHADA · COMEO AI v4</p></td>
+    <td style="width:50%;border:none;text-align:right">
+      <span style="background:#0a0b10;color:#d4a853;padding:4pt 14pt;font-weight:bold">${(fac.type||'facture').toUpperCase()}</span><br>
+      <strong style="font-size:14pt">${fac.numero}</strong><br>
+      <span style="color:#888;font-size:9pt">Émise : ${fac.dateEmission||'—'} · Échéance : ${fac.dateEcheance||'—'}</span>
+    </td>
+  </tr></table>
+  <table><tr>
+    <td style="width:50%;border:1pt solid #eee;border-radius:4pt;padding:10pt"><strong>ÉMETTEUR</strong><br>${company}<br>Abidjan, Côte d'Ivoire</td>
+    <td style="width:50%;border:1pt solid #eee;border-radius:4pt;padding:10pt"><strong>CLIENT</strong><br>${fac.clientNom||'—'}<br>${fac.clientAdresse||''}<br>${fac.clientEmail||''}</td>
+  </tr></table>
+  <table>
+    <thead><tr><th>Désignation</th><th>Qté</th><th>P.U. HT</th><th>Remise</th><th>TVA</th><th>Total HT</th></tr></thead>
+    <tbody>${lignesHTML}</tbody>
+  </table>
+  <table style="width:260pt;margin-left:auto">
+    <tr><td>Sous-total HT</td><td align="right">${fn(fac.ht)} ${monnaie}</td></tr>
+    <tr><td>TVA</td><td align="right">${fn(fac.tva)} ${monnaie}</td></tr>
+    <tr class="total-row"><td>TOTAL TTC</td><td align="right">${fn(fac.ttc)} ${monnaie}</td></tr>
+  </table>
+  ${fac.notes?`<p style="color:#888;font-size:9pt;border-top:1pt solid #eee;padding-top:8pt">${fac.notes}</p>`:''}
+  <p style="color:#bbb;font-size:8pt;border-top:1pt solid #eee;margin-top:20pt">Règlement par ${fac.modeReglement||'virement'} · COMEO AI v4 · SYSCOHADA</p>
+  </body></html>`;
+  const blob = new Blob([html], { type:'application/msword;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${fac.type.toUpperCase()}_${fac.numero}.doc`;
+  a.click();
+  toast('✓ Word généré : ' + fac.numero, 'success');
+}
+
+function exportFactureExcel(id) {
+  const fac = facturesList.find(f => f.id === id);
+  if (!fac) return;
+  const monnaie = fac.monnaie || 'FCFA';
+  const rows = [
+    ['DÉSIGNATION', 'QTÉ', 'P.U. HT', 'REMISE %', 'TVA %', 'MONTANT HT', 'MONTANT TVA', 'MONTANT TTC'],
+    ...(fac.lignes||[]).filter(l=>l.designation).map(l => [
+      l.designation, l.qte, l.pu, l.remise||0, l.tva||18,
+      calcLigneHT(l), calcLigneTVA(l), calcLigneHT(l) + calcLigneTVA(l)
+    ]),
+    [],
+    ['', '', '', '', 'SOUS-TOTAL HT', fac.ht, '', ''],
+    ['', '', '', '', 'TVA', fac.tva, '', ''],
+    ['', '', '', '', 'TOTAL TTC', fac.ttc, '', ''],
+  ];
+  const header = [
+    ['FACTURE', fac.numero, '', '', '', '', '', ''],
+    ['Client', fac.clientNom, '', '', '', '', '', ''],
+    ['Date émission', fac.dateEmission, '', '', '', '', '', ''],
+    ['Date échéance', fac.dateEcheance, '', '', '', '', '', ''],
+    ['Monnaie', monnaie, '', '', '', '', '', ''],
+    [], ...rows
+  ];
+  const csv = header.map(r => r.join('\t')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type:'text/tab-separated-values;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${fac.type.toUpperCase()}_${fac.numero}.xls`;
+  a.click();
+  toast('✓ Excel généré : ' + fac.numero, 'success');
+}
+
+function exportFactureList() {
+  const csv = [
+    ['N° FACTURE','TYPE','DATE','ÉCHÉANCE','CLIENT','HT','TVA','TTC','PAYÉ','STATUT'].join(';'),
+    ...facturesList.map(f => [
+      f.numero, f.type, f.dateEmission, f.dateEcheance||'', f.clientNom||'',
+      f.ht, f.tva, f.ttc, f.montantPaye||0, f.statut
+    ].join(';'))
+  ].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'liste_factures.csv'; a.click();
+  toast('✓ Liste exportée en CSV', 'success');
+}
+
+// ══════════════════════════════════════════
+// EXPORT COMPTABILITÉ — PDF + WORD + EXCEL
+// Avec filtre journal et période
+// ══════════════════════════════════════════
+function getFilteredEcrituresForExport() {
+  const jnl      = document.getElementById('export-journal-select')?.value || '';
+  const dateDebut = document.getElementById('export-date-debut')?.value || '';
+  const dateFin   = document.getElementById('export-date-fin')?.value || '';
+  return ecritures.filter(e => {
+    if (jnl && e.journal !== jnl) return false;
+    if (dateDebut && e.date < dateDebut) return false;
+    if (dateFin   && e.date > dateFin)   return false;
+    return true;
+  });
+}
+
+function exportPDFAvance() {
+  const { jsPDF } = window.jspdf;
+  const doc       = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const yr        = document.getElementById('exerciceYear').value;
+  const company   = currentProfile?.company || 'Entreprise';
+  const docType   = document.getElementById('export-doc-type')?.value || 'journal';
+  const jnlSel    = document.getElementById('export-journal-select')?.value || '';
+  const dD        = document.getElementById('export-date-debut')?.value || '';
+  const dF        = document.getElementById('export-date-fin')?.value || '';
+  const pageW     = 210;
+  const now       = new Date().toLocaleDateString('fr-FR');
+
+  const DOC_TITLES = { journal:'JOURNAL GÉNÉRAL', balance:'BALANCE GÉNÉRALE', grandlivre:'GRAND LIVRE', bilan:'BILAN', resultat:'COMPTE DE RÉSULTAT', tresorerie:'TRÉSORERIE', factures:'LISTE DES FACTURES' };
+
+  // En-tête PDF
+  doc.setFillColor(10,11,16); doc.rect(0,0,pageW,24,'F');
+  doc.setTextColor(212,168,83); doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('SYSCOHADA Pro v4 — ' + (DOC_TITLES[docType] || 'DOCUMENT'), 14, 10);
+  doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  doc.text(`${company} · Exercice ${yr} · Monnaie FCFA · COMEO AI`, 14, 16);
+  doc.setTextColor(180,180,180); doc.setFontSize(7);
+  const periode = dD || dF ? `Période : ${dD||'début'} → ${dF||'fin'}` : 'Exercice complet';
+  const jnlLabel = jnlSel ? ` · Journal : ${JOURNAL_NAMES[jnlSel]||jnlSel}` : '';
+  doc.text(periode + jnlLabel + ` · Édité le ${now}`, pageW-14, 16, { align:'right' });
+
+  doc.setDrawColor(212,168,83); doc.setLineWidth(0.4); doc.line(14, 26, pageW-14, 26);
+
+  // Contenu selon type
+  if (docType === 'journal') {
+    const ecrs = getFilteredEcrituresForExport();
+    let rows = [], totalD = 0, totalC = 0;
+    ecrs.forEach(e => {
+      const sorted = sortLignesDebitAvantCredit(e.lignes);
+      sorted.forEach(l => {
+        rows.push([e.date, e.journal, e.piece||'', l.compte, (PC[l.compte]||'').substring(0,24), l.libelle||e.libelle||'', l.debit?fn(l.debit):'', l.credit?fn(l.credit):'']);
+        totalD += l.debit||0; totalC += l.credit||0;
+      });
+    });
+    doc.autoTable({
+      startY:30,
+      head:[['Date','Jnl','Pièce','Compte','Libellé compte','Libellé opération','Débit FCFA','Crédit FCFA']],
+      body:rows,
+      foot:[['','','','','','TOTAUX',fn(totalD),fn(totalC)]],
+      styles:{font:'helvetica',fontSize:7.5,cellPadding:2.5},
+      headStyles:{fillColor:[10,11,16],textColor:[212,168,83],fontStyle:'bold',fontSize:7},
+      footStyles:{fillColor:[30,34,54],textColor:[212,168,83],fontStyle:'bold',fontSize:8},
+      alternateRowStyles:{fillColor:[250,248,244]},
+      columnStyles:{0:{cellWidth:18},1:{cellWidth:10,halign:'center'},2:{cellWidth:16},3:{cellWidth:14,fontStyle:'bold'},4:{cellWidth:26},5:{cellWidth:38},6:{cellWidth:20,halign:'right'},7:{cellWidth:20,halign:'right'}},
+      margin:{left:14,right:14}
+    });
+
+  } else if (docType === 'balance') {
+    const map = getMap();
+    const rows = Object.entries(map).sort().map(([code,acc]) => {
+      const s = acc.debit - acc.credit;
+      return [code, (PC[code]||'').substring(0,40), fn(acc.debit), fn(acc.credit), s>0?fn(s):'', s<0?fn(-s):''];
+    });
+    doc.autoTable({
+      startY:30,
+      head:[['Compte','Libellé','Mvt Débit','Mvt Crédit','Solde Débiteur','Solde Créditeur']],
+      body:rows,
+      styles:{font:'helvetica',fontSize:8,cellPadding:3},
+      headStyles:{fillColor:[10,11,16],textColor:[212,168,83],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[250,248,244]},
+      columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+
+  } else if (docType === 'factures') {
+    const rows = facturesList.map(f => [f.numero, f.type, f.dateEmission||'', f.clientNom||'', fn(f.ht), fn(f.tva), fn(f.ttc), f.statut]);
+    doc.autoTable({
+      startY:30,
+      head:[['N° Facture','Type','Date','Client','HT','TVA','TTC','Statut']],
+      body:rows,
+      styles:{font:'helvetica',fontSize:8,cellPadding:3},
+      headStyles:{fillColor:[10,11,16],textColor:[212,168,83],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[250,248,244]},
+      columnStyles:{4:{halign:'right'},5:{halign:'right'},6:{halign:'right',fontStyle:'bold'}},
+      margin:{left:14,right:14}
+    });
+  }
+
+  const safeName = company.replace(/\s+/g,'_');
+  doc.save(`COMEO_${(DOC_TITLES[docType]||docType).replace(/\s+/g,'_')}_${safeName}_${yr}.pdf`);
+  toast('✓ PDF exporté', 'success');
+}
+
+function exportWordAvance() {
+  const yr      = document.getElementById('exerciceYear').value;
+  const company = currentProfile?.company || 'Entreprise';
+  const docType = document.getElementById('export-doc-type')?.value || 'journal';
+  const jnlSel  = document.getElementById('export-journal-select')?.value || '';
+  const now     = new Date().toLocaleDateString('fr-FR');
+  const DOC_TITLES = { journal:'JOURNAL GÉNÉRAL', balance:'BALANCE GÉNÉRALE', grandlivre:'GRAND LIVRE', bilan:'BILAN', resultat:'COMPTE DE RÉSULTAT', tresorerie:'TRÉSORERIE', factures:'LISTE DES FACTURES' };
+
+  let tableHTML = '';
+  if (docType === 'journal') {
+    const ecrs = getFilteredEcrituresForExport();
+    let totalD = 0, totalC = 0, rows = '';
+    ecrs.forEach(e => {
+      sortLignesDebitAvantCredit(e.lignes).forEach(l => {
+        rows += `<tr><td>${e.date}</td><td>${e.journal}</td><td>${e.piece||''}</td><td>${l.compte}</td><td>${(PC[l.compte]||'').substring(0,26)}</td><td>${l.libelle||e.libelle||''}</td><td align="right">${l.debit?fn(l.debit):''}</td><td align="right">${l.credit?fn(l.credit):''}</td></tr>`;
+        totalD += l.debit||0; totalC += l.credit||0;
+      });
+    });
+    rows += `<tr style="font-weight:bold;background:#f0ece3"><td colspan="6">TOTAUX</td><td align="right">${fn(totalD)}</td><td align="right">${fn(totalC)}</td></tr>`;
+    tableHTML = `<table><thead><tr><th>Date</th><th>Jnl</th><th>Pièce</th><th>Compte</th><th>Libellé compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else if (docType === 'balance') {
+    const map = getMap(); let rows = '';
+    Object.entries(map).sort().forEach(([code,acc]) => {
+      const s = acc.debit - acc.credit;
+      rows += `<tr><td>${code}</td><td>${(PC[code]||'').substring(0,40)}</td><td align="right">${fn(acc.debit)}</td><td align="right">${fn(acc.credit)}</td><td align="right">${s>0?fn(s):''}</td><td align="right">${s<0?fn(-s):''}</td></tr>`;
+    });
+    tableHTML = `<table><thead><tr><th>Compte</th><th>Libellé</th><th>Mvt Débit</th><th>Mvt Crédit</th><th>Solde Débiteur</th><th>Solde Créditeur</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else if (docType === 'factures') {
+    let rows = '';
+    facturesList.forEach(f => { rows += `<tr><td>${f.numero}</td><td>${f.type}</td><td>${f.dateEmission||''}</td><td>${f.clientNom||''}</td><td align="right">${fn(f.ht)}</td><td align="right">${fn(f.tva)}</td><td align="right"><strong>${fn(f.ttc)}</strong></td><td>${f.statut}</td></tr>`; });
+    tableHTML = `<table><thead><tr><th>N° Facture</th><th>Type</th><th>Date</th><th>Client</th><th>HT</th><th>TVA</th><th>TTC</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const th = 'background:#0a0b10;color:#d4a853;padding:6pt 10pt;font-size:9pt;text-align:left;text-transform:uppercase';
+  const td = 'border-bottom:1pt solid #e0dbd0;padding:5pt 10pt';
+  const html = `<html><head><meta charset="utf-8"><style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;margin:40pt}h1{font-size:16pt}h2{font-size:13pt}table{width:100%;border-collapse:collapse;margin:10pt 0}th{${th}}td{${td}}tr:nth-child(even) td{background:#faf8f4}</style></head>
+  <body><h1>COMEO AI v4 — ${DOC_TITLES[docType]||docType}</h1>
+  <p>${company} · Exercice ${yr}${jnlSel?' · Journal '+JOURNAL_NAMES[jnlSel]:''} · Édité le ${now}</p>
+  ${tableHTML}</body></html>`;
+  const blob = new Blob([html], { type:'application/msword;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `COMEO_${docType}_${company.replace(/\s+/g,'_')}_${yr}.doc`; a.click();
+  toast('✓ Word exporté', 'success');
+}
+
+function exportExcelAvance() {
+  const yr      = document.getElementById('exerciceYear').value;
+  const company = currentProfile?.company || 'Entreprise';
+  const docType = document.getElementById('export-doc-type')?.value || 'journal';
+  const jnlSel  = document.getElementById('export-journal-select')?.value || '';
+  let rows = [];
+
+  if (docType === 'journal') {
+    rows = [['Date','Journal','Pièce','Compte','Libellé compte','Libellé opération','Débit FCFA','Crédit FCFA']];
+    getFilteredEcrituresForExport().forEach(e => {
+      sortLignesDebitAvantCredit(e.lignes).forEach(l => {
+        rows.push([e.date, e.journal, e.piece||'', l.compte, PC[l.compte]||'', l.libelle||e.libelle||'', l.debit||0, l.credit||0]);
+      });
+    });
+  } else if (docType === 'balance') {
+    rows = [['Compte','Libellé','Mvt Débit','Mvt Crédit','Solde Débiteur','Solde Créditeur']];
+    const map = getMap();
+    Object.entries(map).sort().forEach(([code,acc]) => {
+      const s = acc.debit - acc.credit;
+      rows.push([code, PC[code]||'', acc.debit, acc.credit, s>0?s:0, s<0?-s:0]);
+    });
+  } else if (docType === 'factures') {
+    rows = [['N° Facture','Type','Date émission','Date échéance','Client','HT','TVA','TTC','Montant payé','Statut']];
+    facturesList.forEach(f => { rows.push([f.numero, f.type, f.dateEmission||'', f.dateEcheance||'', f.clientNom||'', f.ht, f.tva, f.ttc, f.montantPaye||0, f.statut]); });
+  } else if (docType === 'grandlivre') {
+    rows = [['Compte','Libellé compte','Date','Journal','Pièce','Libellé opération','Débit','Crédit','Solde progressif']];
+    const map = getMap();
+    Object.entries(map).sort().forEach(([code,acc]) => {
+      let solde = 0;
+      acc.mvts.forEach(m => {
+        solde += m.debit - m.credit;
+        rows.push([code, PC[code]||'', m.date, m.journal, m.piece||'', m.libelle||'', m.debit||0, m.credit||0, Math.abs(solde)]);
+      });
+    });
+  }
+
+  const header = [
+    [`COMEO AI v4 — ${docType.toUpperCase()}`,'','','','','','',''],
+    [company, 'Exercice '+yr, jnlSel?'Journal: '+JOURNAL_NAMES[jnlSel]:'Tous journaux','','','','',''],
+    [],
+    ...rows
+  ];
+  const csv = header.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `COMEO_${docType}_${company.replace(/\s+/g,'_')}_${yr}.csv`; a.click();
+  toast('✓ Excel (CSV) exporté', 'success');
+}
 // ══════════════════════════════════════════
 // INIT SESSION
 // ══════════════════════════════════════════
@@ -2526,3 +3646,40 @@ window.resetBalanceFiltre   = resetBalanceFiltre;
 window.updateStats          = updateStats;
 window.toggleMobileSidebar  = toggleMobileSidebar;
 window.closeMobileSidebar   = closeMobileSidebar;
+
+// ── Facturation ──
+window.openFactureModal     = openFactureModal;
+window.closeFactureModal    = closeFactureModal;
+window.saveFacture          = saveFacture;
+window.addFacLigne          = addFacLigne;
+window.removeFacLigne       = removeFacLigne;
+window.marquerPayee         = marquerPayee;
+window.supprimerFacture     = supprimerFacture;
+window.exportFacturePDF     = exportFacturePDF;
+window.exportFactureWord    = exportFactureWord;
+window.exportFactureExcel   = exportFactureExcel;
+window.exportFactureList    = exportFactureList;
+window.renderFactures       = renderFactures;
+window.resetFactureFiltre   = resetFactureFiltre;
+window.searchClientDrop     = searchClientDrop;
+window.selectClientForFac   = selectClientForFac;
+window.newFactureForClient  = newFactureForClient;
+window.previewFacturePDF    = (id) => exportFacturePDF(editingFactureId || id);
+window.openDevisModal       = openDevisModal;
+window.renderDevis          = renderDevis;
+window.convertirDevisEnFacture = convertirDevisEnFacture;
+
+// ── Clients ──
+window.openClientModal      = openClientModal;
+window.closeClientModal     = closeClientModal;
+window.saveClient           = saveClient;
+window.renderClients        = renderClients;
+
+// ── Fournisseurs ──
+window.openFournisseurModal  = openFournisseurModal;
+window.closeFournisseurModal = closeFournisseurModal;
+window.saveFournisseur       = saveFournisseur;
+window.renderFournisseurs    = renderFournisseurs;
+
+// ── Export avancé ──
+window.updateExportOptions  = updateExportOptions;
