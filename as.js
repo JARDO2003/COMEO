@@ -2481,6 +2481,7 @@ let fournisseursList = [];
 let facturesList     = [];
 let devisList        = [];
 let facLignes        = [];
+window.facLignes     = facLignes;   // ← AJOUTER juste en dessous
 let editingFactureId = null;
 let editingClientId  = null;
 let clientCounter    = 1;
@@ -2755,7 +2756,7 @@ function updateFacTotaux() {
 // ══════════════════════════════════════════
 function openFactureModal(id = null) {
   editingFactureId = id;
-  facLignes = [];
+  facLignes.length = 0;   // vide le tableau sans casser la référence window
   const modal = document.getElementById('factureModal');
   const title = document.getElementById('factureModalTitle');
   if (!modal) return;
@@ -3648,27 +3649,29 @@ window.toggleMobileSidebar  = toggleMobileSidebar;
 window.closeMobileSidebar   = closeMobileSidebar;
 
 // ── Facturation ──
-window.openFactureModal     = openFactureModal;
-window.closeFactureModal    = closeFactureModal;
-window.saveFacture          = saveFacture;
-window.addFacLigne          = addFacLigne;
-window.removeFacLigne       = removeFacLigne;
-window.marquerPayee         = marquerPayee;
-window.supprimerFacture     = supprimerFacture;
-window.exportFacturePDF     = exportFacturePDF;
-window.exportFactureWord    = exportFactureWord;
-window.exportFactureExcel   = exportFactureExcel;
-window.exportFactureList    = exportFactureList;
-window.renderFactures       = renderFactures;
-window.resetFactureFiltre   = resetFactureFiltre;
-window.searchClientDrop     = searchClientDrop;
-window.selectClientForFac   = selectClientForFac;
-window.newFactureForClient  = newFactureForClient;
-window.previewFacturePDF    = (id) => exportFacturePDF(editingFactureId || id);
-window.openDevisModal       = openDevisModal;
-window.renderDevis          = renderDevis;
+window.openFactureModal        = openFactureModal;
+window.closeFactureModal       = closeFactureModal;
+window.saveFacture             = saveFacture;
+window.addFacLigne             = addFacLigne;
+window.removeFacLigne          = removeFacLigne;
+window.marquerPayee            = marquerPayee;
+window.supprimerFacture        = supprimerFacture;
+window.exportFacturePDF        = exportFacturePDF;
+window.exportFactureWord       = exportFactureWord;
+window.exportFactureExcel      = exportFactureExcel;
+window.exportFactureList       = exportFactureList;
+window.renderFactures          = renderFactures;
+window.resetFactureFiltre      = resetFactureFiltre;
+window.searchClientDrop        = searchClientDrop;
+window.selectClientForFac      = selectClientForFac;
+window.newFactureForClient     = newFactureForClient;
+window.previewFacturePDF       = (id) => exportFacturePDF(editingFactureId || id);
+window.openDevisModal          = openDevisModal;
+window.renderDevis             = renderDevis;
 window.convertirDevisEnFacture = convertirDevisEnFacture;
-
+window.updateFacTotaux         = updateFacTotaux;   // ← MANQUAIT
+window.calcLigneHT             = calcLigneHT;       // ← MANQUAIT
+window.calcLigneTVA            = calcLigneTVA;      // ← MANQUAIT
 // ── Clients ──
 window.openClientModal      = openClientModal;
 window.closeClientModal     = closeClientModal;
