@@ -2,6 +2,40 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ── BASE DE DONNÉES ROBOT (cache des réponses)
+const robotFirebaseConfig = {
+  apiKey: "AIzaSyAocBTsHd-A9OJ7RAagxwxtZd0pdW6TX3I",
+  authDomain: "data-gbre.firebaseapp.com",
+  databaseURL: "https://data-gbre-default-rtdb.firebaseio.com",
+  projectId: "data-gbre",
+  storageBucket: "data-gbre.firebasestorage.app",
+  messagingSenderId: "293732235454",
+  appId: "1:293732235454:web:c0b0f4a7b6c9b5d12f46ef",
+  measurementId: "G-XD01FS1SPG"
+};
+const robotApp = initializeApp(robotFirebaseConfig, 'robot-cache');
+const robotDb  = getFirestore(robotApp);
+
+// ── Fonctions cache robot ──
+async function robotCacheGet(questionKey) {
+  try {
+    const snap = await getDoc(doc(robotDb, 'robot_cache', questionKey));
+    if (snap.exists()) return snap.data().answer;
+  } catch(e) {}
+  return null;
+}
+async function robotCacheSet(questionKey, answer) {
+  try {
+    await setDoc(doc(robotDb, 'robot_cache', questionKey), {
+      answer,
+      savedAt: new Date().toISOString()
+    });
+  } catch(e) {}
+}
+function robotCacheKey(query) {
+  // Clé normalisée : minuscules, sans ponctuation, max 100 chars
+  return query.toLowerCase().replace(/[^a-z0-9àâäéèêëîïôùûüç\s]/g, '').replace(/\s+/g, '_').substring(0, 100);
+}
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
   authDomain: "data-com-a94a8.firebaseapp.com",
@@ -1912,13 +1946,13 @@ function closeRobot() {
   if (!panel) return;
   stopRobotListening();
   robotSynth.cancel();
+  stopRobotLights(); // ← ARRÊT LUMIÈRES
   panel.classList.remove('open');
   robotOpen = false;
   document.body.style.overflow = '';
   robotSpeaking = false;
   setRobotStatus('online');
 }
-
 // ── Statuts visuels ──
 function setRobotStatus(state) {
   const pill    = document.getElementById('robotStatusPill');
@@ -1962,10 +1996,150 @@ function setRobotBubble(text) {
   }, 180);
 }
 // ── Synthèse vocale (TTS) ──
+// ── Jeux de lumière du fond robot pendant la parole ──
+let robotLightInterval = null;
+const ROBOT_LIGHT_COLORS = [
+  ['#d4a853','#8b5cf6'],   // or + violet
+  ['#3b82f6','#22c55e'],   // bleu + vert
+  ['#f59e0b','#ec4899'],   // ambre + rose
+  ['#06b6d4','#d4a853'],   // cyan + or
+  ['#8b5cf6','#3b82f6'],   // violet + bleu
+  ['#22c55e','#f59e0b'],   // vert + ambre
+  ['#ec4899','#06b6d4'],   // rose + cyan
+  ['#d4a853','#22c55e'],   // or + vert
+];
+let robotLightIdx = 0;
+
+function startRobotLights() {
+  stopRobotLights();
+  const orb1 = document.querySelector('.r-orb1');
+  const orb2 = document.querySelector('.r-orb2');
+  const orb3 = document.querySelector('.r-orb3');
+  const panel = document.getElementById('robotPanel');
+  if (!orb1 || !panel) return;
+
+  robotLightInterval = setInterval(() => {
+    const [c1, c2] = ROBOT_LIGHT_COLORS[robotLightIdx % ROBOT_LIGHT_COLORS.length];
+    const c3 = ROBOT_LIGHT_COLORS[(robotLightIdx + 3) % ROBOT_LIGHT_COLORS.length][0];
+    robotLightIdx++;
+
+    // Changer les orbes
+    if (orb1) orb1.style.background = `radial-gradient(circle, ${c1}, transparent 70%)`;
+    if (orb2) orb2.style.background = `radial-gradient(circle, ${c2}, transparent 70%)`;
+    if (orb3) orb3.style.background = `radial-gradient(circle, ${c3}, transparent 70%)`;
+
+    // Changer la grille de fond
+    const grid = document.querySelector('.r-grid');
+    if (grid) {
+      grid.style.backgroundImage = `
+        linear-gradient(${c1}22 1px, transparent 1px),
+        linear-gradient(90deg, ${c1}22 1px, transparent 1px)`;
+    }
+
+    // Lueur sur l'avatar
+    const avatar = document.getElementById('robotAvatar');
+    if (avatar) {
+      avatar.style.boxShadow = `0 0 0 4px ${c1}33, 0 0 60px ${c2}44`;
+      avatar.style.borderColor = c1;
+    }
+
+    // Fond général pulsé
+    if (panel) {
+      panel.style.background = `radial-gradient(ellipse at 30% 20%, ${c1}18 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, ${c2}14 0%, transparent 50%),
+        #06070f`;
+    }
+  }, 600);
+}
+
+function stopRobotLights() {
+  if (robotLightInterval) { clearInterval(robotLightInterval); robotLightInterval = null; }
+  // Restaurer couleurs par défaut
+  const orb1 = document.querySelector('.r-orb1');
+  const orb2 = document.querySelector('.r-orb2');
+  const orb3 = document.querySelector('.r-orb3');
+  const panel = document.getElementById('robotPanel');
+  const avatar = document.getElementById('robotAvatar');
+  const grid = document.querySelector('.r-grid');
+  if (orb1) orb1.style.background = 'radial-gradient(circle,#d4a853,transparent 70%)';
+  if (orb2) orb2.style.background = 'radial-gradient(circle,#8b5cf6,transparent 70%)';
+  if (orb3) orb3.style.background = 'radial-gradient(circle,#3b82f6,transparent 70%)';
+  if (grid) grid.style.backgroundImage = '';
+  if (panel) panel.style.background = '';
+  if (avatar) { avatar.style.boxShadow = ''; avatar.style.borderColor = ''; }
+}
+
+// ── Nettoyage texte pour TTS vraiment humain ──
+function cleanTextForSpeech(text) {
+  return text
+    // Supprimer markdown
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/[\[\]#_~`]/g, '')
+    // Abréviations comptables → forme orale
+    .replace(/\bFCFA\b/g, 'francs CFA')
+    .replace(/\bXA\b/g, 'marge commerciale')
+    .replace(/\bXB\b/g, 'chiffre d\'affaires')
+    .replace(/\bXC\b/g, 'valeur ajoutée')
+    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
+    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
+    .replace(/\bDAP\b/g, 'dotations aux amortissements')
+    .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
+    .replace(/\bHT\b/g, 'hors taxe')
+    .replace(/\bTTC\b/g, 'toutes taxes comprises')
+    .replace(/\bCNPS\b/g, 'caisse nationale de prévoyance sociale')
+    .replace(/\bONECCA\b/g, 'ordre national des experts comptables')
+    .replace(/\bSYSCOHADA\b/g, 'système comptable ohada')
+    .replace(/\bOHADA\b/g, 'ohada')
+    // Ponctuation → pauses naturelles (ne pas lire les signes)
+    .replace(/[;]/g, ',')
+    .replace(/[:]/g, ',')
+    .replace(/[—–-]{2,}/g, ', ')
+    .replace(/\.\.\./g, ', ')
+    .replace(/[()[\]{}]/g, ', ')
+    // Supprimer les sigles en capitales isolées (ex: "N°", "XH", etc.)
+    .replace(/\bN°\s*\d+/g, (m) => 'numéro ' + m.replace(/[^0-9]/g, ''))
+    .replace(/\b([A-Z]{2,4})\b/g, (match) => {
+      // Conserver les mots connus
+      const keep = ['FCFA','TVA','HT','TTC','IS','IMF','GIE','TPA','SARL','SA','SAS','ONG','PME'];
+      return keep.includes(match) ? match : match.toLowerCase();
+    })
+    // Chiffres → lecture naturelle (éviter "500000" → préférer avec espaces)
+    .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
+    // Nettoyer espaces multiples
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// ── Découper en phrases naturelles ──
+function splitIntoNaturalChunks(text) {
+  // Découper sur . ! ? et sur les virgules longues
+  const raw = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const chunks = [];
+  for (const sentence of raw) {
+    const s = sentence.trim();
+    if (!s) continue;
+    // Si la phrase est très longue, la couper sur les virgules
+    if (s.length > 120) {
+      const sub = s.split(/,\s+/);
+      let buf = '';
+      for (const part of sub) {
+        buf += (buf ? ', ' : '') + part;
+        if (buf.length > 80) { chunks.push(buf.trim()); buf = ''; }
+      }
+      if (buf.trim()) chunks.push(buf.trim());
+    } else {
+      chunks.push(s);
+    }
+  }
+  return chunks.filter(c => c.length > 1);
+}
+
 function robotSpeak(text) {
   robotSynth.cancel();
   robotSpeaking = true;
   setRobotStatus('speaking');
+  startRobotLights(); // ← JEUX DE LUMIÈRE
 
   // Affichage bulle
   setRobotBubble(
@@ -1973,28 +2147,15 @@ function robotSpeak(text) {
         .replace(/\n/g, '<br>')
   );
 
-  // Nettoyage texte pour la synthèse
-  const clean = text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/[\[\]#*_~`]/g, '')
-    .replace(/FCFA/g, 'francs CFA')
-    .replace(/\bXA\b/g, 'marge commerciale')
-    .replace(/\bXB\b/g, 'chiffre d\'affaires')
-    .replace(/\bXC\b/g, 'valeur ajoutée')
-    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bDAP\b/g, 'dotations aux amortissements')
-    .replace(/\bTVA\b/g, 'T.V.A')
-    .replace(/\n/g, ' . ');
-
-  // Découper en phrases pour un débit naturel (comme Gemini)
-  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+  const clean = cleanTextForSpeech(text);
+  const chunks = splitIntoNaturalChunks(clean);
 
   let idx = 0;
 
   function speakNext() {
-    if (idx >= sentences.length || !robotSpeaking) {
+    if (idx >= chunks.length || !robotSpeaking) {
       robotSpeaking = false;
+      stopRobotLights(); // ← ARRÊT LUMIÈRES
       setRobotStatus('online');
       setTimeout(() => {
         if (robotOpen && !robotListening) startRobotListening();
@@ -2002,24 +2163,22 @@ function robotSpeak(text) {
       return;
     }
 
-    const chunk = sentences[idx].trim();
+    const chunk = chunks[idx].trim();
     if (!chunk) { idx++; speakNext(); return; }
 
     const utter = new SpeechSynthesisUtterance(chunk);
-
-    // Voix masculine
     if (robotVoice) utter.voice = robotVoice;
     utter.lang   = 'fr-FR';
 
-    // Réglages clés pour sonner comme Gemini :
-    // - rate 0.92  → légèrement plus lent qu'un robot, plus humain
-    // - pitch 0.88 → voix grave et posée (masculin)
-    // - volume 1   → plein volume
-    utter.rate   = 0.92;
-    utter.pitch  = 0.88;
-    utter.volume = 1;
+    // Paramètres voix ultra-humaine
+    utter.rate   = 0.88;   // légèrement plus lent → plus naturel
+    utter.pitch  = 0.82;   // grave et posé → masculin
+    utter.volume = 1.0;
 
-    utter.onend   = () => { idx++; speakNext(); };
+    // Micro-pause variable entre phrases (humanisation)
+    const pauseMs = chunk.endsWith('?') ? 400 : chunk.endsWith('!') ? 300 : 200;
+
+    utter.onend   = () => { idx++; setTimeout(speakNext, pauseMs); };
     utter.onerror = () => { idx++; speakNext(); };
 
     robotSynth.speak(utter);
@@ -2079,6 +2238,25 @@ function toggleRobotMic() {
 }
 
 // ── Envoi à Groq avec contexte comptable ──
+// ── Afficher image du créateur dans la bulle ──
+function showCreatorImage() {
+  const bubble = document.getElementById('robotBubbleText');
+  if (!bubble) return;
+  bubble.innerHTML = `
+    <strong style="color:var(--warm)">Mon créateur</strong><br><br>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <img src="images/marcioAI.jpg"
+        style="width:110px;height:110px;border-radius:50%;border:3px solid var(--warm);object-fit:cover;box-shadow:0 0 24px rgba(212,168,83,.4)"
+        onerror="this.style.display='none'">
+      <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.85);text-align:center">
+        <strong style="color:var(--warm)">Marcio Jardel ZINZINDOHOUE</strong><br>
+        Jeune entrepreneur, cofondateur de Groupe Express<br>
+        et créateur de COMEO AI
+      </div>
+    </div>
+    <span class="blink-cur"></span>`;
+}
+
 async function handleRobotQuery(query) {
   if (!query) return;
   setRobotStatus('thinking');
@@ -2086,6 +2264,26 @@ async function handleRobotQuery(query) {
 
   if (GROQ_API_KEYS.length === 0) {
     robotSpeak('Les clés API ne sont pas configurées. Veuillez contacter l\'administrateur.');
+    return;
+  }
+
+  // ── Détection question sur le créateur ──
+  const queryLow = query.toLowerCase();
+  const isAboutCreator = ['créateur','createur','créé','cree','marcio','zinzindohoue','qui t\'a','qui vous a','concepteur','développeur','developpeur','fondateur','auteur'].some(k => queryLow.includes(k));
+
+  if (isAboutCreator) {
+    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo A.I., c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace U.E.M.O.A. et C.E.D.E.A.O. J\'ai été créée par le système Marcio A.I. Dev et je suis fière de mon existence. Merci de vous y intéresser.';
+    showCreatorImage();
+    setTimeout(() => robotSpeak(creatorText), 300);
+    return;
+  }
+
+  // ── Vérifier le cache Firebase avant l'appel API ──
+  const cacheKey = robotCacheKey(query);
+  const cached = await robotCacheGet(cacheKey);
+  if (cached) {
+    console.log('[COMEO Robot] Réponse depuis le cache');
+    robotSpeak(cached);
     return;
   }
 
@@ -2141,7 +2339,7 @@ Réponds directement sans te présenter à nouveau sauf demande explicite.`;
   robotConvHistory.push({ role: 'user', content: query });
   if (robotConvHistory.length > 10) robotConvHistory = robotConvHistory.slice(-10);
 
-  try {
+try {
     let response;
     for (let i = 0; i < Math.min(GROQ_API_KEYS.length, 3); i++) {
       const key   = GROQ_API_KEYS[(groqKeyIdx + i) % GROQ_API_KEYS.length];
@@ -2165,6 +2363,10 @@ Réponds directement sans te présenter à nouveau sauf demande explicite.`;
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content?.trim() || 'Je n\'ai pas pu générer de réponse.';
     robotConvHistory.push({ role: 'assistant', content: reply });
+
+    // ── Sauvegarder dans le cache Firebase ──
+    await robotCacheSet(cacheKey, reply);
+
     robotSpeak(reply);
   } catch(err) {
     robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion et réessayez.');
