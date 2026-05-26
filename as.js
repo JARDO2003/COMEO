@@ -2608,6 +2608,16 @@ CAPACITÉS D'ACTION — Tu peux exécuter des actions réelles sur les données 
 1. Créer une facture → répondre avec ###CREATE_FACTURE### suivi du JSON
 2. Afficher le journal 3D → répondre avec ###SHOW_3D_JOURNAL### (avec filtre optionnel)
 3. Naviguer vers une vue → répondre avec ###NAVIGATE### suivi du nom de vue
+4. Ouvrir YouTube, Google, ou tout site web → répondre avec ###OPEN_URL### suivi du JSON
+
+Pour ouvrir un site ou faire une recherche :
+###OPEN_URL###{"url":"https://www.youtube.com/results?search_query=TERME","label":"YouTube — TERME"}
+###OPEN_URL###{"url":"https://www.google.com/search?q=TERME","label":"Google — TERME"}
+###OPEN_URL###{"url":"https://www.youtube.com","label":"YouTube"}
+###OPEN_URL###{"url":"https://www.google.com","label":"Google"}
+
+Remplacer TERME par les mots-clés extraits de la demande vocale, en remplaçant les espaces par +.
+Exemples de phrases déclenchantes : "ouvre youtube", "cherche sur google", "montre-moi des vidéos de X", "recherche X sur youtube", "ouvre le navigateur".
 4. Analyser et donner un avis comptable → répondre normalement
 
 FORMAT DES ACTIONS — utilise exactement ces balises :
@@ -2797,6 +2807,41 @@ ANALYSE AUTOMATIQUE :
   } catch(err) {
     robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
   }
+}
+// 3b. Ouvrir URL / moteur de recherche
+if (reply.includes('###OPEN_URL###')) {
+  const parts = reply.split('###OPEN_URL###');
+  const texteBefore = parts[0].trim();
+  try {
+    const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
+    if (jsonMatch) {
+      const p = JSON.parse(jsonMatch[1]);
+      const url   = p.url;
+      const label = p.label || url;
+      if (texteBefore) robotSpeak(texteBefore);
+      // Afficher bouton cliquable dans la bulle (obligatoire — navigateurs bloquent window.open sans clic)
+      const inner = document.getElementById('robotBubbleText');
+      if (inner) {
+        inner.innerHTML = `
+          <div style="text-align:center;padding:8px 0">
+            <div style="font-size:28px;margin-bottom:10px">🌐</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">${label}</div>
+            <a href="${url}" target="_blank" rel="noopener"
+              style="display:inline-block;background:var(--warm);color:#000;border:none;
+              padding:10px 22px;border-radius:8px;cursor:pointer;
+              font-size:13px;font-family:var(--font-body);font-weight:700;
+              text-decoration:none">
+              → Ouvrir
+            </a>
+          </div>
+          <span class="blink-cur"></span>`;
+      }
+      setTimeout(() => {
+        if (!texteBefore) robotSpeak(`Voici le lien pour ${label}. Cliquez sur le bouton pour ouvrir.`);
+      }, 200);
+    }
+  } catch(e) { console.warn('URL parse error:', e); }
+  return;
 }
 
 // Exposer
