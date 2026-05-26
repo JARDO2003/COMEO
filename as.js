@@ -2099,8 +2099,13 @@ function cleanTextForSpeech(text) {
     .replace(/[()[\]{}]/g, ', ')
     // Supprimer les sigles en capitales isolées (ex: "N°", "XH", etc.)
     .replace(/\bN°\s*\d+/g, (m) => 'numéro ' + m.replace(/[^0-9]/g, ''))
+    .replace(/\bCEDEAO\b/gi, 'Cédéao')
+    .replace(/\bUEMOA\b/gi, 'Ouémoa')
+    .replace(/\bOHADA\b/gi, 'Ohada')
+    .replace(/\bSYSCOHADA\b/gi, 'Syscohada')
+    .replace(/\bONECCA\b/gi, 'Onecca')
+    .replace(/\bCNPS\b/gi, 'Sé en pé esse')
     .replace(/\b([A-Z]{2,4})\b/g, (match) => {
-      // Conserver les mots connus
       const keep = ['FCFA','TVA','HT','TTC','IS','IMF','GIE','TPA','SARL','SA','SAS','ONG','PME'];
       return keep.includes(match) ? match : match.toLowerCase();
     })
@@ -2272,9 +2277,65 @@ async function handleRobotQuery(query) {
   const isAboutCreator = ['créateur','createur','créé','cree','marcio','zinzindohoue','qui t\'a','qui vous a','concepteur','développeur','developpeur','fondateur','auteur'].some(k => queryLow.includes(k));
 
   if (isAboutCreator) {
-    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo A.I., c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace U.E.M.O.A. et C.E.D.E.A.O. J\'ai été créée par le système Marcio A.I. Dev et je suis fière de mon existence. Merci de vous y intéresser.';
-    showCreatorImage();
-    setTimeout(() => robotSpeak(creatorText), 300);
+    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur. Il est cofondateur de Groupe Express, une entreprise de restauration, et aussi de Comeo , c\'est-à-dire moi. Je suis créée pour vous assister en comptabilité de l\'espace Ouémoa et Cédéao. J\'ai été créée par le système Marcio A.I. Dev et je suis fière de mon existence. Merci de vous y intéresser.';
+    
+    // Démarrer les lumières et le statut
+    startRobotLights();
+    setRobotStatus('speaking');
+    robotSpeaking = true;
+
+    // Afficher l'image dans la bulle SANS appeler setRobotBubble
+    const bubble = document.getElementById('robotBubble');
+    const inner  = document.getElementById('robotBubbleText');
+    if (inner) {
+      inner.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <img src="images/marcioAI.jpg"
+            style="width:120px;height:120px;border-radius:50%;border:3px solid var(--warm);
+                   object-fit:cover;box-shadow:0 0 30px rgba(212,168,83,.5);
+                   animation:fadein .5s ease"
+            onerror="this.outerHTML='<div style=font-size:48px>👨‍💼</div>'">
+          <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85);text-align:center">
+            <strong style="color:var(--warm);font-size:15px">Marcio Jardel ZINZINDOHOUE</strong><br>
+            <span style="color:rgba(255,255,255,.5);font-size:11px">Jeune entrepreneur · Cofondateur</span><br>
+            Groupe Express · COMEO AI
+          </div>
+        </div>
+        <span class="blink-cur"></span>`;
+    }
+
+    // Lire le texte SANS écraser la bulle (passer par SpeechSynthesisUtterance directement)
+    robotSynth.cancel();
+    const clean = cleanTextForSpeech(creatorText);
+    const chunks = splitIntoNaturalChunks(clean);
+    let idx = 0;
+
+    function speakCreator() {
+      if (idx >= chunks.length) {
+        robotSpeaking = false;
+        stopRobotLights();
+        setRobotStatus('online');
+        setTimeout(() => {
+          if (robotOpen && !robotListening) startRobotListening();
+        }, 700);
+        return;
+      }
+      const chunk = chunks[idx].trim();
+      if (!chunk) { idx++; speakCreator(); return; }
+
+      const utter = new SpeechSynthesisUtterance(chunk);
+      if (robotVoice) utter.voice = robotVoice;
+      utter.lang   = 'fr-FR';
+      utter.rate   = 0.88;
+      utter.pitch  = 0.82;
+      utter.volume = 1.0;
+      const pauseMs = chunk.endsWith('?') ? 400 : chunk.endsWith('!') ? 300 : 200;
+      utter.onend   = () => { idx++; setTimeout(speakCreator, pauseMs); };
+      utter.onerror = () => { idx++; speakCreator(); };
+      robotSynth.speak(utter);
+    }
+
+    setTimeout(speakCreator, 400);
     return;
   }
 
