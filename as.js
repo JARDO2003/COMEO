@@ -2222,23 +2222,65 @@ function initRobotSTT() {
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
   recog.lang = 'fr-FR';
-  recog.continuous = false;
-  recog.interimResults = false;
+  recog.continuous = true;        // ← était false : s'arrêtait à la première pause
+  recog.interimResults = true;    // ← était false : n'attendait pas la fin
   recog.maxAlternatives = 1;
+
+  let silenceTimer = null;
+  let lastTranscript = '';
+
   recog.onresult = (e) => {
-    const transcript = e.results[0][0].transcript.trim();
-    if (transcript.length > 1) { robotListening = false; handleRobotQuery(transcript); }
+    // Collecter tout ce qui a été dit jusqu'ici
+    let interimText = '';
+    let finalText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) { finalText += t; }
+      else { interimText += t; }
+    }
+
+    // Afficher ce que le robot entend en temps réel dans la bulle
+    const current = (finalText || interimText).trim();
+    if (current) {
+      lastTranscript += (finalText || '');
+      setRobotBubble(`<em style="opacity:.6;font-size:12px">J'entends : </em><br>${lastTranscript || interimText}`);
+    }
+
+    // Réinitialiser le timer de silence à chaque nouveau mot
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      // 1,5 seconde de silence → on considère que la phrase est terminée
+      const query = lastTranscript.trim() || interimText.trim();
+      if (query.length > 1) {
+        recog.stop();
+        robotListening = false;
+        lastTranscript = '';
+        handleRobotQuery(query);
+      }
+    }, 1500);  // ← ajustez entre 1000 et 2000ms selon votre débit de parole
   };
+
   recog.onerror = (e) => {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    lastTranscript = '';
     robotListening = false;
     setRobotStatus('online');
     if (e.error !== 'no-speech' && e.error !== 'aborted') {
       setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
-    } else { setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000); }
+    } else {
+      setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000);
+    }
   };
+
   recog.onend = () => {
-    if (robotListening) { robotListening = false; setRobotStatus('online'); }
+    if (silenceTimer) clearTimeout(silenceTimer);
+    lastTranscript = '';
+    if (robotListening) {
+      robotListening = false;
+      setRobotStatus('online');
+    }
   };
+
   return recog;
 }
 
