@@ -2845,14 +2845,7 @@ ANALYSE AUTOMATIQUE :
 // Exposer
 window.openRobot      = openRobot;
 
-    // 4. Réponse normale
-    if (!isAction) await robotCacheSet(cacheKey, reply);
-    robotSpeak(reply);
-
-  } catch(err) {
-    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
-  }
-}
+ 
 
 // Exposer
 window.openRobot        = openRobot;
