@@ -1,0 +1,19 @@
+<svg width="680" height="160" viewBox="0 0 680 160" xmlns="http://www.w3.org/2000/svg">
+  <rect width="680" height="160" fill="white"/>
+  <defs>
+    <linearGradient id="r1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#534AB7"/>
+      <stop offset="100%" stop-color="#1D9E75"/>
+    </linearGradient>
+    <linearGradient id="r2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1D9E75"/>
+      <stop offset="100%" stop-color="#534AB7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="64" fill="none" stroke="url(#r1)" stroke-width="5" stroke-dasharray="320 88" stroke-dashoffset="44" stroke-linecap="round"/>
+  <circle cx="80" cy="80" r="48" fill="none" stroke="url(#r2)" stroke-width="3.5" stroke-dasharray="244 66" stroke-dashoffset="-28" stroke-linecap="round"/>
+  <circle cx="80" cy="80" r="30" fill="#0D0C1D"/>
+  <text x="80" y="92" text-anchor="middle" font-family="Georgia, serif" font-size="34" font-weight="300" fill="white">C</text>
+  <text x="172" y="68" font-family="Georgia, serif" font-size="56" font-weight="300" fill="#0D0C1D" letter-spacing="12">COMEO</text>
+  <text x="176" y="108" font-family="Arial, sans-serif" font-size="20" font-weight="400" fill="#888780" letter-spacing="4">PLAN COMPTABLE · OHADA</text>
+</svg>
