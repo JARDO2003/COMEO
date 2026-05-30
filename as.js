@@ -1865,6 +1865,8 @@ let robotQueryPending = false;
 let robotSTTSilenceTimer = null;
 let lastRobotQuery = '';
 let lastRobotQueryTime = 0;
+// Délai de silence avant d'envoyer la requête — laisser l'utilisateur finir sa phrase
+const ROBOT_END_OF_SPEECH_MS = isMobileDevice ? 3200 : 2800;
 
 // ── Initialiser les barres visualiseur ──
 function ensureRobotViz() {
@@ -2025,6 +2027,7 @@ function openRobot() {
 function closeRobot() {
   const panel = document.getElementById('robotPanel');
   if (!panel) return;
+  closeRobotLinkOverlay();
   stopRobotListening();
   robotSynth.cancel();
   stopRobotLights();
@@ -2047,7 +2050,7 @@ function setRobotStatus(state) {
 
   const cfg = {
     online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
-    listening: { text:'Écoute…',       cls:'listening', hint:'Je vous écoute…',        micOn:true  },
+    listening: { text:'Écoute…',       cls:'listening', hint:'Parlez… j\'attends la fin de votre phrase', micOn:true  },
     thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
     speaking:  { text:'Répond…',       cls:'speaking',  hint:'Je vous réponds…',       micOn:false }
   };
@@ -2240,7 +2243,7 @@ function buildRobotRecognition() {
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
   recog.lang = 'fr-FR';
-  recog.continuous = !isMobileDevice;
+  recog.continuous = true;
   recog.interimResults = true;
   recog.maxAlternatives = 1;
 
@@ -2250,47 +2253,52 @@ function buildRobotRecognition() {
 
   const getFullTranscript = () => (accumulated + latestInterim).trim();
 
-  const flushQuery = (force) => {
+  const flushQuery = () => {
     const query = getFullTranscript();
     if (query.length < 2 || submitted) return;
     submitted = true;
+    if (robotSTTSilenceTimer) { clearTimeout(robotSTTSilenceTimer); robotSTTSilenceTimer = null; }
     accumulated = '';
     latestInterim = '';
     submitRobotQuery(query);
   };
 
+  // Relancer le compte à rebours à chaque mot entendu (final ou provisoire)
+  const scheduleEndOfSpeech = () => {
+    if (submitted || getFullTranscript().length < 2) return;
+    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
+    robotSTTSilenceTimer = setTimeout(() => {
+      robotSTTSilenceTimer = null;
+      flushQuery();
+    }, ROBOT_END_OF_SPEECH_MS);
+  };
+
   recog.onresult = (e) => {
     let interim = '';
     let finalPart = '';
+    let hadActivity = false;
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
       const conf = e.results[i][0].confidence;
       if (e.results[i].isFinal) {
-        // iOS/Android : confidence souvent à 0 — accepter sur mobile
         if (isMobileDevice || conf === undefined || conf >= 0.35) finalPart += t;
       } else {
         interim += t;
       }
     }
-    if (finalPart) accumulated += finalPart;
-    latestInterim = interim;
+    if (finalPart) { accumulated += finalPart; hadActivity = true; }
+    if (interim) { latestInterim = interim; hadActivity = true; }
+    else if (finalPart) latestInterim = '';
+
     const display = getFullTranscript();
     if (display) {
       setRobotBubble(
-        `<span class="robot-listening-label">J'écoute</span>` +
+        `<span class="robot-listening-label">J'écoute — finissez votre phrase</span>` +
         `<span class="robot-listening-text">${display}</span>`
       );
     }
 
-    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
-
-    // Mobile : soumettre dès qu'un résultat final arrive (iOS coupe la session)
-    if (isMobileDevice && finalPart.trim()) {
-      flushQuery(true);
-      return;
-    }
-
-    robotSTTSilenceTimer = setTimeout(() => flushQuery(false), isMobileDevice ? 1400 : 900);
+    if (hadActivity) scheduleEndOfSpeech();
   };
 
   recog.onerror = (e) => {
@@ -2302,9 +2310,8 @@ function buildRobotRecognition() {
       setRobotBubble('Autorisez le microphone dans les paramètres de votre navigateur.');
       return;
     }
-    // Dernière chance : utiliser le texte accumulé avant l'erreur
     if (!submitted && getFullTranscript().length > 2) {
-      flushQuery(true);
+      scheduleEndOfSpeech();
       return;
     }
     setRobotStatus('online');
@@ -2317,10 +2324,9 @@ function buildRobotRecognition() {
 
   recog.onend = () => {
     robotListening = false;
-    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
-    // Mobile : iOS déclenche onend avant le timer — envoyer la requête ici
+    // Ne pas couper : attendre le délai complet même si le micro s'est arrêté (iOS/Android)
     if (!submitted && getFullTranscript().length > 2) {
-      flushQuery(true);
+      scheduleEndOfSpeech();
       return;
     }
     if (robotOpen && !robotSpeaking && !robotQueryPending && !submitted) {
@@ -2408,8 +2414,8 @@ function robotSpeakChunks(chunks, onDone) {
   else speakNext();
 }
 
-function robotSpeak(text) {
-  setRobotBubble(formatRobotBubbleHtml(text));
+function robotSpeak(text, opts = {}) {
+  if (!opts.skipBubble) setRobotBubble(formatRobotBubbleHtml(text));
   const chunks = splitIntoNaturalChunks(text);
   if (!chunks.length) {
     robotSpeaking = false;
@@ -2461,6 +2467,148 @@ function toggleRobotMic() {
 
 // ── Envoi à Groq avec contexte comptable ──
 // ── Afficher image du créateur dans la bulle ──
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getLinkBrand(url, label) {
+  const u = (url || '').toLowerCase();
+  const l = (label || '').toLowerCase();
+  if (u.includes('youtube') || u.includes('youtu.be') || l.includes('youtube'))
+    return { icon: '▶', name: 'YouTube', color: '#ff0033' };
+  if (u.includes('google') || l.includes('google'))
+    return { icon: 'G', name: 'Google', color: '#4285f4' };
+  if (u.includes('facebook') || l.includes('facebook'))
+    return { icon: 'f', name: 'Facebook', color: '#1877f2' };
+  if (u.includes('linkedin') || l.includes('linkedin'))
+    return { icon: 'in', name: 'LinkedIn', color: '#0a66c2' };
+  return { icon: '🔗', name: 'Lien', color: 'var(--warm)' };
+}
+
+function closeRobotLinkOverlay() {
+  const el = document.getElementById('robotLinkOverlay');
+  if (el) {
+    el.classList.remove('open');
+    setTimeout(() => el.remove(), 280);
+  }
+}
+
+function showRobotLinkOverlay(url, label) {
+  if (!url) return;
+  closeRobotLinkOverlay();
+  const brand = getLinkBrand(url, label);
+  const safeUrl = escapeHtml(url);
+  const safeLabel = escapeHtml(label || brand.name);
+  const safeHref = url.replace(/"/g, '%22');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'robotLinkOverlay';
+  overlay.className = 'robot-link-overlay';
+  overlay.innerHTML = `
+    <div class="robot-link-overlay-backdrop" onclick="closeRobotLinkOverlay()"></div>
+    <div class="robot-link-card" role="dialog" aria-modal="true" aria-label="Ouvrir un lien">
+      <button type="button" class="robot-link-close" onclick="closeRobotLinkOverlay()" aria-label="Fermer">✕</button>
+      <div class="robot-link-brand" style="--brand:${brand.color}">
+        <span class="robot-link-icon">${brand.icon}</span>
+        <h2 class="robot-link-title">${safeLabel}</h2>
+      </div>
+      <p class="robot-link-url">${safeUrl}</p>
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-cta">
+        Ouvrir ${escapeHtml(brand.name)}
+      </a>
+      <p class="robot-link-hint">Appuyez sur le bouton pour ouvrir dans votre navigateur</p>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('open'));
+
+  const inner = document.getElementById('robotBubbleText');
+  if (inner) {
+    inner.innerHTML = `
+      <div class="robot-link-bubble-preview">
+        <span class="robot-link-bubble-label">${safeLabel}</span>
+        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-bubble-btn">→ Ouvrir le lien</a>
+      </div><span class="blink-cur"></span>`;
+  }
+}
+
+function parseOpenUrlAction(reply) {
+  const tag = '###OPEN_URL###';
+  const idx = reply.indexOf(tag);
+  if (idx === -1) return null;
+  const texteBefore = reply.slice(0, idx).replace(/\*\*/g, '').trim();
+  const after = reply.slice(idx + tag.length);
+  const jsonMatch = after.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  try {
+    const p = JSON.parse(jsonMatch[0]);
+    if (!p?.url) return null;
+    return { url: p.url, label: p.label || p.url, texteBefore };
+  } catch (e) {
+    return null;
+  }
+}
+
+function extractSearchTerms(query, noiseWords) {
+  let t = query.trim();
+  noiseWords.forEach(w => {
+    t = t.replace(new RegExp('\\b' + w + '\\b', 'gi'), ' ');
+  });
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+function detectOpenUrlIntent(query) {
+  const q = normalizeRobotQuery(query);
+  const raw = query.trim();
+
+  const directUrl = raw.match(/https?:\/\/[^\s,;)]+/i);
+  if (directUrl) return { url: directUrl[0], label: 'Lien web' };
+
+  const wwwUrl = raw.match(/(?:^|\s)(www\.[^\s,;)]+)/i);
+  if (wwwUrl) return { url: 'https://' + wwwUrl[1], label: 'Lien web' };
+
+  const wantsOpen = /(ouvre|ouvrir|open|affiche|montre|lance|va sur|aller sur|accede)/i.test(q);
+
+  if (/youtube|youtu\.be/.test(q) || (wantsOpen && q.includes('youtube'))) {
+    const term = extractSearchTerms(raw, [
+      'ouvre', 'ouvrir', 'youtube', 'sur', 'cherche', 'recherche', 'video', 'videos',
+      'moi', 'les', 'des', 'une', 'pour', 'de', 'du', 'la', 'le'
+    ]);
+    if (term.length > 2) {
+      return {
+        url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(term),
+        label: 'YouTube — ' + term
+      };
+    }
+    return { url: 'https://www.youtube.com', label: 'YouTube' };
+  }
+
+  if ((/google/.test(q) && /(cherche|recherche|search)/.test(q)) || (wantsOpen && q.includes('google'))) {
+    const term = extractSearchTerms(raw, [
+      'ouvre', 'ouvrir', 'google', 'sur', 'cherche', 'recherche', 'moi', 'les', 'des', 'une', 'pour', 'de', 'du'
+    ]);
+    if (term.length > 1) {
+      return {
+        url: 'https://www.google.com/search?q=' + encodeURIComponent(term),
+        label: 'Google — ' + term
+      };
+    }
+    return { url: 'https://www.google.com', label: 'Google' };
+  }
+
+  if (wantsOpen && q.includes('facebook'))
+    return { url: 'https://www.facebook.com', label: 'Facebook' };
+  if (wantsOpen && q.includes('linkedin'))
+    return { url: 'https://www.linkedin.com', label: 'LinkedIn' };
+
+  return null;
+}
+
+function handleRobotOpenUrl(url, label, voiceIntro) {
+  showRobotLinkOverlay(url, label);
+  const voice = voiceIntro || `Voici le lien. Appuyez sur le grand bouton pour ouvrir ${label}.`;
+  robotSpeak(voice, { skipBubble: true });
+}
+
 function showCreatorImage() {
   showCreatorCard(true);
 }
@@ -2720,6 +2868,13 @@ async function handleRobotQuery(query) {
     return;
   }
 
+  // ── YouTube, Google, liens web (sans attendre l'IA) ──
+  const urlIntent = detectOpenUrlIntent(query);
+  if (urlIntent) {
+    handleRobotOpenUrl(urlIntent.url, urlIntent.label);
+    return;
+  }
+
   // ── Construire contexte comptable complet ──
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit||0; tC += l.credit||0; }));
@@ -2817,7 +2972,8 @@ ANALYSE AUTOMATIQUE :
   const cacheKey = robotCacheKey(query);
   const isAction = queryLow.includes('crée') || queryLow.includes('cree') ||
     queryLow.includes('facture') || queryLow.includes('montre') ||
-    queryLow.includes('affiche') || queryLow.includes('modif');
+    queryLow.includes('affiche') || queryLow.includes('modif') ||
+    /ouvre|ouvrir|youtube|google|lien|http|www\.|facebook|navigateur/i.test(queryLow);
   if (!isAction) {
     if (robotMemoryCache.has(cacheKey)) {
       console.log('[COMEO Robot] Memory cache hit');
@@ -2956,37 +3112,9 @@ ANALYSE AUTOMATIQUE :
       return;
     }
     // 3b. Ouvrir URL / moteur de recherche
-    if (reply.includes('###OPEN_URL###')) {
-      const parts = reply.split('###OPEN_URL###');
-      const texteBefore = parts[0].trim();
-      try {
-        const jsonMatch = parts[1]?.match(/(\{[\s\S]*?\})/);
-        if (jsonMatch) {
-          const p = JSON.parse(jsonMatch[1]);
-          const url   = p.url;
-          const label = p.label || url;
-          if (texteBefore) robotSpeak(texteBefore);
-          const inner = document.getElementById('robotBubbleText');
-          if (inner) {
-            inner.innerHTML = `
-              <div style="text-align:center;padding:8px 0">
-                <div style="font-size:28px;margin-bottom:10px">🌐</div>
-                <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">${label}</div>
-                <a href="${url}" target="_blank" rel="noopener"
-                  style="display:inline-block;background:var(--warm);color:#000;border:none;
-                  padding:10px 22px;border-radius:8px;cursor:pointer;
-                  font-size:13px;font-family:var(--font-body);font-weight:700;
-                  text-decoration:none">
-                  → Ouvrir
-                </a>
-              </div>
-              <span class="blink-cur"></span>`;
-          }
-          setTimeout(() => {
-            if (!texteBefore) robotSpeak(`Voici le lien pour ${label}. Cliquez sur le bouton pour ouvrir.`);
-          }, 200);
-        }
-      } catch(e) { console.warn('URL parse error:', e); }
+    const urlAction = parseOpenUrlAction(reply);
+    if (urlAction) {
+      handleRobotOpenUrl(urlAction.url, urlAction.label, urlAction.texteBefore || '');
       return;
     }
 
@@ -3017,6 +3145,7 @@ window.openRobot      = openRobot;
 // Exposer
 window.openRobot        = openRobot;
 window.closeRobot       = closeRobot;
+window.closeRobotLinkOverlay = closeRobotLinkOverlay;
 window.toggleRobotMic   = toggleRobotMic;
 // ══════════════════════════════════════════
 // TOAST
