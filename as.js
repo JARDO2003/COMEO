@@ -1904,9 +1904,25 @@ function pickRobotVoice() {
   if (!voices.length) return;
 
   // Priorité 1 — Voix Google masculines françaises (qualité Gemini)
-  const googleMale = voices.find(v =>
-    v.name === 'Google français' && v.lang.startsWith('fr')
+ function pickRobotVoice() {
+  const voices = robotSynth.getVoices();
+  if (!voices.length) return;
+  // Priorité 1 — Voix neurales/premium (Edge, Chrome moderne)
+  const neural = voices.find(v =>
+    v.lang.startsWith('fr') &&
+    (v.name.includes('Neural') || v.name.includes('Premium') || v.name.includes('Enhanced'))
   );
+  if (neural) { robotVoice = neural; return; }
+  // Priorité 2 — Google français
+  const google = voices.find(v => v.name.includes('Google') && v.lang.startsWith('fr'));
+  if (google) { robotVoice = google; return; }
+  // Priorité 3 — Microsoft
+  const ms = voices.find(v => v.name.includes('Microsoft') && v.lang.startsWith('fr'));
+  if (ms) { robotVoice = ms; return; }
+  // Fallback
+  const anyFr = voices.find(v => v.lang.startsWith('fr'));
+  robotVoice = anyFr || voices[0] || null;
+}
   if (googleMale) { robotVoice = googleMale; return; }
 
   // Priorité 2 — Microsoft masculines françaises (Windows / Edge)
@@ -1947,24 +1963,9 @@ function openRobot() {
   initRobotVisualizer();
   initRobotBg();
   // Message de bienvenue vocal avec données contextuelles
- setTimeout(() => {
-  const company = currentProfile?.company || 'votre entreprise';
-  const nb = ecritures.length;
-  const greetings_with_data = [
-    `Bonjour et bienvenue ! Eh bien, je suis ravi de vous retrouver. Votre dossier ${company} se porte bien, avec ${nb} écriture${nb > 1 ? 's' : ''} enregistrée${nb > 1 ? 's' : ''}. Voyons voir, qu'est-ce que je peux faire pour vous aujourd'hui ?`,
-    `Bonjour ! Je suis là et prêt à vous aider. Pour ${company}, j'ai tout sous les yeux : ${nb} écriture${nb > 1 ? 's' : ''}, les soldes, les journaux… Posez-moi n'importe quelle question, je vous réponds de suite.`,
-    `Bonjour ! Très heureux de vous retrouver. Écoutez, votre comptabilité ${company} est bien là avec ses ${nb} écriture${nb > 1 ? 's' : ''}. Qu'est-ce qui vous préoccupe aujourd'hui ? Je suis tout à vous.`
-  ];
-  const greetings_empty = [
-    `Bonjour ! Je suis COMEO AI, votre assistant comptable. Nous démarrons un nouveau dossier pour ${company}, c'est très bien. Parlez-moi, je suis là pour vous guider pas à pas.`,
-    `Bonjour et bienvenue ! Votre dossier ${company} est tout frais. Eh bien, commençons ensemble. Vous pouvez me poser toutes vos questions sur la comptabilité SYSCOHADA, je suis à votre disposition.`
-  ];
-  const pool = nb > 0 ? greetings_with_data : greetings_empty;
-  const greeting = pool[Math.floor(Math.random() * pool.length)];
-  robotSpeak(greeting); // ✅ LIGNE MANQUANTE — appel effectif du TTS
-}, 400);
-}
-
+setTimeout(() => {
+  robotSpeak('Bonjour, comment puis-je vous aider ?');
+}, 150);
 function closeRobot() {
   const panel = document.getElementById('robotPanel');
   if (!panel) return;
@@ -2142,19 +2143,17 @@ function cleanTextForSpeech(text) {
 
 // ── Découper en phrases naturelles ──
 function splitIntoNaturalChunks(text) {
-  // Découper sur . ! ? et sur les virgules longues
-  const raw = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const raw = text.match(/[^.!?,;:]+[.!?,;:]*/g) || [text];
   const chunks = [];
   for (const sentence of raw) {
     const s = sentence.trim();
-    if (!s) continue;
-    // Si la phrase est très longue, la couper sur les virgules
-    if (s.length > 120) {
-      const sub = s.split(/,\s+/);
+    if (!s || s.length < 2) continue;
+    if (s.length > 60) {
+      const sub = s.split(/\s+/);
       let buf = '';
-      for (const part of sub) {
-        buf += (buf ? ', ' : '') + part;
-        if (buf.length > 80) { chunks.push(buf.trim()); buf = ''; }
+      for (const word of sub) {
+        buf += (buf ? ' ' : '') + word;
+        if (buf.length > 50) { chunks.push(buf.trim()); buf = ''; }
       }
       if (buf.trim()) chunks.push(buf.trim());
     } else {
@@ -2200,12 +2199,12 @@ function robotSpeak(text) {
     utter.lang   = 'fr-FR';
 
     // Paramètres voix ultra-humaine
-    utter.rate   = 0.88;   // légèrement plus lent → plus naturel
-    utter.pitch  = 0.82;   // grave et posé → masculin
-    utter.volume = 1.0;
+  utter.rate   = 1.15;
+utter.pitch  = 0.95;
+utter.volume = 1.0;
 
     // Micro-pause variable entre phrases (humanisation)
-    const pauseMs = chunk.endsWith('?') ? 400 : chunk.endsWith('!') ? 300 : 200;
+    const pauseMs = chunk.endsWith('?') ? 120 : chunk.endsWith('!') ? 80 : 50;
 
     utter.onend   = () => { idx++; setTimeout(speakNext, pauseMs); };
     utter.onerror = () => { idx++; speakNext(); };
@@ -2222,8 +2221,9 @@ function initRobotSTT() {
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
   recog.lang = 'fr-FR';
-  recog.continuous = true;        // ← était false : s'arrêtait à la première pause
-  recog.interimResults = true;    // ← était false : n'attendait pas la fin
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.maxAlternatives = 3;
   recog.maxAlternatives = 1;
 
   let silenceTimer = null;
@@ -2238,7 +2238,12 @@ function initRobotSTT() {
       if (e.results[i].isFinal) { finalText += t; }
       else { interimText += t; }
     }
-
+for (let i = e.resultIndex; i < e.results.length; i++) {
+  const t = e.results[i][0].transcript;
+  const confidence = e.results[i][0].confidence || 1;
+  if (e.results[i].isFinal && confidence > 0.45) { finalText += t; }
+  else if (!e.results[i].isFinal) { interimText += t; }
+}
     // Afficher ce que le robot entend en temps réel dans la bulle
     const current = (finalText || interimText).trim();
     if (current) {
@@ -2248,17 +2253,15 @@ function initRobotSTT() {
 
     // Réinitialiser le timer de silence à chaque nouveau mot
     if (silenceTimer) clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(() => {
-      // 1,5 seconde de silence → on considère que la phrase est terminée
-      const query = lastTranscript.trim() || interimText.trim();
-      if (query.length > 1) {
-        recog.stop();
-        robotListening = false;
-        lastTranscript = '';
-        handleRobotQuery(query);
-      }
-    }, 1500);  // ← ajustez entre 1000 et 2000ms selon votre débit de parole
-  };
+silenceTimer = setTimeout(() => {
+  const query = lastTranscript.trim() || interimText.trim();
+  if (query.length > 2) {
+    recog.stop();
+    robotListening = false;
+    lastTranscript = '';
+    handleRobotQuery(query);
+  }
+}, 900);  // 900ms au lieu de 1500ms
 
   recog.onerror = (e) => {
     if (silenceTimer) clearTimeout(silenceTimer);
@@ -2718,7 +2721,30 @@ ANALYSE AUTOMATIQUE :
       return;
     }
   }
+// Ajouter en haut du fichier, avec les autres variables globales :
+const robotMemoryCache = new Map();
 
+// Dans handleRobotQuery, remplacer le bloc cache par :
+if (!isAction) {
+  // Cache mémoire instantané
+  if (robotMemoryCache.has(cacheKey)) {
+    robotSpeak(robotMemoryCache.get(cacheKey));
+    return;
+  }
+  // Cache Firestore (asynchrone)
+  const cached = await robotCacheGet(cacheKey);
+  if (cached && !cached.includes('###')) {
+    robotMemoryCache.set(cacheKey, cached);
+    robotSpeak(cached);
+    return;
+  }
+}
+
+// Et à la fin, quand on sauvegarde le cache :
+if (!isAction) {
+  robotMemoryCache.set(cacheKey, reply);
+  await robotCacheSet(cacheKey, reply);
+}
   try {
     let response;
     for (let i = 0; i < Math.min(GROQ_API_KEYS.length, 3); i++) {
@@ -2727,8 +2753,8 @@ ANALYSE AUTOMATIQUE :
       response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body: JSON.stringify({
-          model, max_tokens: 600, temperature: 0.25,
+      body: JSON.stringify({
+  model, max_tokens: 120, temperature: 0.15,
           messages:[
             { role:'system', content: systemRobot },
             ...robotConvHistory
@@ -4117,6 +4143,3 @@ window.openFournisseurModal  = openFournisseurModal;
 window.closeFournisseurModal = closeFournisseurModal;
 window.saveFournisseur       = saveFournisseur;
 window.renderFournisseurs    = renderFournisseurs;
-
-// ── Export avancé ──
-window.updateExportOptions  = updateExportOptions;
