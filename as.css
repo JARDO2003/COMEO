@@ -1081,3 +1081,6 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 .fac-preview-totaux-row { display:flex; justify-content:space-between; padding:4px 0; font-size:11px; border-bottom:1px solid #eee; }
 .fac-preview-totaux-row.total { font-size:14px; font-weight:700; color:#0a0b10; border-bottom:none; margin-top:4px; }
 .fac-preview-footer { margin-top:24px; padding-top:12px; border-top:1px solid #eee; font-size:10px; color:#999; }
+
+/* Carte lien robot — doublon avec styles injectés JS pour mobile */
+#robotLinkOverlay.robot-link-overlay { position:fixed; inset:0; z-index:10050; }
