@@ -1857,6 +1857,14 @@ let robotConvHistory = [];
 const robotMemoryCache = new Map();
 const CREATOR_IMAGE = 'images/MarcioAI.jpg';
 const ROBOT_TTS = { rate: 0.92, pitch: 1.0, volume: 1.0 };
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let robotQueryPending = false;
+let robotSTTSilenceTimer = null;
+let lastRobotQuery = '';
+let lastRobotQueryTime = 0;
 
 // ── Initialiser les barres visualiseur ──
 function ensureRobotViz() {
@@ -2207,6 +2215,122 @@ function splitIntoNaturalChunks(text) {
   return chunks.filter(c => c.length > 1);
 }
 
+function primeRobotSpeech() {
+  if (!robotSynth) return;
+  try {
+    if (robotSynth.paused) robotSynth.resume();
+  } catch (e) {}
+}
+
+function submitRobotQuery(query) {
+  const q = (query || '').trim();
+  if (q.length < 2 || robotQueryPending) return;
+  const now = Date.now();
+  if (q === lastRobotQuery && now - lastRobotQueryTime < 2500) return;
+  lastRobotQuery = q;
+  lastRobotQueryTime = now;
+  robotQueryPending = true;
+  if (robotSTTSilenceTimer) { clearTimeout(robotSTTSilenceTimer); robotSTTSilenceTimer = null; }
+  stopRobotListening();
+  handleRobotQuery(q).finally(() => { robotQueryPending = false; });
+}
+
+function buildRobotRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const recog = new SpeechRecognition();
+  recog.lang = 'fr-FR';
+  recog.continuous = !isMobileDevice;
+  recog.interimResults = true;
+  recog.maxAlternatives = 1;
+
+  let accumulated = '';
+  let latestInterim = '';
+  let submitted = false;
+
+  const getFullTranscript = () => (accumulated + latestInterim).trim();
+
+  const flushQuery = (force) => {
+    const query = getFullTranscript();
+    if (query.length < 2 || submitted) return;
+    submitted = true;
+    accumulated = '';
+    latestInterim = '';
+    submitRobotQuery(query);
+  };
+
+  recog.onresult = (e) => {
+    let interim = '';
+    let finalPart = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      const conf = e.results[i][0].confidence;
+      if (e.results[i].isFinal) {
+        // iOS/Android : confidence souvent à 0 — accepter sur mobile
+        if (isMobileDevice || conf === undefined || conf >= 0.35) finalPart += t;
+      } else {
+        interim += t;
+      }
+    }
+    if (finalPart) accumulated += finalPart;
+    latestInterim = interim;
+    const display = getFullTranscript();
+    if (display) {
+      setRobotBubble(
+        `<span class="robot-listening-label">J'écoute</span>` +
+        `<span class="robot-listening-text">${display}</span>`
+      );
+    }
+
+    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
+
+    // Mobile : soumettre dès qu'un résultat final arrive (iOS coupe la session)
+    if (isMobileDevice && finalPart.trim()) {
+      flushQuery(true);
+      return;
+    }
+
+    robotSTTSilenceTimer = setTimeout(() => flushQuery(false), isMobileDevice ? 1400 : 900);
+  };
+
+  recog.onerror = (e) => {
+    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
+    robotListening = false;
+    const err = e.error || '';
+    if (err === 'not-allowed') {
+      setRobotStatus('online');
+      setRobotBubble('Autorisez le microphone dans les paramètres de votre navigateur.');
+      return;
+    }
+    // Dernière chance : utiliser le texte accumulé avant l'erreur
+    if (!submitted && getFullTranscript().length > 2) {
+      flushQuery(true);
+      return;
+    }
+    setRobotStatus('online');
+    if (err !== 'no-speech' && err !== 'aborted') {
+      setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
+    } else if (robotOpen && !robotSpeaking && !robotQueryPending) {
+      setTimeout(() => startRobotListening(), 900);
+    }
+  };
+
+  recog.onend = () => {
+    robotListening = false;
+    if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
+    // Mobile : iOS déclenche onend avant le timer — envoyer la requête ici
+    if (!submitted && getFullTranscript().length > 2) {
+      flushQuery(true);
+      return;
+    }
+    if (robotOpen && !robotSpeaking && !robotQueryPending && !submitted) {
+      setTimeout(() => startRobotListening(), 700);
+    }
+  };
+
+  return recog;
+}
+
 function showCreatorCard(showPhoto = true) {
   const inner = document.getElementById('robotBubbleText');
   if (!inner) return;
@@ -2227,6 +2351,7 @@ function showCreatorCard(showPhoto = true) {
 
 function robotSpeakChunks(chunks, onDone) {
   robotSynth.cancel();
+  primeRobotSpeech();
   robotSpeaking = true;
   setRobotStatus('speaking');
   startRobotLights();
@@ -2241,7 +2366,7 @@ function robotSpeakChunks(chunks, onDone) {
       setRobotSpeechCaption('');
       setRobotVizMode('idle');
       if (onDone) onDone();
-      else setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 800);
+      else setTimeout(() => { if (robotOpen && !robotListening && !robotQueryPending) startRobotListening(); }, isMobileDevice ? 1200 : 800);
       return;
     }
 
@@ -2251,16 +2376,36 @@ function robotSpeakChunks(chunks, onDone) {
     spokenSoFar += (spokenSoFar ? ' ' : '') + chunk;
     setRobotSpeechCaption(spokenSoFar);
 
+    primeRobotSpeech();
     const utter = new SpeechSynthesisUtterance(chunk);
     applyRobotVoice(utter);
     const pauseMs = idx < chunks.length - 1 ? 380 : 200;
+    let advanced = false;
 
-    utter.onend = () => { idx++; setTimeout(speakNext, pauseMs); };
-    utter.onerror = () => { idx++; setTimeout(speakNext, 120); };
+    const advance = () => {
+      if (advanced) return;
+      advanced = true;
+      idx++;
+      setTimeout(speakNext, pauseMs);
+    };
+
+    utter.onend = advance;
+    utter.onerror = advance;
+
+    // iOS/Android : onend parfois absent après un appel async — timeout de secours
+    const safetyMs = Math.min(18000, Math.max(4000, chunk.length * 140));
+    setTimeout(advance, safetyMs);
+
     robotSynth.speak(utter);
+    if (isIOS) {
+      setTimeout(() => {
+        try { if (robotSynth.paused) robotSynth.resume(); } catch (e) {}
+      }, 120);
+    }
   }
 
-  speakNext();
+  if (isMobileDevice) setTimeout(speakNext, 80);
+  else speakNext();
 }
 
 function robotSpeak(text) {
@@ -2271,93 +2416,41 @@ function robotSpeak(text) {
     setRobotStatus('online');
     return;
   }
+  primeRobotSpeech();
   robotSpeakChunks(chunks);
 }
 
 // ── Reconnaissance vocale (STT) ──
 function initRobotSTT() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return null;
-  const recog = new SpeechRecognition();
-  recog.lang = 'fr-FR';
-  recog.continuous = true;
-  recog.interimResults = true;
-  recog.maxAlternatives = 3;
-  recog.maxAlternatives = 1;
-
-  let silenceTimer = null;
-  let lastTranscript = '';
-
-  recog.onresult = (e) => {
-    let interimText = '';
-    let finalText = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      const confidence = e.results[i][0].confidence || 1;
-      if (e.results[i].isFinal && confidence > 0.45) { finalText += t; }
-      else if (!e.results[i].isFinal) { interimText += t; }
-    }
-    const current = (finalText || interimText).trim();
-    if (current) {
-      lastTranscript += (finalText || '');
-      setRobotBubble(
-        `<span class="robot-listening-label">J'écoute</span>` +
-        `<span class="robot-listening-text">${lastTranscript || interimText}</span>`
-      );
-    }
-
-    if (silenceTimer) clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(() => {
-      const query = lastTranscript.trim() || interimText.trim();
-      if (query.length > 2) {
-        recog.stop();
-        robotListening = false;
-        lastTranscript = '';
-        handleRobotQuery(query);
-      }
-    }, 900);
-  };
-
-  recog.onerror = (e) => {
-    if (silenceTimer) clearTimeout(silenceTimer);
-    lastTranscript = '';
-    robotListening = false;
-    setRobotStatus('online');
-    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-      setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
-    } else {
-      setTimeout(() => { if (robotOpen) startRobotListening(); }, 1000);
-    }
-  };
-
-  recog.onend = () => {
-    if (silenceTimer) clearTimeout(silenceTimer);
-    lastTranscript = '';
-    if (robotListening) {
-      robotListening = false;
-      setRobotStatus('online');
-    }
-  };
-
-  return recog;
+  return buildRobotRecognition();
 }
 
 function startRobotListening() {
-  if (robotSpeaking || robotListening) return;
-  if (!robotRecog) robotRecog = initRobotSTT();
-  if (!robotRecog) { setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.'); return; }
+  if (robotSpeaking || robotListening || robotQueryPending) return;
+  // Mobile : nouvelle instance à chaque session (requis iOS/Android)
+  robotRecog = buildRobotRecognition();
+  if (!robotRecog) {
+    setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.');
+    return;
+  }
   try {
     robotRecog.start();
     robotListening = true;
     setRobotStatus('listening');
-  } catch(e) { robotListening = false; }
+  } catch (e) {
+    robotListening = false;
+    robotRecog = null;
+    setRobotStatus('online');
+    setRobotBubble('Micro indisponible. Appuyez à nouveau sur le micro.');
+  }
 }
 
 function stopRobotListening() {
+  if (robotSTTSilenceTimer) { clearTimeout(robotSTTSilenceTimer); robotSTTSilenceTimer = null; }
   if (robotRecog && robotListening) {
-    try { robotRecog.stop(); } catch(e) {}
-    robotListening = false;
+    try { robotRecog.stop(); } catch (e) {}
   }
+  robotListening = false;
 }
 
 function toggleRobotMic() {
@@ -2602,7 +2695,10 @@ async function robotModifyEcriture(docId, changes) {
 // ROBOT — HANDLE QUERY (VERSION COMPLÈTE)
 // ══════════════════════════════════════════
 async function handleRobotQuery(query) {
-  if (!query) return;
+  if (!query || !query.trim()) {
+    setRobotStatus('online');
+    return;
+  }
   setRobotStatus('thinking');
   setRobotBubble('Je réfléchis…');
 
@@ -2902,7 +2998,15 @@ ANALYSE AUTOMATIQUE :
     robotSpeak(reply);
 
   } catch(err) {
+    console.warn('[COMEO Robot]', err);
     robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
+  } finally {
+    // Sécurité mobile : ne jamais rester bloqué sur « Réflexion… »
+    setTimeout(() => {
+      if (!robotSpeaking && document.getElementById('robotStatusPill')?.textContent === 'Réflexion…') {
+        setRobotStatus('online');
+      }
+    }, 500);
   }
 }
 // Exposer
