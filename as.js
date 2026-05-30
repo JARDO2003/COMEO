@@ -1855,35 +1855,80 @@ let robotSynth      = window.speechSynthesis;
 let robotVoice      = null;
 let robotConvHistory = [];
 const robotMemoryCache = new Map();
+const CREATOR_IMAGE = 'images/MarcioAI.jpg';
+const ROBOT_TTS = { rate: 0.92, pitch: 1.0, volume: 1.0 };
 
 // ── Initialiser les barres visualiseur ──
-function initRobotVisualizer() {
+function ensureRobotViz() {
+  let viz = document.getElementById('robotViz');
+  if (viz) return viz;
+  const avatarWrap = document.querySelector('.avatar-rings-wrap');
+  if (!avatarWrap) return null;
+  viz = document.createElement('div');
+  viz.id = 'robotViz';
+  viz.className = 'robot-viz';
+  avatarWrap.insertAdjacentElement('afterend', viz);
+  let caption = document.getElementById('robotSpeechCaption');
+  if (!caption) {
+    caption = document.createElement('div');
+    caption.id = 'robotSpeechCaption';
+    caption.className = 'robot-speech-caption';
+    caption.setAttribute('aria-live', 'polite');
+    viz.insertAdjacentElement('afterend', caption);
+  }
+  return viz;
+}
+
+function setRobotVizMode(mode) {
   const viz = document.getElementById('robotViz');
+  if (viz) viz.className = 'robot-viz' + (mode && mode !== 'idle' ? ' ' + mode : '');
+}
+
+function setRobotSpeechCaption(text) {
+  const el = document.getElementById('robotSpeechCaption');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('visible', !!text);
+}
+
+function initRobotVisualizer() {
+  const viz = ensureRobotViz();
   if (!viz || viz.children.length > 0) return;
-  const count = 24;
-  const peaks = [4,8,14,20,28,34,38,40,38,34,30,26,30,34,38,40,38,34,28,20,14,8,6,4];
+  const count = 40;
+  const peaks = [3,5,8,12,16,20,26,32,36,40,42,44,44,42,40,36,32,26,20,16,12,8,5,3,
+    3,5,8,12,16,20,26,32,36,40,42,44,44,42,40,36];
   for (let i = 0; i < count; i++) {
     const b = document.createElement('div');
     b.className = 'rv-bar';
-    b.style.cssText = `--max:${peaks[i]||20}px;--spd:${0.4 + Math.random()*0.5}s;animation-delay:${i*0.04}s`;
+    b.style.animationDelay = (i * 0.025) + 's';
     viz.appendChild(b);
   }
 
-  // Animation JS des barres (remplace les keyframes CSS)
-  let animId;
-  function animBars() {
+  let t0 = performance.now();
+  function animBars(now) {
     const avatar = document.getElementById('robotAvatar');
-    const active = avatar && (avatar.classList.contains('speaking') || avatar.classList.contains('listening'));
+    const state = avatar?.classList.contains('speaking') ? 'speaking'
+      : avatar?.classList.contains('listening') ? 'listening' : 'idle';
+    setRobotVizMode(state === 'idle' ? 'idle' : state);
+    const active = state !== 'idle';
+    const elapsed = (now - t0) / 1000;
     document.querySelectorAll('.rv-bar').forEach((bar, i) => {
-      const max = peaks[i] || 20;
-      const state = avatar?.classList.contains('speaking') ? 'speaking' : avatar?.classList.contains('listening') ? 'listening' : 'idle';
-      const amplitude = state === 'speaking' ? max : state === 'listening' ? max * 0.6 : 4;
-      const wave = amplitude * (0.4 + 0.6 * Math.abs(Math.sin(Date.now() / 130 + i * 0.55)));
-      bar.style.height = Math.max(4, active ? wave : 4) + 'px';
+      const peak = peaks[i % peaks.length] || 20;
+      const center = Math.abs(i - count / 2) / (count / 2);
+      const envelope = 1 - center * 0.35;
+      let h = 4;
+      if (active) {
+        const wave = Math.sin(elapsed * (state === 'speaking' ? 5.5 : 4) + i * 0.42);
+        const wave2 = Math.sin(elapsed * 3.1 + i * 0.18) * 0.35;
+        const amp = state === 'speaking' ? peak * envelope : peak * 0.55 * envelope;
+        h = Math.max(4, amp * (0.55 + 0.45 * Math.abs(wave + wave2)));
+      }
+      bar.style.height = h + 'px';
+      bar.style.opacity = active ? (0.45 + 0.55 * (h / 44)) : 0.22;
     });
-    animId = requestAnimationFrame(animBars);
+    requestAnimationFrame(animBars);
   }
-  animBars();
+  requestAnimationFrame(animBars);
 }
 
 // ── Fond particules ──
@@ -1899,23 +1944,54 @@ function initRobotBg() {
   }
 }
 
-// ── Choisir meilleure voix française ──
+// ── Choisir meilleure voix française (style Gemini : claire, naturelle) ──
 function pickRobotVoice() {
   const voices = robotSynth.getVoices();
   if (!voices.length) return;
-  const neural = voices.find(v =>
-    v.lang.startsWith('fr') &&
-    (v.name.includes('Neural') || v.name.includes('Premium') || v.name.includes('Enhanced'))
-  );
-  if (neural) { robotVoice = neural; return; }
-  const google = voices.find(v => v.name.includes('Google') && v.lang.startsWith('fr'));
-  if (google) { robotVoice = google; return; }
-  const ms = voices.find(v => v.name.includes('Microsoft') && v.lang.startsWith('fr'));
-  if (ms) { robotVoice = ms; return; }
-  const anyFr = voices.find(v => v.lang.startsWith('fr'));
-  robotVoice = anyFr || voices[0] || null;
+  const prefer = [
+    v => v.lang.startsWith('fr') && v.name.includes('Google') && /natural|neural|network|fr-fr/i.test(v.name),
+    v => v.lang.startsWith('fr') && v.name.includes('Google'),
+    v => v.lang.startsWith('fr') && (v.name.includes('Neural') || v.name.includes('Premium') || v.name.includes('Enhanced')),
+    v => v.name.includes('Microsoft') && v.lang.startsWith('fr') && v.name.includes('Natural'),
+    v => v.name.includes('Microsoft') && v.lang.startsWith('fr'),
+    v => v.lang.startsWith('fr')
+  ];
+  for (const test of prefer) {
+    const found = voices.find(test);
+    if (found) { robotVoice = found; return; }
+  }
+  robotVoice = voices[0] || null;
 }
-  
+
+function applyRobotVoice(utter) {
+  if (robotVoice) utter.voice = robotVoice;
+  utter.lang = 'fr-FR';
+  utter.rate = ROBOT_TTS.rate;
+  utter.pitch = ROBOT_TTS.pitch;
+  utter.volume = ROBOT_TTS.volume;
+}
+
+function normalizeRobotQuery(q) {
+  return q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function isCreatorPhotoRequest(query) {
+  const q = normalizeRobotQuery(query);
+  const photoWords = ['photo', 'image', 'portrait', 'selfie', 'picture'];
+  const creatorWords = ['createur', 'concepteur', 'developpeur', 'fondateur', 'marcio', 'zinzindohoue', 'inventeur'];
+  const hasPhoto = photoWords.some(w => q.includes(w));
+  const hasCreator = creatorWords.some(w => q.includes(w))
+    || q.includes('qui ta cree') || q.includes('qui t a cree');
+  if (hasPhoto && hasCreator) return true;
+  return /(?:montre|voir|affiche|donne|envoie).*(?:photo|image|portrait)/.test(q) && hasCreator;
+}
+
+function isAboutCreatorQuery(query) {
+  const q = normalizeRobotQuery(query);
+  return ['createur', 'marcio', 'zinzindohoue', 'qui ta ', 'qui t a ',
+    'concepteur', 'developpeur', 'fondateur', 'inventeur']
+    .some(k => q.includes(k));
+}
 
 // Recharger dès que les voix sont disponibles (délai navigateur)
 speechSynthesis.addEventListener('voiceschanged', pickRobotVoice);
@@ -1930,6 +2006,7 @@ function openRobot() {
   panel.classList.add('open');
   robotOpen = true;
   document.body.style.overflow = 'hidden';
+  ensureRobotViz();
   initRobotVisualizer();
   initRobotBg();
   setTimeout(() => {
@@ -1943,6 +2020,8 @@ function closeRobot() {
   stopRobotListening();
   robotSynth.cancel();
   stopRobotLights();
+  setRobotSpeechCaption('');
+  setRobotVizMode('idle');
   panel.classList.remove('open');
   robotOpen = false;
   document.body.style.overflow = '';
@@ -2065,125 +2144,134 @@ function stopRobotLights() {
   if (avatar) { avatar.style.boxShadow = ''; avatar.style.borderColor = ''; }
 }
 
-// ── Nettoyage texte pour TTS vraiment humain ──
-function cleanTextForSpeech(text) {
+// ── Nettoyage texte pour TTS — ne jamais lire la ponctuation ni les symboles ──
+function stripSpokenPunctuation(text) {
   return text
-    // Supprimer markdown
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/[\[\]#_~`]/g, '')
-    // Abréviations comptables → forme orale
-    .replace(/\bFCFA\b/g, 'francs CFA')
-    .replace(/\bXA\b/g, 'marge commerciale')
-    .replace(/\bXB\b/g, 'chiffre d\'affaires')
-    .replace(/\bXC\b/g, 'valeur ajoutée')
-    .replace(/\bXD\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bEBE\b/g, 'excédent brut d\'exploitation')
-    .replace(/\bDAP\b/g, 'dotations aux amortissements')
-    .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
-    .replace(/\bHT\b/g, 'hors taxe')
-    .replace(/\bTTC\b/g, 'toutes taxes comprises')
-    .replace(/\bCNPS\b/g, 'caisse nationale de prévoyance sociale')
-    .replace(/\bONECCA\b/g, 'ordre national des experts comptables')
-    .replace(/\bSYSCOHADA\b/g, 'système comptable ohada')
-    .replace(/\bOHADA\b/g, 'ohada')
-    // Ponctuation → pauses naturelles (ne pas lire les signes)
-    .replace(/[;]/g, ',')
-    .replace(/[:]/g, ',')
-    .replace(/[—–-]{2,}/g, ', ')
-    .replace(/\.\.\./g, ', ')
-    .replace(/[()[\]{}]/g, ', ')
-    // Supprimer les sigles en capitales isolées (ex: "N°", "XH", etc.)
-    .replace(/\bN°\s*\d+/g, (m) => 'numéro ' + m.replace(/[^0-9]/g, ''))
-    .replace(/\bCEDEAO\b/gi, 'Cédéao')
-    .replace(/\bUEMOA\b/gi, 'Ouémoa')
-    .replace(/\bOHADA\b/gi, 'Ohada')
-    .replace(/\bSYSCOHADA\b/gi, 'Syscohada')
-    .replace(/\bONECCA\b/gi, 'Onecca')
-    .replace(/\bCNPS\b/gi, 'Sé en pé esse')
-    .replace(/\b([A-Z]{2,4})\b/g, (match) => {
-      const keep = ['FCFA','TVA','HT','TTC','IS','IMF','GIE','TPA','SARL','SA','SAS','ONG','PME'];
-      return keep.includes(match) ? match : match.toLowerCase();
-    })
-    // Chiffres → lecture naturelle (éviter "500000" → préférer avec espaces)
-    .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
-    // Nettoyer espaces multiples
+    .replace(/[.,!?;:…—–\-–'"«»""''`~_^|\\/<>@&%=+#*\[\]{}()[\]•●▪◦·]/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
-// ── Découper en phrases naturelles ──
+function cleanTextForSpeech(text) {
+  return stripSpokenPunctuation(
+    text
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/###[\w_]+###/g, ' ')
+      .replace(/\bFCFA\b/g, 'francs CFA')
+      .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
+      .replace(/\bHT\b/g, 'hors taxe')
+      .replace(/\bTTC\b/g, 'toutes taxes comprises')
+      .replace(/\bSYSCOHADA\b/gi, 'système comptable ohada')
+      .replace(/\bOHADA\b/gi, 'ohada')
+      .replace(/\bONECCA\b/gi, 'ordre national des experts comptables')
+      .replace(/\bCNPS\b/gi, 'caisse nationale de prévoyance sociale')
+      .replace(/\bN°\s*\d+/g, m => 'numéro ' + m.replace(/\D/g, ''))
+      .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
+  );
+}
+
+function formatRobotBubbleHtml(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/\n/g, '<br>');
+}
+
+// ── Découper en phrases naturelles (sans ponctuation lue) ──
 function splitIntoNaturalChunks(text) {
-  const raw = text.match(/[^.!?,;:]+[.!?,;:]*/g) || [text];
+  const segments = text.split(/(?<=[.!?…])\s+|\n+/).filter(Boolean);
   const chunks = [];
-  for (const sentence of raw) {
-    const s = sentence.trim();
-    if (!s || s.length < 2) continue;
-    if (s.length > 60) {
-      const sub = s.split(/\s+/);
+  const pushPart = (part) => {
+    part = cleanTextForSpeech(part);
+    if (!part || part.length < 2) return;
+    if (part.length > 72) {
+      const words = part.split(/\s+/);
       let buf = '';
-      for (const word of sub) {
-        buf += (buf ? ' ' : '') + word;
-        if (buf.length > 50) { chunks.push(buf.trim()); buf = ''; }
+      for (const word of words) {
+        const next = buf ? buf + ' ' + word : word;
+        if (next.length > 65 && buf) { chunks.push(buf); buf = word; }
+        else buf = next;
       }
-      if (buf.trim()) chunks.push(buf.trim());
+      if (buf) chunks.push(buf);
     } else {
-      chunks.push(s);
+      chunks.push(part);
     }
+  };
+  segments.forEach(pushPart);
+  if (!chunks.length) {
+    const fallback = cleanTextForSpeech(text);
+    if (fallback.length > 2) chunks.push(fallback);
   }
   return chunks.filter(c => c.length > 1);
 }
 
-function robotSpeak(text) {
+function showCreatorCard(showPhoto = true) {
+  const inner = document.getElementById('robotBubbleText');
+  if (!inner) return;
+  const photoHtml = showPhoto ? `
+    <div class="creator-photo-frame">
+      <img src="${CREATOR_IMAGE}" alt="Marcio Jardel Zinzindohoue" class="creator-photo-img"
+        onerror="this.onerror=null;this.src='images/marcioAI.jpg'">
+    </div>` : '';
+  inner.innerHTML = `
+    <div class="creator-card">
+      ${photoHtml}
+      <div class="creator-card-info">
+        <strong>Marcio Jardel ZINZINDOHOUE</strong>
+        <span>Jeune entrepreneur · Cofondateur Groupe Express · Créateur COMEO AI</span>
+      </div>
+    </div><span class="blink-cur"></span>`;
+}
+
+function robotSpeakChunks(chunks, onDone) {
   robotSynth.cancel();
   robotSpeaking = true;
   setRobotStatus('speaking');
-  startRobotLights(); // ← JEUX DE LUMIÈRE
-
-  // Affichage bulle
-  setRobotBubble(
-    text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
-        .replace(/\n/g, '<br>')
-  );
-
-  const clean = cleanTextForSpeech(text);
-  const chunks = splitIntoNaturalChunks(clean);
-
+  startRobotLights();
   let idx = 0;
+  let spokenSoFar = '';
 
   function speakNext() {
     if (idx >= chunks.length || !robotSpeaking) {
       robotSpeaking = false;
-      stopRobotLights(); // ← ARRÊT LUMIÈRES
+      stopRobotLights();
       setRobotStatus('online');
-      setTimeout(() => {
-        if (robotOpen && !robotListening) startRobotListening();
-      }, 700);
+      setRobotSpeechCaption('');
+      setRobotVizMode('idle');
+      if (onDone) onDone();
+      else setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 800);
       return;
     }
 
     const chunk = chunks[idx].trim();
     if (!chunk) { idx++; speakNext(); return; }
 
+    spokenSoFar += (spokenSoFar ? ' ' : '') + chunk;
+    setRobotSpeechCaption(spokenSoFar);
+
     const utter = new SpeechSynthesisUtterance(chunk);
-    if (robotVoice) utter.voice = robotVoice;
-    utter.lang   = 'fr-FR';
+    applyRobotVoice(utter);
+    const pauseMs = idx < chunks.length - 1 ? 380 : 200;
 
-    // Paramètres voix ultra-humaine
-  utter.rate   = 1.15;
-utter.pitch  = 0.95;
-utter.volume = 1.0;
-
-    // Micro-pause variable entre phrases (humanisation)
-    const pauseMs = chunk.endsWith('?') ? 120 : chunk.endsWith('!') ? 80 : 50;
-
-    utter.onend   = () => { idx++; setTimeout(speakNext, pauseMs); };
-    utter.onerror = () => { idx++; speakNext(); };
-
+    utter.onend = () => { idx++; setTimeout(speakNext, pauseMs); };
+    utter.onerror = () => { idx++; setTimeout(speakNext, 120); };
     robotSynth.speak(utter);
   }
 
   speakNext();
+}
+
+function robotSpeak(text) {
+  setRobotBubble(formatRobotBubbleHtml(text));
+  const chunks = splitIntoNaturalChunks(text);
+  if (!chunks.length) {
+    robotSpeaking = false;
+    setRobotStatus('online');
+    return;
+  }
+  robotSpeakChunks(chunks);
 }
 
 // ── Reconnaissance vocale (STT) ──
@@ -2212,7 +2300,10 @@ function initRobotSTT() {
     const current = (finalText || interimText).trim();
     if (current) {
       lastTranscript += (finalText || '');
-      setRobotBubble(`<em style="opacity:.6;font-size:12px">J'entends : </em><br>${lastTranscript || interimText}`);
+      setRobotBubble(
+        `<span class="robot-listening-label">J'écoute</span>` +
+        `<span class="robot-listening-text">${lastTranscript || interimText}</span>`
+      );
     }
 
     if (silenceTimer) clearTimeout(silenceTimer);
@@ -2278,21 +2369,7 @@ function toggleRobotMic() {
 // ── Envoi à Groq avec contexte comptable ──
 // ── Afficher image du créateur dans la bulle ──
 function showCreatorImage() {
-  const bubble = document.getElementById('robotBubbleText');
-  if (!bubble) return;
-  bubble.innerHTML = `
-    <strong style="color:var(--warm)">Mon créateur</strong><br><br>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-      <img src="images/marcioAI.jpg"
-        style="width:110px;height:110px;border-radius:50%;border:3px solid var(--warm);object-fit:cover;box-shadow:0 0 24px rgba(212,168,83,.4)"
-        onerror="this.style.display='none'">
-      <div style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.85);text-align:center">
-        <strong style="color:var(--warm)">Marcio Jardel ZINZINDOHOUE</strong><br>
-        Jeune entrepreneur, cofondateur de Groupe Express<br>
-        et créateur de COMEO AI
-      </div>
-    </div>
-    <span class="blink-cur"></span>`;
+  showCreatorCard(true);
 }
 
 // ══════════════════════════════════════════
@@ -2536,45 +2613,14 @@ async function handleRobotQuery(query) {
 
   const queryLow = query.toLowerCase();
 
-  // ── Détection créateur ──
-  const isAboutCreator = ['créateur','createur','marcio','zinzindohoue',
-    'qui t\'a','concepteur','développeur','developpeur','fondateur']
-    .some(k => queryLow.includes(k));
-
-  if (isAboutCreator) {
-    const creatorText = 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur, cofondateur de Groupe Express et créateur de COMEO. Je suis fière de mon existence.';
-    startRobotLights();
-    setRobotStatus('speaking');
-    robotSpeaking = true;
-    const inner = document.getElementById('robotBubbleText');
-    if (inner) inner.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-        <img src="images/marcioAI.jpg" style="width:120px;height:120px;border-radius:50%;
-          border:3px solid var(--warm);object-fit:cover;
-          box-shadow:0 0 30px rgba(212,168,83,.5)"
-          onerror="this.outerHTML='<div style=font-size:48px>👨‍💼</div>'">
-        <div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.85);text-align:center">
-          <strong style="color:var(--warm);font-size:15px">Marcio Jardel ZINZINDOHOUE</strong><br>
-          Jeune entrepreneur · Cofondateur<br>Groupe Express · COMEO AI
-        </div>
-      </div><span class="blink-cur"></span>`;
-    robotSynth.cancel();
-    const chunks = splitIntoNaturalChunks(cleanTextForSpeech(creatorText));
-    let idx = 0;
-    function speakCreator() {
-      if (idx >= chunks.length) {
-        robotSpeaking = false; stopRobotLights(); setRobotStatus('online');
-        setTimeout(() => { if (robotOpen && !robotListening) startRobotListening(); }, 700);
-        return;
-      }
-      const utter = new SpeechSynthesisUtterance(chunks[idx].trim());
-      if (robotVoice) utter.voice = robotVoice;
-      utter.lang='fr-FR'; utter.rate=0.88; utter.pitch=0.82; utter.volume=1.0;
-      utter.onend = () => { idx++; setTimeout(speakCreator, 200); };
-      utter.onerror = () => { idx++; speakCreator(); };
-      robotSynth.speak(utter);
-    }
-    setTimeout(speakCreator, 400);
+  // ── Photo ou question sur le créateur ──
+  if (isCreatorPhotoRequest(query) || isAboutCreatorQuery(query)) {
+    const showPhoto = isCreatorPhotoRequest(query) || /photo|image|portrait|selfie|montre|voir|affiche/i.test(queryLow);
+    const creatorText = showPhoto
+      ? 'Voici la photo de mon créateur, Marcio Jardel Zinzindohoue. Jeune entrepreneur, cofondateur de Groupe Express et créateur de COMEO.'
+      : 'Mon concepteur Marcio Jardel Zinzindohoue est un jeune entrepreneur, cofondateur de Groupe Express et créateur de COMEO. Je suis fière de mon existence.';
+    showCreatorCard(showPhoto);
+    robotSpeak(creatorText);
     return;
   }
 
