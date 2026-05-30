@@ -2474,15 +2474,99 @@ function escapeHtml(s) {
 function getLinkBrand(url, label) {
   const u = (url || '').toLowerCase();
   const l = (label || '').toLowerCase();
-  if (u.includes('youtube') || u.includes('youtu.be') || l.includes('youtube'))
-    return { icon: '▶', name: 'YouTube', color: '#ff0033' };
-  if (u.includes('google') || l.includes('google'))
-    return { icon: 'G', name: 'Google', color: '#4285f4' };
-  if (u.includes('facebook') || l.includes('facebook'))
-    return { icon: 'f', name: 'Facebook', color: '#1877f2' };
-  if (u.includes('linkedin') || l.includes('linkedin'))
-    return { icon: 'in', name: 'LinkedIn', color: '#0a66c2' };
-  return { icon: '🔗', name: 'Lien', color: 'var(--warm)' };
+  if (u.includes('youtube') || u.includes('youtu.be') || l.includes('youtube')) {
+    return {
+      id: 'youtube', name: 'YouTube', color: '#ff0033', ctaText: '#ffffff',
+      logo: '<svg class="rl-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#FF0000" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .6 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .6-5.8 31 31 0 0 0-.6-5.8z"/><path fill="#FFF" d="M9.75 15.02l6.5-3.52-6.5-3.52v7.04z"/></svg>'
+    };
+  }
+  if (u.includes('google') || l.includes('google')) {
+    return {
+      id: 'google', name: 'Google', color: '#1a73e8', ctaText: '#ffffff',
+      logo: '<svg class="rl-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'
+    };
+  }
+  if (u.includes('facebook') || l.includes('facebook')) {
+    return { id: 'facebook', name: 'Facebook', color: '#1877f2', ctaText: '#ffffff', logo: '<span class="rl-logo-text">f</span>' };
+  }
+  return {
+    id: 'link', name: 'Lien web', color: '#d4a853', ctaText: '#0a0b10',
+    logo: '<span class="rl-logo-text">🔗</span>'
+  };
+}
+
+const VOICE_STOP_WORDS = new Set([
+  'salut','bonjour','bonsoir','comment','je','tu','te','toi','m','me','mon','ma','mes',
+  'ouvre','ouvrir','ouvres','ouvert','youtube','google','sur','cherche','recherche',
+  'video','videos','moi','les','des','une','un','pour','de','du','la','le','que','qui',
+  'ce','cet','cette','voudrais','veux','peux','pourrais','montre','affiche','lance',
+  'merci','stp','sil','plait','comeo','robot','assistant','lien','page','site',
+  'internet','navigateur','ouvrir','ouvre','moi','veut','faire','est','sont','a','as',
+  'au','aux','en','et','ou','donc','car','avec','dans','par','ton','ta','tes','son'
+]);
+
+function cleanVoiceQueryForSearch(text) {
+  let t = (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  t = t.replace(/\b(\w{2,})(?:\1)+\b/gi, '$1');
+  const words = t.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (const w of words) {
+    if (out.length && out[out.length - 1] === w) continue;
+    out.push(w);
+  }
+  return out.join(' ');
+}
+
+function cleanSearchQueryFromVoice(raw) {
+  const cleaned = cleanVoiceQueryForSearch(raw);
+  const words = cleaned.split(/\s+/).filter(w => w.length > 1 && !VOICE_STOP_WORDS.has(w));
+  return words.join(' ').trim();
+}
+
+function getSearchTermFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const q = u.searchParams.get('search_query') || u.searchParams.get('q') || '';
+    let term = decodeURIComponent(q.replace(/\+/g, ' ')).trim();
+    term = cleanVoiceQueryForSearch(term);
+    const words = term.split(/\s+/).filter(w => w.length > 1 && !VOICE_STOP_WORDS.has(w));
+    return words.join(' ').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+function sanitizeLinkDisplay(url, label) {
+  const brand = getLinkBrand(url, label);
+  const term = getSearchTermFromUrl(url);
+  if (term && term.length >= 2 && term.length <= 48) {
+    return { title: brand.name, subtitle: 'Recherche : ' + term, brand };
+  }
+  return { title: brand.name, subtitle: 'Appuyez pour ouvrir dans votre navigateur', brand };
+}
+
+function ensureRobotLinkStyles() {
+  if (document.getElementById('robot-link-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'robot-link-styles';
+  style.textContent = `
+#robotLinkOverlay.robot-link-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:'Space Grotesk',system-ui,sans-serif;opacity:0;pointer-events:none;transition:opacity .3s}
+#robotLinkOverlay.robot-link-overlay.open{opacity:1;pointer-events:auto}
+#robotLinkOverlay .robot-link-overlay-backdrop{position:absolute;inset:0;background:rgba(4,5,12,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+#robotLinkOverlay .robot-link-card{position:relative;z-index:2;width:min(92vw,420px);padding:32px 24px 28px;border-radius:24px;background:linear-gradient(165deg,#1a1c2e 0%,#0a0b10 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 80px rgba(0,0,0,.6);text-align:center;color:#fff;animation:rlPop .35s cubic-bezier(.34,1.4,.64,1)}
+@keyframes rlPop{from{transform:scale(.9) translateY(16px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+#robotLinkOverlay .robot-link-close{position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:20px;cursor:pointer;line-height:1;padding:0}
+#robotLinkOverlay .robot-link-logo-wrap{display:flex;align-items:center;justify-content:center;margin:8px auto 20px;min-height:64px}
+#robotLinkOverlay .rl-logo{width:64px;height:64px;display:block}
+#robotLinkOverlay .rl-logo-text{font-size:48px;line-height:1}
+#robotLinkOverlay .robot-link-title{font-size:26px;font-weight:700;margin:0 0 8px;color:#fff;letter-spacing:.02em}
+#robotLinkOverlay .robot-link-subtitle{font-size:14px;color:rgba(255,255,255,.55);margin:0 0 28px;line-height:1.5;word-break:break-word}
+#robotLinkOverlay .robot-link-cta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;box-sizing:border-box;padding:18px 24px;border-radius:16px;font-size:18px;font-weight:700;text-decoration:none!important;border:none;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.35);transition:transform .15s,filter .15s}
+#robotLinkOverlay .robot-link-cta:active{transform:scale(.98);filter:brightness(1.08)}
+#robotLinkOverlay .robot-link-hint{margin:14px 0 0;font-size:11px;color:rgba(255,255,255,.35)}
+.robot-link-bubble-preview{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0}
+.robot-link-bubble-btn{display:inline-block;padding:12px 24px;border-radius:10px;background:#d4a853;color:#0a0b10!important;font-weight:700;font-size:14px;text-decoration:none!important}`;
+  document.head.appendChild(style);
 }
 
 function closeRobotLinkOverlay() {
@@ -2496,27 +2580,27 @@ function closeRobotLinkOverlay() {
 function showRobotLinkOverlay(url, label) {
   if (!url) return;
   closeRobotLinkOverlay();
-  const brand = getLinkBrand(url, label);
-  const safeUrl = escapeHtml(url);
-  const safeLabel = escapeHtml(label || brand.name);
-  const safeHref = url.replace(/"/g, '%22');
+  ensureRobotLinkStyles();
+  const { title, subtitle, brand } = sanitizeLinkDisplay(url, label);
+  const safeHref = url.replace(/"/g, '%22').replace(/'/g, '%27');
+  const safeTitle = escapeHtml(title);
+  const safeSub = escapeHtml(subtitle);
 
   const overlay = document.createElement('div');
   overlay.id = 'robotLinkOverlay';
   overlay.className = 'robot-link-overlay';
   overlay.innerHTML = `
     <div class="robot-link-overlay-backdrop" onclick="closeRobotLinkOverlay()"></div>
-    <div class="robot-link-card" role="dialog" aria-modal="true" aria-label="Ouvrir un lien">
+    <div class="robot-link-card" role="dialog" aria-modal="true">
       <button type="button" class="robot-link-close" onclick="closeRobotLinkOverlay()" aria-label="Fermer">✕</button>
-      <div class="robot-link-brand" style="--brand:${brand.color}">
-        <span class="robot-link-icon">${brand.icon}</span>
-        <h2 class="robot-link-title">${safeLabel}</h2>
-      </div>
-      <p class="robot-link-url">${safeUrl}</p>
-      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-cta">
+      <div class="robot-link-logo-wrap">${brand.logo}</div>
+      <h2 class="robot-link-title">${safeTitle}</h2>
+      <p class="robot-link-subtitle">${safeSub}</p>
+      <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-cta"
+        style="background:${brand.color};color:${brand.ctaText}">
         Ouvrir ${escapeHtml(brand.name)}
       </a>
-      <p class="robot-link-hint">Appuyez sur le bouton pour ouvrir dans votre navigateur</p>
+      <p class="robot-link-hint">Vous pouvez fermer cette fenêtre avec ✕</p>
     </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('open'));
@@ -2525,8 +2609,8 @@ function showRobotLinkOverlay(url, label) {
   if (inner) {
     inner.innerHTML = `
       <div class="robot-link-bubble-preview">
-        <span class="robot-link-bubble-label">${safeLabel}</span>
-        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-bubble-btn">→ Ouvrir le lien</a>
+        <span style="font-size:14px;color:rgba(255,255,255,.85)">${safeTitle}</span>
+        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="robot-link-bubble-btn">→ Ouvrir ${escapeHtml(brand.name)}</a>
       </div><span class="blink-cur"></span>`;
   }
 }
@@ -2542,18 +2626,14 @@ function parseOpenUrlAction(reply) {
   try {
     const p = JSON.parse(jsonMatch[0]);
     if (!p?.url) return null;
-    return { url: p.url, label: p.label || p.url, texteBefore };
+    return { url: p.url, label: p.label || '', texteBefore };
   } catch (e) {
     return null;
   }
 }
 
-function extractSearchTerms(query, noiseWords) {
-  let t = query.trim();
-  noiseWords.forEach(w => {
-    t = t.replace(new RegExp('\\b' + w + '\\b', 'gi'), ' ');
-  });
-  return t.replace(/\s+/g, ' ').trim();
+function extractSearchTerms(query) {
+  return cleanSearchQueryFromVoice(query);
 }
 
 function detectOpenUrlIntent(query) {
@@ -2569,27 +2649,22 @@ function detectOpenUrlIntent(query) {
   const wantsOpen = /(ouvre|ouvrir|open|affiche|montre|lance|va sur|aller sur|accede)/i.test(q);
 
   if (/youtube|youtu\.be/.test(q) || (wantsOpen && q.includes('youtube'))) {
-    const term = extractSearchTerms(raw, [
-      'ouvre', 'ouvrir', 'youtube', 'sur', 'cherche', 'recherche', 'video', 'videos',
-      'moi', 'les', 'des', 'une', 'pour', 'de', 'du', 'la', 'le'
-    ]);
-    if (term.length > 2) {
+    const term = cleanSearchQueryFromVoice(raw);
+    if (term.length >= 3) {
       return {
         url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(term),
-        label: 'YouTube — ' + term
+        label: 'YouTube'
       };
     }
     return { url: 'https://www.youtube.com', label: 'YouTube' };
   }
 
   if ((/google/.test(q) && /(cherche|recherche|search)/.test(q)) || (wantsOpen && q.includes('google'))) {
-    const term = extractSearchTerms(raw, [
-      'ouvre', 'ouvrir', 'google', 'sur', 'cherche', 'recherche', 'moi', 'les', 'des', 'une', 'pour', 'de', 'du'
-    ]);
-    if (term.length > 1) {
+    const term = cleanSearchQueryFromVoice(raw);
+    if (term.length >= 2) {
       return {
         url: 'https://www.google.com/search?q=' + encodeURIComponent(term),
-        label: 'Google — ' + term
+        label: 'Google'
       };
     }
     return { url: 'https://www.google.com', label: 'Google' };
@@ -2604,8 +2679,16 @@ function detectOpenUrlIntent(query) {
 }
 
 function handleRobotOpenUrl(url, label, voiceIntro) {
+  const brand = getLinkBrand(url, label);
   showRobotLinkOverlay(url, label);
-  const voice = voiceIntro || `Voici le lien. Appuyez sur le grand bouton pour ouvrir ${label}.`;
+  let voice = `Voici ${brand.name}. Appuyez sur le grand bouton pour ouvrir.`;
+  if (voiceIntro) {
+    const clean = cleanTextForSpeech(voiceIntro);
+    if (clean.length >= 6 && clean.length <= 90 &&
+        !/https|www\.|\.com|search_query|salut.*salut/i.test(clean)) {
+      voice = clean;
+    }
+  }
   robotSpeak(voice, { skipBubble: true });
 }
 
