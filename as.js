@@ -2631,13 +2631,14 @@ function buildRobotRecognition(opts = {}) {
   recog.interimResults = true;
   recog.maxAlternatives = 1;
 
-  let accumulated = '';
+  let accumulated = initialTranscript || '';
   let latestInterim = '';
   let submitted = false;
 
   const getFullTranscript = () => (accumulated + latestInterim).trim();
 
   const flushQuery = () => {
+    if (bargeIn) return;
     const query = getFullTranscript();
     if (query.length < 2 || submitted) return;
     submitted = true;
@@ -2649,7 +2650,7 @@ function buildRobotRecognition(opts = {}) {
 
   // Relancer le compte à rebours à chaque mot entendu (final ou provisoire)
   const scheduleEndOfSpeech = () => {
-    if (submitted || getFullTranscript().length < 2) return;
+    if (bargeIn || submitted || getFullTranscript().length < 2) return;
     if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
     robotSTTSilenceTimer = setTimeout(() => {
       robotSTTSilenceTimer = null;
@@ -2675,10 +2676,16 @@ function buildRobotRecognition(opts = {}) {
     else if (finalPart) latestInterim = '';
 
     const display = getFullTranscript();
+
+    if (bargeIn) {
+      if (hadActivity && display) handleRobotBargeIn(display);
+      return;
+    }
+
     if (display) {
       setRobotBubble(
         `<span class="robot-listening-label">J'écoute — finissez votre phrase</span>` +
-        `<span class="robot-listening-text">${display}</span>`
+        `<span class="robot-listening-text">${escapeHtml(display)}</span>`
       );
     }
 
@@ -2686,6 +2693,14 @@ function buildRobotRecognition(opts = {}) {
   };
 
   recog.onerror = (e) => {
+    if (bargeIn) {
+      robotBargeListening = false;
+      robotBargeRecog = null;
+      if (robotSpeaking && robotOpen && !robotQueryPending) {
+        setTimeout(() => startRobotBargeIn(), 400);
+      }
+      return;
+    }
     if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
     robotListening = false;
     const err = e.error || '';
@@ -2707,6 +2722,14 @@ function buildRobotRecognition(opts = {}) {
   };
 
   recog.onend = () => {
+    if (bargeIn) {
+      robotBargeListening = false;
+      robotBargeRecog = null;
+      if (robotSpeaking && robotOpen && !robotQueryPending) {
+        setTimeout(() => startRobotBargeIn(), 250);
+      }
+      return;
+    }
     robotListening = false;
     // Ne pas couper : attendre le délai complet même si le micro s'est arrêté (iOS/Android)
     if (!submitted && getFullTranscript().length > 2) {
@@ -2718,6 +2741,7 @@ function buildRobotRecognition(opts = {}) {
     }
   };
 
+  recog._scheduleEnd = scheduleEndOfSpeech;
   return recog;
 }
 
@@ -2742,21 +2766,28 @@ function showCreatorCard(showPhoto = true) {
 function robotSpeakChunks(chunks, onDone) {
   robotSynth.cancel();
   primeRobotSpeech();
+  const sessionId = ++robotSpeakSessionId;
   robotSpeaking = true;
+  robotCurrentSpeechFull = chunks.map(c => (typeof c === 'string' ? c : c.text)).join(' ');
   setRobotStatus('speaking');
   startRobotLights();
+  startRobotBargeIn();
   let idx = 0;
   let spokenSoFar = '';
 
   function speakNext() {
-    if (idx >= chunks.length || !robotSpeaking) {
-      robotSpeaking = false;
-      stopRobotLights();
-      setRobotStatus('online');
-      setRobotSpeechCaption('');
-      setRobotVizMode('idle');
-      if (onDone) onDone();
-      else setTimeout(() => { if (robotOpen && !robotListening && !robotQueryPending) startRobotListening(); }, isMobileDevice ? 1200 : 800);
+    if (sessionId !== robotSpeakSessionId || idx >= chunks.length || !robotSpeaking) {
+      if (sessionId === robotSpeakSessionId) {
+        robotSpeaking = false;
+        robotCurrentSpeechFull = '';
+        stopRobotBargeIn();
+        stopRobotLights();
+        setRobotStatus('online');
+        setRobotSpeechCaption('');
+        setRobotVizMode('idle');
+        if (onDone) onDone();
+        else setTimeout(() => { if (robotOpen && !robotListening && !robotQueryPending) startRobotListening(); }, isMobileDevice ? 1200 : 800);
+      }
       return;
     }
 
@@ -2764,6 +2795,7 @@ function robotSpeakChunks(chunks, onDone) {
     const chunk = (typeof item === 'string' ? item : item.text).trim();
     if (!chunk) { idx++; speakNext(); return; }
 
+    robotSpeechChunkStartedAt = Date.now();
     spokenSoFar += (spokenSoFar ? ' ' : '') + chunk;
     setRobotSpeechCaption(spokenSoFar);
 
@@ -2777,7 +2809,7 @@ function robotSpeakChunks(chunks, onDone) {
     let advanced = false;
 
     const advance = () => {
-      if (advanced) return;
+      if (advanced || sessionId !== robotSpeakSessionId) return;
       advanced = true;
       idx++;
       setTimeout(speakNext, pauseMs);
@@ -2819,10 +2851,41 @@ function initRobotSTT() {
   return buildRobotRecognition();
 }
 
-function startRobotListening() {
-  if (robotSpeaking || robotListening || robotQueryPending) return;
-  // Mobile : nouvelle instance à chaque session (requis iOS/Android)
-  robotRecog = buildRobotRecognition();
+function startRobotBargeIn() {
+  if (!robotOpen || !robotSpeaking || robotQueryPending || robotBargeListening) return;
+  stopRobotBargeIn();
+  robotBargeRecog = buildRobotRecognition({ bargeIn: true });
+  if (!robotBargeRecog) return;
+  try {
+    robotBargeRecog.start();
+    robotBargeListening = true;
+  } catch (e) {
+    robotBargeListening = false;
+    robotBargeRecog = null;
+  }
+}
+
+function stopRobotBargeIn() {
+  if (robotBargeRecog) {
+    try { robotBargeRecog.stop(); } catch (e) {}
+    robotBargeRecog = null;
+  }
+  robotBargeListening = false;
+}
+
+function startRobotListening(opts = {}) {
+  if (robotQueryPending) return;
+  if (robotSpeaking && !opts.fromBargeIn) return;
+  if (robotListening && !opts.fromBargeIn) return;
+  stopRobotBargeIn();
+  if (robotRecog && robotListening) {
+    try { robotRecog.stop(); } catch (e) {}
+  }
+  robotListening = false;
+  robotRecog = buildRobotRecognition({
+    initialTranscript: opts.initialTranscript || '',
+    bargeIn: false
+  });
   if (!robotRecog) {
     setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.');
     return;
@@ -2831,6 +2894,13 @@ function startRobotListening() {
     robotRecog.start();
     robotListening = true;
     setRobotStatus('listening');
+    if (opts.initialTranscript) {
+      setRobotBubble(
+        `<span class="robot-listening-label">J'écoute — finissez votre phrase</span>` +
+        `<span class="robot-listening-text">${escapeHtml(opts.initialTranscript)}</span>`
+      );
+      if (robotRecog._scheduleEnd) robotRecog._scheduleEnd();
+    }
   } catch (e) {
     robotListening = false;
     robotRecog = null;
@@ -2848,7 +2918,10 @@ function stopRobotListening() {
 }
 
 function toggleRobotMic() {
-  if (robotSpeaking) { robotSynth.cancel(); robotSpeaking = false; setRobotStatus('online'); return; }
+  if (robotSpeaking) {
+    interruptRobotSpeechAndListen('');
+    return;
+  }
   if (robotListening) { stopRobotListening(); setRobotStatus('online'); }
   else { startRobotListening(); }
 }
