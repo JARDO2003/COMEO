@@ -48,20 +48,48 @@
 <!-- PAYWALL PREMIUM WAVE -->
 <div id="premiumPaywall" class="premium-paywall" style="display:none">
   <div class="premium-paywall-inner">
-    <div class="premium-emblem">⭐ COMEO Premium</div>
-    <h2 class="premium-title">Abonnement mensuel</h2>
-    <p class="premium-desc" id="paywallTrialInfo">Essai gratuit 12 h à la création du compte, puis abonnement requis.</p>
-    <div class="premium-price">15&nbsp;000 <span>FCFA / mois</span></div>
-    <button type="button" class="premium-wave-btn" onclick="openWavePayment()">
-      <span class="wave-icon">W</span> Payer avec Wave
-    </button>
-    <p class="premium-wave-hint">Paiement sécurisé via <a href="https://pay.wave.com" target="_blank" rel="noopener">Wave</a></p>
-    <div class="premium-divider">Après paiement</div>
-    <input type="text" id="activationCode" class="premium-code-input" placeholder="Code d'activation" autocomplete="off" maxlength="64">
-    <div class="auth-err" id="activationErr"></div>
-    <button type="button" class="premium-activate-btn" onclick="activatePremiumWithCode()">Activer mon abonnement</button>
-    <button type="button" class="premium-claim-btn" id="claimWaveBtn" onclick="claimWavePayment()">J'ai payé — enregistrer ma demande</button>
-    <button type="button" class="premium-logout-btn" onclick="doLogout()">Se déconnecter</button>
+
+    <!-- Étape 1 & 2 : Paiement + confirmation -->
+    <div id="paywallPaymentForm">
+      <div class="premium-emblem">⭐ COMEO Premium</div>
+      <h2 class="premium-title">Abonnement mensuel</h2>
+      <p class="premium-desc" id="paywallTrialInfo">Essai gratuit 12 h à la création du compte, puis abonnement requis.</p>
+      <div class="premium-price">15&nbsp;000 <span>FCFA / mois</span></div>
+
+      <p class="premium-step-label">Étape 1 — Payer avec Wave</p>
+      <button type="button" class="premium-wave-btn" onclick="openWavePayment()">
+        <span class="wave-icon">W</span> Payer 15 000 FCFA avec Wave
+      </button>
+      <p class="premium-wave-hint" id="wavePayHint" style="display:none">✅ Wave ouvert — effectuez le paiement puis revenez ici.</p>
+
+      <div class="premium-divider">Étape 2 — Confirmer votre paiement</div>
+      <p class="premium-form-desc">Remplissez exactement les informations utilisées sur Wave :</p>
+      <input type="text" id="wavePayerName" class="premium-code-input" placeholder="Nom complet (comme sur Wave)" autocomplete="name" maxlength="80">
+      <input type="tel" id="wavePayerNumber" class="premium-code-input" placeholder="Numéro Wave (ex: 07 XX XX XX XX)" autocomplete="tel" maxlength="20">
+      <div class="auth-err" id="paymentFormErr"></div>
+      <button type="button" class="premium-activate-btn" id="confirmWaveBtn" onclick="confirmWavePaymentManual()">
+        ✓ Confirmer mon paiement
+      </button>
+      <button type="button" class="premium-logout-btn" onclick="doLogout()">Se déconnecter</button>
+    </div>
+
+    <!-- Étape 3 : Merci — en attente validation -->
+    <div id="paywallSuccessPanel" class="paywall-success-panel" style="display:none">
+      <div class="paywall-stickers">🎉 ✅ 🙏 ⏳ 💙</div>
+      <h2 class="premium-title">Merci !</h2>
+      <p class="paywall-success-text">
+        Votre demande a bien été enregistrée.<br><br>
+        <strong>Veuillez patienter 12 à 24 heures</strong> pendant que nous vérifions votre paiement Wave.<br><br>
+        Vous recevrez l'accès Premium dès validation par notre équipe.
+      </p>
+      <div class="paywall-success-box">
+        <span>⏰</span> Délai habituel : 12 h – 24 h<br>
+        <span>📱</span> Conservez votre reçu Wave<br>
+        <span>✨</span> Merci pour votre confiance !
+      </div>
+      <button type="button" class="premium-logout-btn" onclick="doLogout()">Fermer et se déconnecter</button>
+    </div>
+
   </div>
 </div>
 
