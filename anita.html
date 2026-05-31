@@ -858,15 +858,24 @@
       <button class="rctrl-btn" title="Paramètres vocaux" onclick="toast('Paramètres vocaux bientôt disponibles','info')">
         <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zm7.94-2.06l1.06-.61a1 1 0 000-1.72l-1.06-.6c.04-.34.06-.67.06-1.01s-.02-.68-.06-1.01l1.06-.6a1 1 0 000-1.73l-1.06-.6A8 8 0 0017.6 3.7l-.26-1.2A1 1 0 0016.37 2h-8.74a1 1 0 00-.97.76l-.26 1.19A8 8 0 003.06 6.06L2 6.66a1 1 0 000 1.73l1.06.6C3.02 9.32 3 9.65 3 10s.02.68.06 1.01L2 11.61a1 1 0 000 1.73l1.06.6A8 8 0 006.4 16.3l.26 1.19a1 1 0 00.97.76h8.74a1 1 0 00.97-.76l.26-1.19A8 8 0 0019.94 13z"/></svg>
       </button>
-      <button class="robot-mic-btn" id="robotMicBtn" onclick="toggleRobotMic()">
-        <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 014 4v6a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v6a2 2 0 004 0V5a2 2 0 00-2-2zm-6 9a6 6 0 0012 0h2a8 8 0 01-7 7.93V22h-2v-2.07A8 8 0 014 12z"/></svg>
+      <button class="robot-mic-btn" id="robotMicBtn" type="button" aria-label="Maintenez pour parler">
+        <span class="mic-ripple mic-r1" aria-hidden="true"></span>
+        <span class="mic-ripple mic-r2" aria-hidden="true"></span>
+        <span class="mic-ripple mic-r3" aria-hidden="true"></span>
+        <span class="mic-glow-ring" aria-hidden="true"></span>
+        <span class="mic-core">
+          <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 014 4v6a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v6a2 2 0 004 0V5a2 2 0 00-2-2zm-6 9a6 6 0 0012 0h2a8 8 0 01-7 7.93V22h-2v-2.07A8 8 0 014 12z"/></svg>
+        </span>
+        <span class="mic-wave-bars" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
       </button>
       <button class="rctrl-btn" title="Effacer l'historique" onclick="robotConvHistory=[];toast('Conversation réinitialisée','info')">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 2a8 8 0 100 16A8 8 0 0012 4zm-2 5h4a1 1 0 010 2h-1v4a1 1 0 01-2 0v-4h-1a1 1 0 010-2z"/></svg>
       </button>
     </div>
 
-    <div class="robot-hint" id="robotHint">Appuyez pour parler</div>
+    <div class="robot-hint" id="robotHint">Maintenez le micro pour parler</div>
   </div>
 
   <div class="robot-stats-bar">
