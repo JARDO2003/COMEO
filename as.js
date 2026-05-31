@@ -2118,6 +2118,11 @@ let robotCurrentSpeechFull = '';
 let robotSpeechChunkStartedAt = 0;
 const ROBOT_BARGEIN_GRACE_MS = 500;
 const ROBOT_BARGEIN_MIN_CHARS = 4;
+let robotHoldActive = false;
+let robotHoldStartY = 0;
+let robotHoldCancelled = false;
+const ROBOT_HOLD_CANCEL_PX = 70;
+let robotMicHoldInit = false;
 // Délai de silence avant d'envoyer la requête — laisser l'utilisateur finir sa phrase
 const ROBOT_END_OF_SPEECH_MS = isMobileDevice ? 3200 : 2800;
 
@@ -2272,6 +2277,7 @@ function openRobot() {
   ensureRobotViz();
   initRobotVisualizer();
   initRobotBg();
+  initRobotMicHold();
   setTimeout(() => {
     robotSpeak('Bonjour ! Je suis COMEO, votre assistante comptable. Que puis-je faire pour vous ?');
   }, 150);
@@ -2281,6 +2287,7 @@ function closeRobot() {
   const panel = document.getElementById('robotPanel');
   if (!panel) return;
   closeRobotLinkOverlay();
+  if (robotHoldActive) endRobotHoldTalk(true);
   stopRobotBargeIn();
   stopRobotListening();
   robotSpeakSessionId++;
@@ -2304,17 +2311,19 @@ function setRobotStatus(state) {
   if (!pill) return;
 
   const cfg = {
-    online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
-    listening: { text:'Écoute…',       cls:'listening', hint:'Parlez… j\'attends la fin de votre phrase', micOn:true  },
-    thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
-    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Parlez pour m\'interrompre', micOn:true  }
+    online:    { text:'En ligne',      cls:'',          hint:'Maintenez le micro pour parler', micOn:false },
+    listening: { text:'Écoute…',       cls:'listening', hint:'Parlez… relâchez pour envoyer', micOn:true  },
+    thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…', micOn:false },
+    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Maintenez le micro pour interrompre', micOn:false }
   };
   const s = cfg[state] || cfg.online;
   pill.textContent = s.text;
   pill.className   = 'robot-status-pill ' + s.cls;
   if (avatar) avatar.className = 'robot-avatar-main ' + (state !== 'online' ? state : '');
-  if (hint)   hint.textContent = s.hint;
-  if (mic)    mic.classList.toggle('active', s.micOn);
+  if (hint)   hint.textContent = robotHoldActive
+    ? (robotHoldCancelled ? 'Relâchez pour annuler' : 'Relâchez pour envoyer')
+    : s.hint;
+  if (mic)    mic.classList.toggle('active', s.micOn || robotHoldActive);
 
   // Animer les barres
   if (bars.length) {
@@ -2622,7 +2631,7 @@ function handleRobotBargeIn(transcript) {
 }
 
 function buildRobotRecognition(opts = {}) {
-  const { bargeIn = false, initialTranscript = '' } = opts;
+  const { bargeIn = false, initialTranscript = '', pushToTalk = false } = opts;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
@@ -2650,7 +2659,7 @@ function buildRobotRecognition(opts = {}) {
 
   // Relancer le compte à rebours à chaque mot entendu (final ou provisoire)
   const scheduleEndOfSpeech = () => {
-    if (bargeIn || submitted || getFullTranscript().length < 2) return;
+    if (bargeIn || pushToTalk || submitted || getFullTranscript().length < 2) return;
     if (robotSTTSilenceTimer) clearTimeout(robotSTTSilenceTimer);
     robotSTTSilenceTimer = setTimeout(() => {
       robotSTTSilenceTimer = null;
@@ -2683,9 +2692,13 @@ function buildRobotRecognition(opts = {}) {
     }
 
     if (display) {
+      const pttHint = pushToTalk
+        ? `<span class="robot-ptt-hint${robotHoldCancelled ? ' cancel' : ''}">${robotHoldCancelled ? 'Relâchez pour annuler' : 'Relâchez pour envoyer · Glissez ↑ pour annuler'}</span>`
+        : '';
       setRobotBubble(
-        `<span class="robot-listening-label">J'écoute — finissez votre phrase</span>` +
-        `<span class="robot-listening-text">${escapeHtml(display)}</span>`
+        `<span class="robot-listening-label">${pushToTalk ? '🎙 Enregistrement…' : 'J\'écoute'}</span>` +
+        `<span class="robot-listening-text">${escapeHtml(display)}</span>` +
+        pttHint
       );
     }
 
@@ -2716,7 +2729,7 @@ function buildRobotRecognition(opts = {}) {
     setRobotStatus('online');
     if (err !== 'no-speech' && err !== 'aborted') {
       setRobotBubble('Désolé, je n\'ai pas bien entendu. Réessayez.');
-    } else if (robotOpen && !robotSpeaking && !robotQueryPending) {
+    } else if (!pushToTalk && robotOpen && !robotSpeaking && !robotQueryPending) {
       setTimeout(() => startRobotListening(), 900);
     }
   };
@@ -2730,18 +2743,24 @@ function buildRobotRecognition(opts = {}) {
       }
       return;
     }
+    if (pushToTalk) {
+      robotListening = false;
+      return;
+    }
     robotListening = false;
     // Ne pas couper : attendre le délai complet même si le micro s'est arrêté (iOS/Android)
     if (!submitted && getFullTranscript().length > 2) {
       scheduleEndOfSpeech();
       return;
     }
-    if (robotOpen && !robotSpeaking && !robotQueryPending && !submitted) {
+    if (robotOpen && !robotSpeaking && !robotQueryPending && !submitted && !pushToTalk) {
       setTimeout(() => startRobotListening(), 700);
     }
   };
 
+  recog._getTranscript = getFullTranscript;
   recog._scheduleEnd = scheduleEndOfSpeech;
+  recog._flushNow = flushQuery;
   return recog;
 }
 
@@ -2771,7 +2790,6 @@ function robotSpeakChunks(chunks, onDone) {
   robotCurrentSpeechFull = chunks.map(c => (typeof c === 'string' ? c : c.text)).join(' ');
   setRobotStatus('speaking');
   startRobotLights();
-  startRobotBargeIn();
   let idx = 0;
   let spokenSoFar = '';
 
@@ -2780,13 +2798,11 @@ function robotSpeakChunks(chunks, onDone) {
       if (sessionId === robotSpeakSessionId) {
         robotSpeaking = false;
         robotCurrentSpeechFull = '';
-        stopRobotBargeIn();
         stopRobotLights();
         setRobotStatus('online');
         setRobotSpeechCaption('');
         setRobotVizMode('idle');
         if (onDone) onDone();
-        else setTimeout(() => { if (robotOpen && !robotListening && !robotQueryPending) startRobotListening(); }, isMobileDevice ? 1200 : 800);
       }
       return;
     }
@@ -2875,8 +2891,8 @@ function stopRobotBargeIn() {
 
 function startRobotListening(opts = {}) {
   if (robotQueryPending) return;
-  if (robotSpeaking && !opts.fromBargeIn) return;
-  if (robotListening && !opts.fromBargeIn) return;
+  if (robotSpeaking && !opts.fromBargeIn && !opts.pushToTalk) return;
+  if (robotListening && !opts.fromBargeIn && !opts.pushToTalk) return;
   stopRobotBargeIn();
   if (robotRecog && robotListening) {
     try { robotRecog.stop(); } catch (e) {}
@@ -2884,7 +2900,8 @@ function startRobotListening(opts = {}) {
   robotListening = false;
   robotRecog = buildRobotRecognition({
     initialTranscript: opts.initialTranscript || '',
-    bargeIn: false
+    bargeIn: false,
+    pushToTalk: !!opts.pushToTalk
   });
   if (!robotRecog) {
     setRobotBubble('Votre navigateur ne supporte pas la reconnaissance vocale.');
@@ -2917,13 +2934,105 @@ function stopRobotListening() {
   robotListening = false;
 }
 
-function toggleRobotMic() {
+function beginRobotHoldTalk() {
+  if (robotHoldActive || robotQueryPending) return;
+  robotHoldActive = true;
+  robotHoldCancelled = false;
+  const btn = document.getElementById('robotMicBtn');
+  btn?.classList.add('holding');
+  btn?.classList.remove('cancel');
+
   if (robotSpeaking) {
-    interruptRobotSpeechAndListen('');
-    return;
+    stopRobotSpeech();
+    stopRobotBargeIn();
   }
-  if (robotListening) { stopRobotListening(); setRobotStatus('online'); }
-  else { startRobotListening(); }
+
+  primeRobotSpeech();
+  startRobotListening({ pushToTalk: true });
+  setRobotBubble(
+    `<span class="robot-listening-label">🎙 Maintenez et parlez…</span>` +
+    `<span class="robot-ptt-hint">Relâchez pour envoyer · Glissez ↑ pour annuler</span>`
+  );
+  setRobotStatus('listening');
+}
+
+function endRobotHoldTalk(cancelled) {
+  robotHoldActive = false;
+  robotHoldCancelled = false;
+  const btn = document.getElementById('robotMicBtn');
+  btn?.classList.remove('holding', 'cancel');
+
+  const transcript = robotRecog?._getTranscript?.() || '';
+  if (robotSTTSilenceTimer) { clearTimeout(robotSTTSilenceTimer); robotSTTSilenceTimer = null; }
+  if (robotRecog && robotListening) {
+    try { robotRecog.stop(); } catch (e) {}
+  }
+  robotListening = false;
+
+  setTimeout(() => {
+    if (cancelled) {
+      setRobotStatus('online');
+      setRobotBubble('Message vocal annulé.');
+      return;
+    }
+    const q = transcript.trim();
+    if (q.length >= 2) submitRobotQuery(q);
+    else {
+      setRobotStatus('online');
+      setRobotBubble('Je n\'ai rien entendu. Maintenez le micro et parlez clairement.');
+    }
+  }, isMobileDevice ? 400 : 280);
+}
+
+function initRobotMicHold() {
+  if (robotMicHoldInit) return;
+  const btn = document.getElementById('robotMicBtn');
+  if (!btn) return;
+  robotMicHoldInit = true;
+
+  const onHoldStart = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    if (robotQueryPending) return;
+    robotHoldStartY = e.clientY ?? 0;
+    robotHoldCancelled = false;
+    beginRobotHoldTalk();
+    try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+  };
+
+  const onHoldMove = (e) => {
+    if (!robotHoldActive) return;
+    const dy = robotHoldStartY - (e.clientY ?? 0);
+    const cancel = dy > ROBOT_HOLD_CANCEL_PX;
+    if (cancel !== robotHoldCancelled) {
+      robotHoldCancelled = cancel;
+      btn.classList.toggle('cancel', cancel);
+      const hint = document.getElementById('robotHint');
+      if (hint) hint.textContent = cancel ? 'Relâchez pour annuler' : 'Relâchez pour envoyer';
+      const pttEl = document.querySelector('.robot-ptt-hint');
+      if (pttEl) {
+        pttEl.textContent = cancel ? 'Relâchez pour annuler' : 'Relâchez pour envoyer · Glissez ↑ pour annuler';
+        pttEl.classList.toggle('cancel', cancel);
+      }
+    }
+  };
+
+  const onHoldEnd = (e) => {
+    if (!robotHoldActive) return;
+    e.preventDefault();
+    try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
+    endRobotHoldTalk(robotHoldCancelled);
+  };
+
+  btn.addEventListener('pointerdown', onHoldStart);
+  btn.addEventListener('pointermove', onHoldMove);
+  btn.addEventListener('pointerup', onHoldEnd);
+  btn.addEventListener('pointercancel', onHoldEnd);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+function toggleRobotMic() {
+  /* Remplacé par initRobotMicHold — maintien du micro */
 }
 
 // ── Envoi à Groq avec contexte comptable ──
@@ -3704,6 +3813,7 @@ window.openRobot        = openRobot;
 window.closeRobot       = closeRobot;
 window.closeRobotLinkOverlay = closeRobotLinkOverlay;
 window.toggleRobotMic   = toggleRobotMic;
+window.initRobotMicHold = initRobotMicHold;
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
