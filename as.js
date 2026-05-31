@@ -101,12 +101,232 @@ async function loadServerConfig() {
     }
 
     serverConfigLoaded = true;
+    aiServiceAvailable = GROQ_API_KEYS.length > 0;
+    updateServiceAvailabilityUI();
     console.log(`[COMEO] Config chargée — ${GROQ_API_KEYS.length} clé(s) Groq, ${GROQ_MODELS.length} modèle(s)`);
   } catch (e) {
     console.warn('[COMEO] Erreur chargement config serveur :', e.message);
+    aiServiceAvailable = false;
+    serverConfigLoaded = true;
+    updateServiceAvailabilityUI();
     // Fallback modèles uniquement (sans clé — l'IA sera désactivée)
     GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
   }
+}
+
+// ══════════════════════════════════════════
+// ABONNEMENT PREMIUM — Wave · Essai 12h
+// ══════════════════════════════════════════
+const TRIAL_DURATION_MS = 12 * 60 * 60 * 1000;
+const PREMIUM_MONTH_MS  = 30 * 24 * 60 * 60 * 1000;
+const WAVE_AMOUNT_FCFA  = 15000;
+const COMEO_SERVICE_MSG = 'Veuillez patienter quelques instants ou revenez plus tard.';
+
+let aiServiceAvailable = true;
+let subscriptionCheckInterval = null;
+
+function getWavePaymentUrl() {
+  const p = ['https://pay.wave.com/m/', 'M_ci_iqMcg8KwRE-W', '/c/ci/?amount=', String(WAVE_AMOUNT_FCFA)];
+  return p.join('');
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text).trim()));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function getSubscriptionState(profile) {
+  if (!profile) return { access: false, type: 'expired', remainingMs: 0 };
+  const now = Date.now();
+  const premiumUntil = profile.premiumUntil ? new Date(profile.premiumUntil).getTime() : 0;
+  if (premiumUntil > now) {
+    return { access: true, type: 'premium', remainingMs: premiumUntil - now, premiumUntil };
+  }
+  const trialEnd = profile.trialEndsAt ? new Date(profile.trialEndsAt).getTime() : 0;
+  if (trialEnd > now) {
+    return { access: true, type: 'trial', remainingMs: trialEnd - now, trialEndsAt: profile.trialEndsAt };
+  }
+  return { access: false, type: 'expired', remainingMs: 0 };
+}
+
+function formatRemainingTime(ms) {
+  if (ms <= 0) return '0 min';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 24) return Math.floor(h / 24) + ' jour(s)';
+  if (h > 0) return h + ' h ' + m + ' min';
+  return m + ' min';
+}
+
+async function ensureSubscriptionFields(profile) {
+  const uid = profile.id;
+  const now = Date.now();
+  let trialEndsAt = profile.trialEndsAt;
+  if (!trialEndsAt) {
+    const created = profile.createdAt ? new Date(profile.createdAt).getTime() : now;
+    trialEndsAt = new Date(created + TRIAL_DURATION_MS).toISOString();
+    const status = profile.premiumUntil && new Date(profile.premiumUntil).getTime() > now ? 'active' : 'trial';
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', uid), {
+      trialEndsAt,
+      subscriptionStatus: profile.subscriptionStatus || status
+    }, { merge: true });
+    profile = { ...profile, trialEndsAt, subscriptionStatus: profile.subscriptionStatus || status };
+  }
+  return profile;
+}
+
+async function refreshSubscriptionFromFirestore() {
+  if (!currentProfile?.id) return;
+  try {
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id));
+    if (snap.exists()) currentProfile = { ...snap.data(), id: currentProfile.id };
+  } catch (e) {
+    console.warn('[COMEO] Lecture abonnement:', e.message);
+  }
+}
+
+function updateSubscriptionBadge(sub) {
+  const el = document.getElementById('subscriptionBadge');
+  if (!el) return;
+  if (!sub?.access) { el.style.display = 'none'; return; }
+  el.style.display = 'inline-flex';
+  if (sub.type === 'trial') {
+    el.className = 'sub-badge sub-badge-trial';
+    el.textContent = 'Essai · ' + formatRemainingTime(sub.remainingMs);
+  } else {
+    el.className = 'sub-badge sub-badge-premium';
+    el.textContent = 'Premium · ' + formatRemainingTime(sub.remainingMs);
+  }
+}
+
+function showPremiumPaywall(sub) {
+  const wall = document.getElementById('premiumPaywall');
+  if (!wall) return;
+  const remainEl = document.getElementById('paywallTrialInfo');
+  if (remainEl && sub?.type === 'expired') {
+    remainEl.textContent = 'Votre essai gratuit de 12 heures est terminé. Passez à COMEO Premium pour continuer.';
+  }
+  wall.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function hidePremiumPaywall() {
+  const wall = document.getElementById('premiumPaywall');
+  if (wall) wall.style.display = 'none';
+}
+
+function updateServiceAvailabilityUI() {
+  const banner = document.getElementById('serviceUnavailableBanner');
+  if (!banner) return;
+  const show = !aiServiceAvailable || GROQ_API_KEYS.length === 0;
+  banner.style.display = show ? 'flex' : 'none';
+  banner.setAttribute('aria-hidden', show ? 'false' : 'true');
+}
+
+function getAiUnavailableMessage() {
+  return COMEO_SERVICE_MSG;
+}
+
+function isAiServiceReady() {
+  return aiServiceAvailable && GROQ_API_KEYS.length > 0;
+}
+
+function requireSubscriptionAccess() {
+  const sub = getSubscriptionState(currentProfile);
+  if (!sub.access) {
+    showPremiumPaywall(sub);
+    return false;
+  }
+  return true;
+}
+
+function startSubscriptionMonitor() {
+  if (subscriptionCheckInterval) clearInterval(subscriptionCheckInterval);
+  subscriptionCheckInterval = setInterval(async () => {
+    if (!currentProfile?.id) return;
+    await refreshSubscriptionFromFirestore();
+    const sub = getSubscriptionState(currentProfile);
+    if (!sub.access) {
+      showPremiumPaywall(sub);
+      const shell = document.getElementById('appShell');
+      if (shell) shell.style.display = 'none';
+    } else {
+      hidePremiumPaywall();
+      const shell = document.getElementById('appShell');
+      if (shell) shell.style.display = 'grid';
+      updateSubscriptionBadge(sub);
+    }
+  }, 60000);
+}
+
+async function activatePremiumWithCode() {
+  const input = document.getElementById('activationCode');
+  const errEl = document.getElementById('activationErr');
+  const code = (input?.value || '').trim();
+  if (!code || !currentProfile?.id) return;
+  if (errEl) { errEl.classList.remove('show'); errEl.textContent = ''; }
+  try {
+    await waitForFirebase();
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, 'server_config', 'wave_settings'));
+    const hashExpected = snap.exists() ? snap.data().activationCodeHash : null;
+    if (!hashExpected) {
+      if (errEl) { errEl.textContent = 'Activation non configurée. Contactez le support.'; errEl.classList.add('show'); }
+      return;
+    }
+    const hashGot = await sha256Hex(code);
+    if (hashGot !== hashExpected) {
+      if (errEl) { errEl.textContent = 'Code invalide. Vérifiez le code reçu après paiement Wave.'; errEl.classList.add('show'); }
+      return;
+    }
+    const premiumUntil = new Date(Date.now() + PREMIUM_MONTH_MS).toISOString();
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id), {
+      premiumUntil,
+      subscriptionStatus: 'active',
+      lastActivationAt: new Date().toISOString(),
+      activationMethod: 'wave_code'
+    }, { merge: true });
+    currentProfile.premiumUntil = premiumUntil;
+    currentProfile.subscriptionStatus = 'active';
+    hidePremiumPaywall();
+    document.getElementById('appShell').style.display = 'grid';
+    toast('Abonnement Premium activé pour 30 jours.', 'success');
+    await loadApp();
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Erreur activation'; errEl.classList.add('show'); }
+  }
+}
+
+async function claimWavePayment() {
+  if (!currentProfile?.id) return;
+  const btn = document.getElementById('claimWaveBtn');
+  if (btn) btn.disabled = true;
+  try {
+    await waitForFirebase();
+    await window._fbAddDoc(
+      window._fbCollection(window._db, 'profiles', currentProfile.id, 'payment_claims'),
+      {
+        provider: 'wave',
+        amount: WAVE_AMOUNT_FCFA,
+        currency: 'XOF',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        email: currentProfile.email || ''
+      }
+    );
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id), {
+      paymentPendingAt: new Date().toISOString(),
+      subscriptionStatus: 'pending_payment'
+    }, { merge: true });
+    toast('Demande enregistrée. Entrez votre code d\'activation reçu après paiement.', 'info');
+  } catch (e) {
+    toast('Erreur : ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openWavePayment() {
+  window.open(getWavePaymentUrl(), '_blank', 'noopener,noreferrer');
 }
 
 // ══════════════════════════════════════════
@@ -439,10 +659,15 @@ async function doRegister() {
     await waitForFirebase();
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     const uid  = cred.user.uid;
+    const trialEndsAt = new Date(Date.now() + TRIAL_DURATION_MS).toISOString();
     await window._fbSetDoc(window._fbDoc(window._db, 'profiles', uid), {
-      company, compte701, exercice, email, createdAt: new Date().toISOString()
+      company, compte701, exercice, email,
+      createdAt: new Date().toISOString(),
+      trialEndsAt,
+      premiumUntil: null,
+      subscriptionStatus: 'trial'
     });
-    toast('Profil créé avec succès ! Connectez-vous.', 'success');
+    toast('Profil créé ! 12 heures d\'essai gratuit inclus.', 'success');
     switchTab('login');
     document.getElementById('l-email').value = email;
   } catch (e) {
@@ -483,6 +708,8 @@ async function doLogin() {
 }
 async function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
+  if (subscriptionCheckInterval) clearInterval(subscriptionCheckInterval);
+  hidePremiumPaywall();
   await signOut(auth);
   currentProfile = null; ecritures = []; conversationHistory = [];
   document.getElementById('appShell').style.display = 'none';
@@ -496,11 +723,26 @@ function waitForFirebase() {
 }
 
 async function loadApp() {
+  currentProfile = await ensureSubscriptionFields(currentProfile);
+  await refreshSubscriptionFromFirestore();
+  const sub = getSubscriptionState(currentProfile);
+
   document.getElementById('authOverlay').style.display = 'none';
+
+  if (!sub.access) {
+    document.getElementById('appShell').style.display = 'none';
+    showPremiumPaywall(sub);
+    return;
+  }
+
+  hidePremiumPaywall();
   document.getElementById('appShell').style.display = 'grid';
   document.getElementById('topCompanyName').textContent = currentProfile.company;
   document.getElementById('exerciceYear').value = currentProfile.exercice || '2024';
   if (!serverConfigLoaded) await loadServerConfig();
+  updateServiceAvailabilityUI();
+  updateSubscriptionBadge(sub);
+  startSubscriptionMonitor();
   await Promise.all([
     loadEcrituresFromFirestore(),
     loadClientsFromFirestore(),
@@ -1626,13 +1868,10 @@ function buildAIContext() {
 
 async function sendToAI(context) {
   if (isAILoading) return;
+  if (!requireSubscriptionAccess()) return;
 
-  // ── Vérification clés disponibles ──
-  if (GROQ_API_KEYS.length === 0) {
-    appendMsg(context, 'ai',
-      '⚠️ <strong>COMEO AI non configuré.</strong><br>Aucune clé API Groq n\'est enregistrée. ' +
-      'Rendez-vous sur <strong>server.html</strong> (interface administrateur) pour ajouter vos clés API Groq.'
-    );
+  if (!isAiServiceReady()) {
+    appendMsg(context, 'ai', '⏳ ' + getAiUnavailableMessage());
     return;
   }
 
@@ -1684,6 +1923,10 @@ async function sendToAI(context) {
         if (lastError.includes('decommissioned') || lastError.includes('deprecated') || response.status === 404) {
           toast(`⚠️ Modèle/clé ${attempt + 1} indisponible → bascule...`, 'info');
           continue;
+        }
+        if (response.status === 401 || response.status === 403 || response.status === 429) {
+          aiServiceAvailable = false;
+          updateServiceAvailabilityUI();
         }
         break;
       } catch (e) { lastError = e.message; }
@@ -1757,7 +2000,9 @@ async function sendToAI(context) {
   } catch (err) {
     removeTyping(context, tid);
     conversationHistory.pop();
-    appendMsg(context, 'ai', `⚠️ Incident technique : ${err.message} — Veuillez réessayer.`);
+    aiServiceAvailable = false;
+    updateServiceAvailabilityUI();
+    appendMsg(context, 'ai', '⏳ ' + getAiUnavailableMessage());
   }
   isAILoading = false;
   if (sendBtnId) { const btn = document.getElementById(sendBtnId); if (btn) btn.disabled = false; }
@@ -2930,11 +3175,15 @@ async function handleRobotQuery(query) {
     setRobotStatus('online');
     return;
   }
+  if (!requireSubscriptionAccess()) return;
+
   setRobotStatus('thinking');
   setRobotBubble('Je réfléchis…');
 
-  if (GROQ_API_KEYS.length === 0) {
-    robotSpeak('Les clés API ne sont pas configurées. Contactez l administrateur.');
+  if (!isAiServiceReady()) {
+    robotSpeak(getAiUnavailableMessage(), { skipBubble: true });
+    setRobotBubble('<span class="service-msg-inline">⏳ ' + escapeHtml(getAiUnavailableMessage()) + '</span>');
+    setRobotStatus('online');
     return;
   }
 
@@ -3210,7 +3459,10 @@ ANALYSE AUTOMATIQUE :
 
   } catch(err) {
     console.warn('[COMEO Robot]', err);
-    robotSpeak('Désolé, une erreur est survenue. Vérifiez votre connexion.');
+    aiServiceAvailable = false;
+    updateServiceAvailabilityUI();
+    robotSpeak(getAiUnavailableMessage(), { skipBubble: true });
+    setRobotBubble('<span class="service-msg-inline">⏳ ' + escapeHtml(getAiUnavailableMessage()) + '</span>');
   } finally {
     // Sécurité mobile : ne jamais rester bloqué sur « Réflexion… »
     setTimeout(() => {
@@ -4373,6 +4625,9 @@ async function doForgotPassword() {
   } catch(e) { toast('Erreur : ' + e.message, 'error'); }
 }
 window.doForgotPassword = doForgotPassword;
+window.openWavePayment = openWavePayment;
+window.claimWavePayment = claimWavePayment;
+window.activatePremiumWithCode = activatePremiumWithCode;
 // ══════════════════════════════════════════
 // EXPOSITION GLOBALE
 // ══════════════════════════════════════════
