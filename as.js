@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── BASE DE DONNÉES ROBOT (cache des réponses)
 const robotFirebaseConfig = {
@@ -61,8 +61,6 @@ window._fbQuery     = query;
 window._fbOrderBy   = orderBy;
 window._fbSetDoc    = setDoc;
 window._fbGetDoc    = getDoc;
-window._fbWhere     = where;
-window._fbUpdateDoc = updateDoc;
 window._fbReady     = true;
 document.dispatchEvent(new Event('firebase-ready'));
 
@@ -130,6 +128,11 @@ let subscriptionCheckInterval = null;
 function getWavePaymentUrl() {
   const p = ['https://pay.wave.com/m/', 'M_ci_iqMcg8KwRE-W', '/c/ci/?amount=', String(WAVE_AMOUNT_FCFA)];
   return p.join('');
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text).trim()));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function getSubscriptionState(profile) {
@@ -200,83 +203,11 @@ function showPremiumPaywall(sub) {
   const wall = document.getElementById('premiumPaywall');
   if (!wall) return;
   const remainEl = document.getElementById('paywallTrialInfo');
-  const formPanel = document.getElementById('paywallPaymentForm');
-  const successPanel = document.getElementById('paywallSuccessPanel');
   if (remainEl && sub?.type === 'expired') {
     remainEl.textContent = 'Votre essai gratuit de 12 heures est terminé. Passez à COMEO Premium pour continuer.';
   }
-  const isPending = currentProfile?.subscriptionStatus === 'pending_payment';
-  if (formPanel) formPanel.style.display = isPending ? 'none' : 'block';
-  if (successPanel) successPanel.style.display = isPending ? 'block' : 'none';
   wall.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-}
-
-function showPaymentPendingSuccess() {
-  const formPanel = document.getElementById('paywallPaymentForm');
-  const successPanel = document.getElementById('paywallSuccessPanel');
-  if (formPanel) formPanel.style.display = 'none';
-  if (successPanel) successPanel.style.display = 'block';
-}
-
-function normalizeWaveNumber(raw) {
-  let n = String(raw || '').replace(/\s+/g, '').replace(/^\+225/, '').replace(/^225/, '');
-  if (n.startsWith('0')) n = n;
-  else if (n.length === 10) n = '0' + n;
-  return n.replace(/\D/g, '');
-}
-
-async function confirmWavePaymentManual() {
-  if (!currentProfile?.id) return;
-  const nameEl = document.getElementById('wavePayerName');
-  const numEl = document.getElementById('wavePayerNumber');
-  const errEl = document.getElementById('paymentFormErr');
-  const btn = document.getElementById('confirmWaveBtn');
-  const payerName = (nameEl?.value || '').trim();
-  const waveNumber = normalizeWaveNumber(numEl?.value);
-  if (errEl) { errEl.classList.remove('show'); errEl.textContent = ''; }
-
-  if (payerName.length < 2) {
-    if (errEl) { errEl.textContent = 'Indiquez votre nom complet.'; errEl.classList.add('show'); }
-    return;
-  }
-  if (waveNumber.length < 8 || waveNumber.length > 12) {
-    if (errEl) { errEl.textContent = 'Numéro Wave invalide (8 à 12 chiffres).'; errEl.classList.add('show'); }
-    return;
-  }
-
-  if (btn) btn.disabled = true;
-  try {
-    await waitForFirebase();
-    await window._fbAddDoc(window._fbCollection(window._db, 'payment_requests'), {
-      uid: currentProfile.id,
-      email: currentProfile.email || '',
-      company: currentProfile.company || '',
-      payerName,
-      waveNumber,
-      amount: WAVE_AMOUNT_FCFA,
-      currency: 'XOF',
-      provider: 'wave',
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    });
-    await window._fbAddDoc(
-      window._fbCollection(window._db, 'profiles', currentProfile.id, 'payment_claims'),
-      { payerName, waveNumber, amount: WAVE_AMOUNT_FCFA, status: 'pending', createdAt: new Date().toISOString() }
-    );
-    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id), {
-      paymentPendingAt: new Date().toISOString(),
-      subscriptionStatus: 'pending_payment',
-      lastPayerName: payerName,
-      lastWaveNumber: waveNumber
-    }, { merge: true });
-    currentProfile.subscriptionStatus = 'pending_payment';
-    showPaymentPendingSuccess();
-  } catch (e) {
-    if (errEl) { errEl.textContent = e.message || 'Erreur lors de l\'envoi.'; errEl.classList.add('show'); }
-  } finally {
-    if (btn) btn.disabled = false;
-  }
 }
 
 function hidePremiumPaywall() {
@@ -328,10 +259,74 @@ function startSubscriptionMonitor() {
   }, 60000);
 }
 
+async function activatePremiumWithCode() {
+  const input = document.getElementById('activationCode');
+  const errEl = document.getElementById('activationErr');
+  const code = (input?.value || '').trim();
+  if (!code || !currentProfile?.id) return;
+  if (errEl) { errEl.classList.remove('show'); errEl.textContent = ''; }
+  try {
+    await waitForFirebase();
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, 'server_config', 'wave_settings'));
+    const hashExpected = snap.exists() ? snap.data().activationCodeHash : null;
+    if (!hashExpected) {
+      if (errEl) { errEl.textContent = 'Activation non configurée. Contactez le support.'; errEl.classList.add('show'); }
+      return;
+    }
+    const hashGot = await sha256Hex(code);
+    if (hashGot !== hashExpected) {
+      if (errEl) { errEl.textContent = 'Code invalide. Vérifiez le code reçu après paiement Wave.'; errEl.classList.add('show'); }
+      return;
+    }
+    const premiumUntil = new Date(Date.now() + PREMIUM_MONTH_MS).toISOString();
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id), {
+      premiumUntil,
+      subscriptionStatus: 'active',
+      lastActivationAt: new Date().toISOString(),
+      activationMethod: 'wave_code'
+    }, { merge: true });
+    currentProfile.premiumUntil = premiumUntil;
+    currentProfile.subscriptionStatus = 'active';
+    hidePremiumPaywall();
+    document.getElementById('appShell').style.display = 'grid';
+    toast('Abonnement Premium activé pour 30 jours.', 'success');
+    await loadApp();
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Erreur activation'; errEl.classList.add('show'); }
+  }
+}
+
+async function claimWavePayment() {
+  if (!currentProfile?.id) return;
+  const btn = document.getElementById('claimWaveBtn');
+  if (btn) btn.disabled = true;
+  try {
+    await waitForFirebase();
+    await window._fbAddDoc(
+      window._fbCollection(window._db, 'profiles', currentProfile.id, 'payment_claims'),
+      {
+        provider: 'wave',
+        amount: WAVE_AMOUNT_FCFA,
+        currency: 'XOF',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        email: currentProfile.email || ''
+      }
+    );
+    await window._fbSetDoc(window._fbDoc(window._db, 'profiles', currentProfile.id), {
+      paymentPendingAt: new Date().toISOString(),
+      subscriptionStatus: 'pending_payment'
+    }, { merge: true });
+    toast('Demande enregistrée. Entrez votre code d\'activation reçu après paiement.', 'info');
+  } catch (e) {
+    toast('Erreur : ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function openWavePayment() {
   window.open(getWavePaymentUrl(), '_blank', 'noopener,noreferrer');
-  const hint = document.getElementById('wavePayHint');
-  if (hint) hint.style.display = 'block';
 }
 
 // ══════════════════════════════════════════
@@ -4631,7 +4626,8 @@ async function doForgotPassword() {
 }
 window.doForgotPassword = doForgotPassword;
 window.openWavePayment = openWavePayment;
-window.confirmWavePaymentManual = confirmWavePaymentManual;
+window.claimWavePayment = claimWavePayment;
+window.activatePremiumWithCode = activatePremiumWithCode;
 // ══════════════════════════════════════════
 // EXPOSITION GLOBALE
 // ══════════════════════════════════════════
