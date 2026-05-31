@@ -2111,6 +2111,13 @@ let robotQueryPending = false;
 let robotSTTSilenceTimer = null;
 let lastRobotQuery = '';
 let lastRobotQueryTime = 0;
+let robotBargeRecog = null;
+let robotBargeListening = false;
+let robotSpeakSessionId = 0;
+let robotCurrentSpeechFull = '';
+let robotSpeechChunkStartedAt = 0;
+const ROBOT_BARGEIN_GRACE_MS = 500;
+const ROBOT_BARGEIN_MIN_CHARS = 4;
 // Délai de silence avant d'envoyer la requête — laisser l'utilisateur finir sa phrase
 const ROBOT_END_OF_SPEECH_MS = isMobileDevice ? 3200 : 2800;
 
@@ -2274,7 +2281,9 @@ function closeRobot() {
   const panel = document.getElementById('robotPanel');
   if (!panel) return;
   closeRobotLinkOverlay();
+  stopRobotBargeIn();
   stopRobotListening();
+  robotSpeakSessionId++;
   robotSynth.cancel();
   stopRobotLights();
   setRobotSpeechCaption('');
@@ -2298,7 +2307,7 @@ function setRobotStatus(state) {
     online:    { text:'En ligne',      cls:'',          hint:'Appuyez pour parler',   micOn:false },
     listening: { text:'Écoute…',       cls:'listening', hint:'Parlez… j\'attends la fin de votre phrase', micOn:true  },
     thinking:  { text:'Réflexion…',    cls:'thinking',  hint:'Analyse en cours…',      micOn:false },
-    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Je vous réponds…',       micOn:false }
+    speaking:  { text:'Répond…',       cls:'speaking',  hint:'Parlez pour m\'interrompre', micOn:true  }
   };
   const s = cfg[state] || cfg.online;
   pill.textContent = s.text;
@@ -2402,30 +2411,62 @@ function stopRobotLights() {
 }
 
 // ── Préparation TTS : ponctuation = pauses naturelles (sans lire « point » / « virgule ») ──
+function normalizeFrenchElisions(text) {
+  if (!text) return '';
+  let t = String(text)
+    .replace(/[\u2018\u2019\u02BC\u00B4]/g, "'")
+    .replace(/\s*'\s*/g, "'");
+
+  const fixes = [
+    [/\baujourd\s+hui\b/gi, "aujourd'hui"],
+    [/\bquelqu\s+un\b/gi, "quelqu'un"],
+    [/\bpuisqu\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "puisqu'"],
+    [/\bquoiqu\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "quoiqu'"],
+    [/\blorsqu\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "lorsqu'"],
+    [/\bqu\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "qu'"],
+    [/\bl\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "l'"],
+    [/\bd\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "d'"],
+    [/\bj\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "j'"],
+    [/\bn\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "n'"],
+    [/\bs\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "s'"],
+    [/\bc\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "c'"],
+    [/\bm\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "m'"],
+    [/\bt\s+(?=[aeiouhàâäéèêëîïôùûü])/gi, "t'"]
+  ];
+  fixes.forEach(([re, rep]) => { t = t.replace(re, rep); });
+
+  return t.replace(/'{2,}/g, "'");
+}
+
 function preprocessTextForSpeech(text) {
-  return (text || '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/#{1,6}\s?/g, '')
-    .replace(/###[\w_]+###[\s\S]*/g, ' ')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/\bFCFA\b/g, 'francs CFA')
-    .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
-    .replace(/\bHT\b/g, 'hors taxe')
-    .replace(/\bTTC\b/g, 'toutes taxes comprises')
-    .replace(/\bSYSCOHADA\b/gi, 'système comptable ohada')
-    .replace(/\bOHADA\b/gi, 'ohada')
-    .replace(/\bONECCA\b/gi, 'ordre national des experts comptables')
-    .replace(/\bCNPS\b/gi, 'caisse nationale de prévoyance sociale')
-    .replace(/\bN°\s*\d+/g, m => 'numéro ' + m.replace(/\D/g, ''))
-    .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return normalizeFrenchElisions(
+    (text || '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/###[\w_]+###[\s\S]*/g, ' ')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/\bFCFA\b/g, 'francs CFA')
+      .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
+      .replace(/\bHT\b/g, 'hors taxe')
+      .replace(/\bTTC\b/g, 'toutes taxes comprises')
+      .replace(/\bSYSCOHADA\b/gi, 'système comptable ohada')
+      .replace(/\bOHADA\b/gi, 'ohada')
+      .replace(/\bONECCA\b/gi, 'ordre national des experts comptables')
+      .replace(/\bCNPS\b/gi, 'caisse nationale de prévoyance sociale')
+      .replace(/\bN°\s*\d+/g, m => 'numéro ' + m.replace(/\D/g, ''))
+      .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
 }
 
 function stripSpokenPunctuation(text) {
-  return (text || '')
+  const APOS = '\u0007';
+  const safe = (text || '').replace(/'/g, APOS);
+  return safe
     .replace(/[.,!?;:…—–\-–"«»""`~_^|\\/<>@&%=+#*\[\]{}()[\]•●▪◦·]/g, ' ')
+    .replace(/\u0007/g, "'")
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -2435,15 +2476,20 @@ function cleanTextForSpeech(text) {
 }
 
 function splitLongSpeechPart(text, maxLen) {
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = text.split(/(\s+)/).filter(Boolean);
   const parts = [];
   let buf = '';
-  for (const word of words) {
-    const next = buf ? buf + ' ' + word : word;
-    if (next.length > maxLen && buf) { parts.push(buf); buf = word; }
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    if (/^\s+$/.test(word)) {
+      if (buf) buf += word;
+      continue;
+    }
+    const next = buf.trim() ? buf + word : word;
+    if (next.length > maxLen && buf.trim()) { parts.push(buf.trim()); buf = word; }
     else buf = next;
   }
-  if (buf) parts.push(buf);
+  if (buf.trim()) parts.push(buf.trim());
   return parts;
 }
 
@@ -2517,11 +2563,66 @@ function submitRobotQuery(query) {
   lastRobotQueryTime = now;
   robotQueryPending = true;
   if (robotSTTSilenceTimer) { clearTimeout(robotSTTSilenceTimer); robotSTTSilenceTimer = null; }
+  stopRobotBargeIn();
   stopRobotListening();
   handleRobotQuery(q).finally(() => { robotQueryPending = false; });
 }
 
-function buildRobotRecognition() {
+function normalizeForEchoCompare(s) {
+  return normalizeRobotQuery(String(s || '')).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function isLikelyRobotEcho(userText) {
+  const u = normalizeForEchoCompare(userText);
+  if (!u || u.length < 3) return true;
+  const robot = normalizeForEchoCompare(robotCurrentSpeechFull);
+  if (!robot) return false;
+  if (robot.includes(u)) return true;
+  const tail = robot.slice(-Math.min(robot.length, u.length + 24));
+  if (tail.includes(u)) return true;
+  const uWords = u.split(' ').filter(w => w.length > 2);
+  if (!uWords.length) return u.length < ROBOT_BARGEIN_MIN_CHARS;
+  const robotWords = new Set(robot.split(' '));
+  const overlap = uWords.filter(w => robotWords.has(w)).length / uWords.length;
+  return overlap > 0.8 && uWords.length <= 4;
+}
+
+function stopRobotSpeech() {
+  robotSpeakSessionId++;
+  robotSpeaking = false;
+  robotCurrentSpeechFull = '';
+  try { robotSynth.cancel(); } catch (e) {}
+  stopRobotLights();
+  setRobotSpeechCaption('');
+  setRobotVizMode('idle');
+}
+
+function interruptRobotSpeechAndListen(initialTranscript) {
+  if (!robotOpen) return;
+  const t = (initialTranscript || '').trim();
+  stopRobotSpeech();
+  stopRobotBargeIn();
+  setRobotBubble(
+    `<span class="robot-listening-label">Je vous écoute</span>` +
+    (t ? `<span class="robot-listening-text">${escapeHtml(t)}</span>` : '')
+  );
+  setRobotStatus('listening');
+  setTimeout(() => startRobotListening({ initialTranscript: t, fromBargeIn: true }), isMobileDevice ? 180 : 80);
+}
+
+function handleRobotBargeIn(transcript) {
+  if (!robotSpeaking || robotQueryPending) return;
+  if (Date.now() - robotSpeechChunkStartedAt < ROBOT_BARGEIN_GRACE_MS) return;
+  const t = (transcript || '').trim();
+  if (t.length < ROBOT_BARGEIN_MIN_CHARS) return;
+  if (isLikelyRobotEcho(t)) return;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 2 && t.length < 6) return;
+  interruptRobotSpeechAndListen(t);
+}
+
+function buildRobotRecognition(opts = {}) {
+  const { bargeIn = false, initialTranscript = '' } = opts;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
   const recog = new SpeechRecognition();
@@ -3317,6 +3418,7 @@ PERSONNALITÉ VOCALE — Parle comme Gemini ou ChatGPT Voice : fluide, intellige
 - Raisonne en profondeur avant de répondre, puis exprime une réponse claire et pertinente.
 - Phrases complètes et naturelles, jamais télégraphiques ni mécaniques.
 - Rythme oral humain : virgules pour enchaîner une idée, point pour conclure une pensée.
+- Orthographe orale correcte : apostrophes obligatoires (l'entreprise, d'un, j'ai, c'est, qu'il, n'est).
 - 2 à 5 phrases selon la question ; sois précise sur les chiffres et comptes.
 - Jamais de markdown, listes à puces, symboles, ni « en tant qu'IA ».
 - Avant une action : une phrase courte annonçant ce que tu fais. Après : confirme le résultat avec clarté.
