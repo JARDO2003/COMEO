@@ -3350,54 +3350,73 @@ async function sendToAI(context) {
   conversationHistory.push({ role: 'user', content: msg });
   if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
 
-  try {
-    let response, lastError;
+try {
+    let response = null;
+    let lastError = null;
+    let data = null;
 
-    // Rotation clés × rotation modèles
-    const totalAttempts = GROQ_API_KEYS.length * GROQ_MODELS.length;
-    for (let attempt = 0; attempt < Math.min(totalAttempts, 6); attempt++) {
-      const keyToUse   = GROQ_API_KEYS[(groqKeyIdx + attempt) % GROQ_API_KEYS.length];
-      const modelToUse = GROQ_MODELS[(groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length];
-      try {
-        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${keyToUse}` },
-          body: JSON.stringify({
-            model: modelToUse,
-            max_tokens: 6000,
-            temperature: 0.02,
-            top_p: 0.95,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...conversationHistory
-            ]
-          })
-        });
-        if (response.ok) {
-          groqKeyIdx   = (groqKeyIdx + attempt) % GROQ_API_KEYS.length;
-          groqModelIdx = (groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length;
-          break;
+    // ══ TENTATIVE 1 : GROQ ══
+    if (GROQ_API_KEYS.length > 0) {
+      const totalAttempts = GROQ_API_KEYS.length * GROQ_MODELS.length;
+      for (let attempt = 0; attempt < Math.min(totalAttempts, 6); attempt++) {
+        const keyToUse   = GROQ_API_KEYS[(groqKeyIdx + attempt) % GROQ_API_KEYS.length];
+        const modelToUse = GROQ_MODELS[(groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length];
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+          response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${keyToUse}`
+            },
+            body: JSON.stringify({
+              model: modelToUse,
+              max_tokens: 6000,
+              temperature: 0.02,
+              top_p: 0.95,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...conversationHistory
+              ]
+            })
+          });
+          if (response.ok) {
+            groqKeyIdx   = (groqKeyIdx + attempt) % GROQ_API_KEYS.length;
+            groqModelIdx = (groqModelIdx + Math.floor(attempt / GROQ_API_KEYS.length)) % GROQ_MODELS.length;
+            data = await response.json();
+            console.log('[COMEO] Groq OK');
+            break;
+          }
+          const errData = await response.json().catch(() => ({}));
+          lastError = errData.error?.message || 'Erreur ' + response.status;
+          if (response.status === 429) {
+            console.warn(`[COMEO] Groq 429 → clé suivante`);
+            continue;
+          }
+          if (response.status === 401 || response.status === 403) break;
+        } catch (e) {
+          lastError = e.message;
+          if (attempt > 0) await new Promise(r => setTimeout(r, 600));
         }
-        const errData = await response.json().catch(() => ({}));
-        lastError = errData.error?.message || 'Erreur ' + response.status;
-        if (lastError.includes('decommissioned') || lastError.includes('deprecated') || response.status === 404) {
-          toast(`⚠️ Modèle/clé ${attempt + 1} indisponible → bascule...`, 'info');
-          continue;
-        }
-        if (response.status === 401 || response.status === 403 || response.status === 429) {
-          aiServiceAvailable = false;
-          updateServiceAvailabilityUI();
-        }
-        break;
-      } catch (e) { lastError = e.message; }
+      }
     }
 
+    // ══ TENTATIVE 2 : MISTRAL (si Groq échoue) ══
+    if (!data && MISTRAL_API_KEYS.length > 0) {
+      console.log('[COMEO] Groq épuisé → bascule sur Mistral');
+      toast('⚡ Basculement sur Mistral...', 'info');
+      const mistralData = await callMistral(conversationHistory, systemPrompt);
+      if (mistralData) data = mistralData;
+    }
+
+    // ══ AUCUN PROVIDER DISPONIBLE ══
+    if (!data) {
+      throw new Error(lastError || 'Tous les providers sont indisponibles');
+    }
+
+    // ══ TRAITEMENT DE LA RÉPONSE ══
     removeTyping(context, tid);
-    if (!response || !response.ok) throw new Error(lastError || 'Toutes les clés/modèles sont indisponibles');
-
-    const data = await response.json();
     const fullText = data.choices?.[0]?.message?.content || 'Pas de réponse.';
-
     conversationHistory.push({ role: 'assistant', content: fullText });
 
     // Traitement FILTRE
@@ -6388,6 +6407,55 @@ function exportExcelAvance() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `COMEO_${docType}_${company.replace(/\s+/g,'_')}_${yr}.csv`; a.click();
   toast('✓ Excel (CSV) exporté', 'success');
+}
+
+async function callMistral(messages, systemPrompt) {
+  if (MISTRAL_API_KEYS.length === 0) return null;
+
+  for (let attempt = 0; attempt < MISTRAL_API_KEYS.length; attempt++) {
+    const key   = MISTRAL_API_KEYS[(mistralKeyIdx + attempt) % MISTRAL_API_KEYS.length];
+    const model = MISTRAL_MODELS[attempt % MISTRAL_MODELS.length];
+
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt));
+
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 6000,
+          temperature: 0.02,
+          top_p: 0.95,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages
+          ]
+        })
+      });
+
+      if (response.ok) {
+        mistralKeyIdx = (mistralKeyIdx + attempt) % MISTRAL_API_KEYS.length;
+        const data = await response.json();
+        console.log(`[COMEO] Mistral OK — modèle: ${model}`);
+        return data;
+      }
+
+      if (response.status === 429) {
+        console.warn(`[COMEO] Mistral clé ${attempt + 1} limitée → rotation`);
+        continue;
+      }
+
+    } catch (e) {
+      console.warn(`[COMEO] Mistral erreur: ${e.message}`);
+      continue;
+    }
+  }
+
+  return null; // Mistral épuisé
 }
 // ══════════════════════════════════════════
 // INIT SESSION
