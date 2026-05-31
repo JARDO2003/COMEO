@@ -33,8 +33,8 @@ async function robotCacheSet(questionKey, answer) {
   } catch(e) {}
 }
 function robotCacheKey(query) {
-  // Clé normalisée : minuscules, sans ponctuation, max 100 chars
-  return query.toLowerCase().replace(/[^a-z0-9àâäéèêëîïôùûüç\s]/g, '').replace(/\s+/g, '_').substring(0, 100);
+  // v3 — invalide les anciennes réponses trop courtes / robotiques en cache
+  return 'v3_' + query.toLowerCase().replace(/[^a-z0-9àâäéèêëîïôùûüç\s]/g, '').replace(/\s+/g, '_').substring(0, 100);
 }
 const firebaseConfig = {
   apiKey: "AIzaSyCPGgtXoDUycykLaTSee0S0yY0tkeJpqKI",
@@ -2101,7 +2101,8 @@ let robotVoice      = null;
 let robotConvHistory = [];
 const robotMemoryCache = new Map();
 const CREATOR_IMAGE = 'images/MarcioAI.jpg';
-const ROBOT_TTS = { rate: 0.92, pitch: 1.0, volume: 1.0 };
+const ROBOT_TTS = { rate: 0.97, pitch: 1.0, volume: 1.0 };
+const ROBOT_SPEECH_PAUSE_MS = { none: 160, comma: 320, sentence: 540 };
 const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -2265,7 +2266,7 @@ function openRobot() {
   initRobotVisualizer();
   initRobotBg();
   setTimeout(() => {
-    robotSpeak('Bonjour, comment puis-je vous aider ?');
+    robotSpeak('Bonjour ! Je suis COMEO, votre assistante comptable. Que puis-je faire pour vous ?');
   }, 150);
 }
 
@@ -2400,32 +2401,97 @@ function stopRobotLights() {
   if (avatar) { avatar.style.boxShadow = ''; avatar.style.borderColor = ''; }
 }
 
-// ── Nettoyage texte pour TTS — ne jamais lire la ponctuation ni les symboles ──
+// ── Préparation TTS : ponctuation = pauses naturelles (sans lire « point » / « virgule ») ──
+function preprocessTextForSpeech(text) {
+  return (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/###[\w_]+###[\s\S]*/g, ' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\bFCFA\b/g, 'francs CFA')
+    .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
+    .replace(/\bHT\b/g, 'hors taxe')
+    .replace(/\bTTC\b/g, 'toutes taxes comprises')
+    .replace(/\bSYSCOHADA\b/gi, 'système comptable ohada')
+    .replace(/\bOHADA\b/gi, 'ohada')
+    .replace(/\bONECCA\b/gi, 'ordre national des experts comptables')
+    .replace(/\bCNPS\b/gi, 'caisse nationale de prévoyance sociale')
+    .replace(/\bN°\s*\d+/g, m => 'numéro ' + m.replace(/\D/g, ''))
+    .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function stripSpokenPunctuation(text) {
-  return text
-    .replace(/[.,!?;:…—–\-–'"«»""''`~_^|\\/<>@&%=+#*\[\]{}()[\]•●▪◦·]/g, ' ')
+  return (text || '')
+    .replace(/[.,!?;:…—–\-–"«»""`~_^|\\/<>@&%=+#*\[\]{}()[\]•●▪◦·]/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
 function cleanTextForSpeech(text) {
-  return stripSpokenPunctuation(
-    text
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/#{1,6}\s?/g, '')
-      .replace(/###[\w_]+###/g, ' ')
-      .replace(/\bFCFA\b/g, 'francs CFA')
-      .replace(/\bTVA\b/g, 'taxe sur la valeur ajoutée')
-      .replace(/\bHT\b/g, 'hors taxe')
-      .replace(/\bTTC\b/g, 'toutes taxes comprises')
-      .replace(/\bSYSCOHADA\b/gi, 'système comptable ohada')
-      .replace(/\bOHADA\b/gi, 'ohada')
-      .replace(/\bONECCA\b/gi, 'ordre national des experts comptables')
-      .replace(/\bCNPS\b/gi, 'caisse nationale de prévoyance sociale')
-      .replace(/\bN°\s*\d+/g, m => 'numéro ' + m.replace(/\D/g, ''))
-      .replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1 ')
-  );
+  return stripSpokenPunctuation(preprocessTextForSpeech(text));
+}
+
+function splitLongSpeechPart(text, maxLen) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const parts = [];
+  let buf = '';
+  for (const word of words) {
+    const next = buf ? buf + ' ' + word : word;
+    if (next.length > maxLen && buf) { parts.push(buf); buf = word; }
+    else buf = next;
+  }
+  if (buf) parts.push(buf);
+  return parts;
+}
+
+function splitIntoNaturalChunks(text) {
+  const preprocessed = preprocessTextForSpeech(text);
+  if (!preprocessed) return [];
+
+  const sentences = preprocessed.split(/(?<=[.!?…])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+  const chunks = [];
+
+  sentences.forEach((sentence, si) => {
+    const isLastSentence = si === sentences.length - 1;
+    const clauses = sentence.split(/(?<=[,;:])\s+/).map(c => c.trim()).filter(Boolean);
+
+    clauses.forEach((clause, ci) => {
+      const isLastClause = ci === clauses.length - 1;
+      let spoken = stripSpokenPunctuation(clause);
+      if (!spoken || spoken.length < 2) return;
+
+      let pauseAfter = 'comma';
+      if (isLastClause) pauseAfter = isLastSentence ? 'none' : 'sentence';
+
+      if (spoken.length > 88) {
+        const subParts = splitLongSpeechPart(spoken, 78);
+        subParts.forEach((part, pi) => {
+          chunks.push({
+            text: part,
+            pauseAfter: pi === subParts.length - 1 ? pauseAfter : 'comma'
+          });
+        });
+      } else {
+        chunks.push({ text: spoken, pauseAfter });
+      }
+    });
+  });
+
+  if (!chunks.length) {
+    const fallback = cleanTextForSpeech(preprocessed);
+    if (fallback.length > 2) chunks.push({ text: fallback, pauseAfter: 'none' });
+  }
+
+  return chunks.filter(c => c.text.length > 1);
+}
+
+function stripRobotVoiceText(text) {
+  return preprocessTextForSpeech(text)
+    .replace(/###(?:CREATE_FACTURE|SHOW_3D_JOURNAL|NAVIGATE|OPEN_URL)###[\s\S]*/gi, '')
+    .trim();
 }
 
 function formatRobotBubbleHtml(text) {
@@ -2433,34 +2499,6 @@ function formatRobotBubbleHtml(text) {
     .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--warm)">$1</strong>')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/\n/g, '<br>');
-}
-
-// ── Découper en phrases naturelles (sans ponctuation lue) ──
-function splitIntoNaturalChunks(text) {
-  const segments = text.split(/(?<=[.!?…])\s+|\n+/).filter(Boolean);
-  const chunks = [];
-  const pushPart = (part) => {
-    part = cleanTextForSpeech(part);
-    if (!part || part.length < 2) return;
-    if (part.length > 72) {
-      const words = part.split(/\s+/);
-      let buf = '';
-      for (const word of words) {
-        const next = buf ? buf + ' ' + word : word;
-        if (next.length > 65 && buf) { chunks.push(buf); buf = word; }
-        else buf = next;
-      }
-      if (buf) chunks.push(buf);
-    } else {
-      chunks.push(part);
-    }
-  };
-  segments.forEach(pushPart);
-  if (!chunks.length) {
-    const fallback = cleanTextForSpeech(text);
-    if (fallback.length > 2) chunks.push(fallback);
-  }
-  return chunks.filter(c => c.length > 1);
 }
 
 function primeRobotSpeech() {
@@ -2621,7 +2659,8 @@ function robotSpeakChunks(chunks, onDone) {
       return;
     }
 
-    const chunk = chunks[idx].trim();
+    const item = chunks[idx];
+    const chunk = (typeof item === 'string' ? item : item.text).trim();
     if (!chunk) { idx++; speakNext(); return; }
 
     spokenSoFar += (spokenSoFar ? ' ' : '') + chunk;
@@ -2630,7 +2669,10 @@ function robotSpeakChunks(chunks, onDone) {
     primeRobotSpeech();
     const utter = new SpeechSynthesisUtterance(chunk);
     applyRobotVoice(utter);
-    const pauseMs = idx < chunks.length - 1 ? 380 : 200;
+    const pauseType = typeof item === 'string'
+      ? (idx < chunks.length - 1 ? 'comma' : 'none')
+      : (item.pauseAfter || 'none');
+    const pauseMs = ROBOT_SPEECH_PAUSE_MS[pauseType] ?? ROBOT_SPEECH_PAUSE_MS.comma;
     let advanced = false;
 
     const advance = () => {
@@ -3178,7 +3220,7 @@ async function handleRobotQuery(query) {
   if (!requireSubscriptionAccess()) return;
 
   setRobotStatus('thinking');
-  setRobotBubble('Je réfléchis…');
+  setRobotBubble('<span class="robot-thinking">…</span>');
 
   if (!isAiServiceReady()) {
     robotSpeak(getAiUnavailableMessage(), { skipBubble: true });
@@ -3271,9 +3313,14 @@ Pour naviguer :
 ###NAVIGATE###{"vue":"factures"}
 Vues disponibles : dashboard, saisie, journal, grandlivre, balance, bilan, resultat, tresorerie, factures, clients, fournisseurs
 
-FAÇON DE PARLER — humaine, chaleureuse, naturelle. Jamais de markdown dans les réponses vocales.
-Dis toujours ce que tu fais avant de le faire. Exemple : "Je vais créer la facture maintenant."
-Après une action, décris ce qui s'est passé avec enthousiasme.
+PERSONNALITÉ VOCALE — Parle comme Gemini ou ChatGPT Voice : fluide, intelligente, chaleureuse.
+- Raisonne en profondeur avant de répondre, puis exprime une réponse claire et pertinente.
+- Phrases complètes et naturelles, jamais télégraphiques ni mécaniques.
+- Rythme oral humain : virgules pour enchaîner une idée, point pour conclure une pensée.
+- 2 à 5 phrases selon la question ; sois précise sur les chiffres et comptes.
+- Jamais de markdown, listes à puces, symboles, ni « en tant qu'IA ».
+- Avant une action : une phrase courte annonçant ce que tu fais. Après : confirme le résultat avec clarté.
+- Ne répète pas la question. Ne dis pas « Je réfléchis » ou des formules vides.
 
 DONNÉES EN TEMPS RÉEL — ${company} (exercice ${yr}) :
 Date : ${today}
@@ -3309,14 +3356,14 @@ ANALYSE AUTOMATIQUE :
   if (!isAction) {
     if (robotMemoryCache.has(cacheKey)) {
       console.log('[COMEO Robot] Memory cache hit');
-      robotSpeak(robotMemoryCache.get(cacheKey));
+      robotSpeak(stripRobotVoiceText(robotMemoryCache.get(cacheKey)));
       return;
     }
     const cached = await robotCacheGet(cacheKey);
     if (cached && !cached.includes('###')) {
       console.log('[COMEO Robot] Cache hit');
       robotMemoryCache.set(cacheKey, cached);
-      robotSpeak(cached);
+      robotSpeak(stripRobotVoiceText(cached));
       return;
     }
   }
@@ -3330,7 +3377,7 @@ ANALYSE AUTOMATIQUE :
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body: JSON.stringify({
-  model, max_tokens: 120, temperature: 0.15,
+  model, max_tokens: 420, temperature: 0.62, top_p: 0.92,
           messages:[
             { role:'system', content: systemRobot },
             ...robotConvHistory
@@ -3351,7 +3398,7 @@ ANALYSE AUTOMATIQUE :
     if (reply.includes('###CREATE_FACTURE###')) {
       const parts = reply.split('###CREATE_FACTURE###');
       const texteBefore = parts[0].trim();
-      if (texteBefore) robotSpeak(texteBefore);
+      if (texteBefore) robotSpeak(stripRobotVoiceText(texteBefore));
 
       try {
         const jsonStr = parts[1].trim();
@@ -3362,7 +3409,7 @@ ANALYSE AUTOMATIQUE :
           const facture = await robotCreateFacture(params);
           if (facture) {
             renderFactures();
-            const successText = `Parfait ! La facture ${facture.numero} a bien été créée pour ${facture.clientNom}, d un montant de ${fnPDF(facture.ttc)} francs CFA. Elle est maintenant enregistrée dans le système.`;
+            const successText = `Parfait, la facture ${facture.numero} est créée pour ${facture.clientNom}, d'un montant de ${fnPDF(facture.ttc)} francs CFA. Elle est bien enregistrée dans le système.`;
             setTimeout(() => robotSpeak(successText), texteBefore ? 2000 : 0);
             // Afficher confirmation visuelle dans bulle
             setTimeout(() => {
@@ -3411,7 +3458,7 @@ ANALYSE AUTOMATIQUE :
 
       const voiceText = texteBefore ||
         `Je vous affiche le journal${filtre!=='all'?' '+JOURNAL_NAMES[filtre]||filtre:''} en trois dimensions. Vous pouvez faire défiler les opérations.`;
-      robotSpeak(voiceText);
+      robotSpeak(stripRobotVoiceText(voiceText));
 
       setTimeout(() => {
         showRobot3DJournal(ecrsToShow);
@@ -3434,7 +3481,7 @@ ANALYSE AUTOMATIQUE :
             'saisie':'saisie','grandlivre':'grandlivre'
           };
           const vue = vueNames[p.vue] || 'dashboard';
-          if (texteBefore) robotSpeak(texteBefore);
+          if (texteBefore) robotSpeak(stripRobotVoiceText(texteBefore));
           setTimeout(() => {
             navigate(vue);
             closeRobot();
@@ -3455,7 +3502,7 @@ ANALYSE AUTOMATIQUE :
       robotMemoryCache.set(cacheKey, reply);
       await robotCacheSet(cacheKey, reply);
     }
-    robotSpeak(reply);
+    robotSpeak(stripRobotVoiceText(reply));
 
   } catch(err) {
     console.warn('[COMEO Robot]', err);
