@@ -40,7 +40,28 @@
   <div class="af-field"><label class="af-label">Mot de passe (min 6 car.)</label><input class="af-input" type="password" id="r-pass" placeholder="Minimum 6 caractères"></div>
   <div class="auth-err" id="r-err"></div>
   <button class="auth-btn" onclick="doRegister()">✓ Créer mon profil</button>
+  <p class="auth-trial-note">🎁 12 heures d'essai gratuit · puis 15&nbsp;000 FCFA/mois via Wave</p>
 </div>
+  </div>
+</div>
+
+<!-- PAYWALL PREMIUM WAVE -->
+<div id="premiumPaywall" class="premium-paywall" style="display:none">
+  <div class="premium-paywall-inner">
+    <div class="premium-emblem">⭐ COMEO Premium</div>
+    <h2 class="premium-title">Abonnement mensuel</h2>
+    <p class="premium-desc" id="paywallTrialInfo">Essai gratuit 12 h à la création du compte, puis abonnement requis.</p>
+    <div class="premium-price">15&nbsp;000 <span>FCFA / mois</span></div>
+    <button type="button" class="premium-wave-btn" onclick="openWavePayment()">
+      <span class="wave-icon">W</span> Payer avec Wave
+    </button>
+    <p class="premium-wave-hint">Paiement sécurisé via <a href="https://pay.wave.com" target="_blank" rel="noopener">Wave</a></p>
+    <div class="premium-divider">Après paiement</div>
+    <input type="text" id="activationCode" class="premium-code-input" placeholder="Code d'activation" autocomplete="off" maxlength="64">
+    <div class="auth-err" id="activationErr"></div>
+    <button type="button" class="premium-activate-btn" onclick="activatePremiumWithCode()">Activer mon abonnement</button>
+    <button type="button" class="premium-claim-btn" id="claimWaveBtn" onclick="claimWavePayment()">J'ai payé — enregistrer ma demande</button>
+    <button type="button" class="premium-logout-btn" onclick="doLogout()">Se déconnecter</button>
   </div>
 </div>
 
@@ -132,6 +153,10 @@
 
 <!-- APP -->
 <div class="shell" id="appShell" style="display:none">
+  <div id="serviceUnavailableBanner" class="service-unavailable-banner" style="display:none" aria-live="polite">
+    <span>⏳</span>
+    <span>Veuillez patienter quelques instants ou revenez plus tard. L'assistant IA est temporairement indisponible.</span>
+  </div>
   <div class="topbar">
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Menu">☰</button>
     <div class="logo-wrap">
@@ -143,6 +168,7 @@
     <div class="topbar-right">
       <div class="ex-pill">Exercice <input type="text" id="exerciceYear" value="2024" maxlength="4" onchange="updateStats()"></div>
       <div class="chip-badge">OHADA 2023</div>
+      <span id="subscriptionBadge" class="sub-badge" style="display:none"></span>
       <button class="btn btn-outline" onclick="openExportModal()">↓</button>
       <button class="btn btn-danger-outline" onclick="doLogout()">⏻</button>
     </div>
