@@ -2145,9 +2145,8 @@ Date du jour  : ${today}
 Nb écritures  : ${nbEcritures}
 Total Débit   : ${totalDebit} FCFA
 Total Crédit  : ${totalCredit} FCFA
-${comptesSoldes ? `Soldes comptes principaux :\n${comptesSoldes}` : ''}
-${ecrituresResume ? `Dernières opérations :\n${ecrituresResume}` : ''}
-${allDates ? `Période couverte : ${allDates}` : ''}
+${comptesSoldes ? `Soldes : ${comptesSoldes}` : ''}
+${ecrituresResume ? `Récent : ${ecrituresResume}` : ''}
  
 ════════════════════════════════════════════
 📝 FORMAT JSON — STRICT ET IMMUABLE
@@ -3437,12 +3436,11 @@ function buildAIContext() {
   let tD = 0, tC = 0;
   ecritures.forEach(e => e.lignes.forEach(l => { tD += l.debit || 0; tC += l.credit || 0; }));
   const map = getMap();
-  const comptesSoldes = Object.entries(map).slice(0, 12).map(([c, a]) => {
+  const comptesSoldes = Object.entries(map).slice(0, 6).map(([c, a]) => {
     const s = a.debit - a.credit;
-    return `${c}:${s >= 0 ? 'Sd' : 'Sc'}${fn(Math.abs(s))}FCFA`;
+    return `${c}:${s >= 0 ? 'Sd' : 'Sc'}${fn(Math.abs(s))}`;
   }).join(' | ');
-  const dernieres = ecritures.slice(-5).map(e => `${e.date}[${e.journal}]${e.libelle || '—'}`).join('; ');
-  const allDates = [...new Set(ecritures.map(e => e.date))].sort().join(', ');
+  const dernieres = ecritures.slice(-3).map(e => `${e.date}[${e.journal}]${e.libelle || '—'}`).join('; ');
   return {
     nbEcritures: ecritures.length,
     companyName: currentProfile?.company || 'Entreprise',
@@ -3451,7 +3449,7 @@ function buildAIContext() {
     totalCredit: fn(tC),
     comptesSoldes,
     ecrituresResume: dernieres,
-    allDates
+    allDates: ''
   };
 }
 
@@ -3492,15 +3490,15 @@ async function sendToAI(context) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${keyToUse}` },
           body: JSON.stringify({
-            model: modelToUse,
-            max_tokens: 6000,
-            temperature: 0.02,
-            top_p: 0.95,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...conversationHistory
-            ]
-          })
+  model: modelToUse,
+  max_tokens: 2048,
+  temperature: 0.02,
+  top_p: 0.95,
+  messages: [
+    { role: 'system', content: systemPrompt },
+    ...conversationHistory.slice(-6)
+  ]
+})
         });
         if (response.ok) {
           groqKeyIdx   = (groqKeyIdx + attempt) % GROQ_API_KEYS.length;
