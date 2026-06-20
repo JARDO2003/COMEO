@@ -594,14 +594,14 @@
   <div class="ph">
     <div><h1>Saisie des écritures</h1><p>Éditeur de comptes — assisté par COMEO AI</p></div>
     <div class="ph-actions">
-      <button class="btn btn-ink" onclick="saveEcriture()">↳ Valider l'écriture</button>
+      <button class="btn btn-ink" id="btnTopValidate" onclick="onClickTopValidate()">↳ Valider l'écriture</button>
     </div>
   </div>
 
   <div class="saisie-queue-bar" id="saisieQueueBar">
     <span class="sqb-label">ÉCRITURES EN FILE</span>
     <span class="sqb-counter" id="sqbCounter">0</span>
-    <span style="color:rgba(255,255,255,.4);font-size:11px;flex:1">Validez cette écriture pour passer à la suivante</span>
+    <span style="color:rgba(255,255,255,.4);font-size:11px;flex:1" id="sqbHint">Validez cette écriture pour passer à la suivante</span>
     <button class="btn-validate-all" id="btnValidateAll" onclick="autoSaveAllEcritures()">⚡ Tout enregistrer</button>
     <button class="sqb-skip" onclick="skipToNextEcriture()">Ignorer →</button>
   </div>
@@ -627,7 +627,7 @@
         </div>
       </div>
 
-      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="card" id="singleLignesCard" style="flex:1;display:flex;flex-direction:column;min-height:0">
         <div class="card-title">Lignes d'écriture</div>
         <div class="et-wrapper" style="flex:1;overflow-y:auto">
           <table class="et">
@@ -643,6 +643,9 @@
           <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
         </div>
       </div>
+
+      <!-- ÉDITEUR MULTI-ÉCRITURES — affiche TOUTES les écritures générées par l'IA pour vérification/modification avant validation -->
+      <div class="multi-ecr-editor" id="multiEcrEditor"></div>
     </div>
 
     <!-- ── DROITE : ASSISTANT IA (panneau fixe, comme Claude Code) ── -->
