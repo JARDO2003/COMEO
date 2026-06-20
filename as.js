@@ -2088,6 +2088,25 @@ ${ecrituresResume ? `Dernières opérations :\n${ecrituresResume}` : ''}
 ${allDates ? `Période couverte : ${allDates}` : ''}
 
 ════════════════════════════════════════════
+✏️ ÉCRITURE EN COURS DE SAISIE (à analyser/corriger si demandé)
+════════════════════════════════════════════
+${ctx.lignesEnCours ? `Date       : ${ctx.dateEnCours}
+Journal    : ${ctx.journalEnCours}
+Libellé    : ${ctx.libelleEnCours}
+Lignes saisies :
+${ctx.lignesEnCours}
+Total Débit saisie  : ${ctx.totalDebitSaisie} FCFA
+Total Crédit saisie : ${ctx.totalCreditSaisie} FCFA
+Solde (déséquilibre): ${ctx.soldeSaisie} FCFA ${parseFloat(ctx.soldeSaisie) === 0 ? '✅ ÉQUILIBRÉ' : '⚠️ DÉSÉQUILIBRE'}
+
+Si l'utilisateur demande de vérifier, analyser, ou corriger son travail/écriture,
+tu dois OBLIGATOIREMENT analyser ces lignes ci-dessus ligne par ligne :
+→ Vérifier si chaque compte SYSCOHADA est correct pour l'opération décrite
+→ Vérifier si débit/crédit sont dans la bonne colonne
+→ Vérifier si le total débit = total crédit
+→ Signaler chaque erreur précisément (ligne X : compte Y devrait être en crédit, etc.)
+→ Proposer l'écriture corrigée en format ###ECRITURE### si nécessaire` : 'Aucune ligne saisie pour le moment.'}
+════════════════════════════════════════════
 📝 FORMAT JSON — STRICT ET IMMUABLE
 ════════════════════════════════════════════
 ###ECRITURE###{"journal":"XX","libelle":"Libellé précis et informatif","lignes":[
@@ -4117,11 +4136,24 @@ function buildAIContext() {
       return `${c}:${s >= 0 ? 'Sd' : 'Sc'}${fn(Math.abs(s))}FCFA`;
     })
     .join(' | ');
-  const dernieres = ecritures
+ const dernieres = ecritures
     .slice(-5)
     .map((e) => `${e.date}[${e.journal}]${e.libelle || '—'}`)
     .join('; ');
   const allDates = [...new Set(ecritures.map((e) => e.date))].sort().join(', ');
+
+  // ── Lignes en cours de saisie (formulaire actif) ──
+  const lignesEnCours = lignes
+    .filter((l) => l.compte || l.libelle || l.debit || l.credit)
+    .map((l, i) => `  Ligne ${i+1}: Compte=${l.compte||'?'} | Libellé=${l.libelle||'?'} | Débit=${l.debit||0} | Crédit=${l.credit||0}`)
+    .join('\n');
+  const journalEnCours = document.getElementById('ecr-journal')?.value || '';
+  const libelleEnCours = document.getElementById('ecr-libelle')?.value || '';
+  const dateEnCours = document.getElementById('ecr-date')?.value || '';
+  const totalDebitSaisie = lignes.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
+  const totalCreditSaisie = lignes.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
+  const soldeSaisie = totalDebitSaisie - totalCreditSaisie;
+
   return {
     nbEcritures: ecritures.length,
     companyName: currentProfile?.company || 'Entreprise',
@@ -4131,6 +4163,13 @@ function buildAIContext() {
     comptesSoldes,
     ecrituresResume: dernieres,
     allDates,
+    lignesEnCours,
+    journalEnCours,
+    libelleEnCours,
+    dateEnCours,
+    totalDebitSaisie: fn(totalDebitSaisie),
+    totalCreditSaisie: fn(totalCreditSaisie),
+    soldeSaisie: fn(soldeSaisie),
   };
 }
 
