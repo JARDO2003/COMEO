@@ -235,6 +235,7 @@
       <div class="stat-row"><span class="lbl">Équilibre</span><span class="val g" id="s-equil">✓</span></div>
     </div>
   </div>
+
 <!-- ═══════════════════ FACTURES ═══════════════════ -->
 <div class="view" id="view-factures">
   <div class="ph">
@@ -527,6 +528,7 @@
     </div>
   </div>
 </div>
+
   <div class="main">
 
     <!-- DASHBOARD -->
@@ -544,6 +546,7 @@
         <div class="kpi"><div class="kpi-label">Total crédit</div><div class="kpi-value" id="dash-credit" style="color:var(--green)">0</div><div class="kpi-sub">FCFA</div></div>
         <div class="kpi"><div class="kpi-label">Résultat provisoire</div><div class="kpi-value" id="dash-res" style="color:var(--warm)">0</div><div class="kpi-sub">Produits – Charges</div></div>
       </div>
+
       <!-- BANDEAU MULTI-ÉCRITURES -->
       <div class="multi-ecr-banner" id="multiEcrBanner">
         <div class="meb-icon">✅</div>
@@ -557,6 +560,7 @@
           </div>
         </div>
       </div>
+
       <!-- AUTO SAVE BAR -->
       <div class="auto-save-bar" id="autoSaveBar">
         <div class="asb-icon">⚡</div>
@@ -565,9 +569,18 @@
           <div class="asb-progress"><div class="asb-progress-bar" id="autoSaveProgress" style="width:0%"></div></div>
         </div>
       </div>
-    <div style="margin-top:20px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18)">
-        <img src="images/as.jpeg" alt="COMEO AI" style="width:100%;display:block;object-fit:cover">
+
+      <!-- IMAGE DE MARQUE À LA PLACE DU CHAT IA -->
+      <div style="margin-top:20px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18)">
+        <img src="images/as.jpg" alt="COMEO AI" style="width:100%;display:block;object-fit:cover">
       </div>
+
+      <!-- Éléments cachés requis par le JS du tableau de bord -->
+      <div id="aiMessages" style="display:none"></div>
+      <textarea id="aiInput" style="display:none"></textarea>
+      <button id="aiSendBtn" style="display:none"></button>
+
+    </div>
 
     <!-- SAISIE -->
   <div class="view" id="view-saisie">
@@ -796,6 +809,7 @@
 
   </div>
 </div>
+
 <!-- ═══════════════════════════════════
      COMEO ROBOT — Bouton flottant
      ═══════════════════════════════════ -->
@@ -880,6 +894,8 @@
   </div>
 </div>
 </div>
+
 <div class="toast-container" id="toastContainer"></div>
- <script type="module" src="as.js"></script></body>
+<script type="module" src="as.js"></script>
+</body>
 </html>
