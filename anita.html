@@ -565,29 +565,9 @@
           <div class="asb-progress"><div class="asb-progress-bar" id="autoSaveProgress" style="width:0%"></div></div>
         </div>
       </div>
-      <div class="comeo-box">
-        <div class="comeo-header"><div class="comeo-dot"></div><span class="comeo-title">COMEO AI v4 — Expert Comptable SYSCOHADA</span><span class="comeo-sub">Journal groupé · Balance · Grand Livre · États financiers</span></div>
-        <div class="comeo-messages" id="aiMessages">
-          <div class="msg ai"><div class="msg-av">C</div><div class="msg-body">Bonjour ! Je suis <strong>COMEO AI v4</strong>, votre expert-comptable SYSCOHADA.<br><br>
-          Dans le <strong>Journal</strong>, les 3 écritures d'une même opération sont maintenant <strong>regroupées visuellement</strong> — achat, variation de stock et règlement apparaissent ensemble sous un même en-tête.<br><br>
-          Que puis-je faire pour vous aujourd'hui ?
-          </div></div>
-        </div>
-        <div class="comeo-input-row">
-          <textarea class="comeo-input" id="aiInput" placeholder="Ex: Achat marchandises 500 000 FCFA espèces, TVA 18%…" onkeydown="handleAiKey(event,'dashboard')"></textarea>
-          <button class="btn btn-ink" id="aiSendBtn" onclick="sendToAI('dashboard')">⚡</button>
-        </div>
+    <div style="margin-top:20px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18)">
+        <img src="images/as.jpeg" alt="COMEO AI" style="width:100%;display:block;object-fit:cover">
       </div>
-      <div class="chips">
-        <div class="chip" onclick="quickAI('Montre-moi les opérations du 16 avril 2026')">Opérations du 16/04/2026</div>
-        <div class="chip" onclick="quickAI('Achat de marchandises 500000 FCFA TTC payé en espèces, TVA 18%, coût achat = montant HT. Passer les 3 écritures obligatoires.')">Achat m/ses espèces (3 écritures)</div>
-        <div class="chip" onclick="quickAI('Vente de marchandises 1200000 FCFA TTC par virement, TVA 18%, coût d\'achat 700000. Passer les 3 écritures obligatoires.')">Vente m/ses (3 écritures)</div>
-        <div class="chip" onclick="quickAI('Achat de marchandises à crédit 800000 FCFA HT, TVA 18%, fournisseur HOLALI. Passer les 3 écritures.')">Achat à crédit (3 écritures)</div>
-        <div class="chip" onclick="quickAI('Règlement salaires: brut 800000 FCFA, cotisations salariales 160000, impôts retenus 50000, acompte versé 200000')">Paie du personnel</div>
-        <div class="chip" onclick="quickAI('Dotation amortissement linéaire matériel informatique valeur 2400000 FCFA durée 4 ans valeur résiduelle 0')">Amortissement linéaire</div>
-        <div class="chip" onclick="quickAI('Analyser mon bilan actuel et donner les ratios de liquidité, solvabilité et rentabilité')">Analyser mon bilan</div>
-      </div>
-    </div>
 
     <!-- SAISIE -->
   <div class="view" id="view-saisie">
