@@ -2902,9 +2902,23 @@ const manualEntryFields = new Set();
 function accountMatchesFor(query) {
   const q = (query || '').toLowerCase().trim();
   if (!q) {
-    return { matches: Object.entries(PC).filter(([code]) => code.length <= 3).slice(0, 18), browsing: true };
+    // Mode "parcours" : on garantit qu'AUCUNE classe (1 à 8) ne reste
+    // cachée — on prend jusqu'à 4 comptes principaux par classe, au lieu
+    // de couper après les 18 premiers (qui ne couvraient que la classe 1).
+    const shortCodes = Object.entries(PC).filter(([code]) => code.length <= 3);
+    const perClassCount = {};
+    const out = [];
+    shortCodes.forEach((entry) => {
+      const cl = entry[0][0];
+      perClassCount[cl] = perClassCount[cl] || 0;
+      if (perClassCount[cl] < 4) {
+        perClassCount[cl]++;
+        out.push(entry);
+      }
+    });
+    return { matches: out, browsing: true };
   }
-  return { matches: Object.entries(PC).filter(([code, lib]) => code.startsWith(q) || lib.toLowerCase().includes(q)).slice(0, 15), browsing: false };
+  return { matches: Object.entries(PC).filter(([code, lib]) => code.startsWith(q) || lib.toLowerCase().includes(q)).slice(0, 60), browsing: false };
 }
 
 function renderAccountDropdown(dropId, query, buildSelectCall) {
@@ -2912,12 +2926,20 @@ function renderAccountDropdown(dropId, query, buildSelectCall) {
   if (!drop) return;
   const { matches, browsing } = accountMatchesFor(query);
   const closeRow = `<div class="adrop-close" onmousedown="closeAccountDropdown('${dropId}')">✕ Fermer — saisir librement</div>`;
+  // Puces de navigation rapide par classe — toujours visibles, pour que
+  // l'utilisateur découvre immédiatement qu'il peut parcourir tout le plan
+  // comptable au lieu de devoir scroller pour trouver une classe.
+  const classNav = `<div class="adrop-classnav">${Object.keys(CLASS_NAMES)
+    .map((cl) => `<button type="button" class="acn-chip" onmousedown="browseAccountClass('${dropId}','${cl}')" title="${CLASS_NAMES[cl]}">${cl}</button>`)
+    .join('')}</div>`;
   if (!matches.length) {
-    drop.innerHTML = closeRow + `<div class="adrop-empty">Aucun compte trouvé pour "${(query || '').replace(/"/g, '&quot;')}"</div>`;
+    drop.innerHTML = `<div class="adrop-top-fixed">${closeRow}${classNav}</div><div class="adrop-empty">Aucun compte trouvé pour "${(query || '').replace(/"/g, '&quot;')}"</div>`;
     drop.classList.add('open');
     return;
   }
-  const hint = browsing ? `<div class="adrop-hint">📂 Comptes principaux — tapez pour chercher parmi ${Object.keys(PC).length} comptes</div>` : '';
+  const hint = browsing
+    ? `<div class="adrop-hint">📂 Aperçu des 8 classes — cliquez un numéro ci-dessus ou tapez pour chercher parmi ${Object.keys(PC).length} comptes</div>`
+    : '';
   // Regroupement par classe SYSCOHADA (1er chiffre du code) — même logique que le Plan Comptable.
   const groups = {};
   matches.forEach(([code, lib]) => {
@@ -2941,8 +2963,30 @@ function renderAccountDropdown(dropId, query, buildSelectCall) {
       </div>`;
     })
     .join('');
-  drop.innerHTML = closeRow + hint + body;
+  drop.innerHTML = `<div class="adrop-top-fixed">${closeRow}${classNav}</div>` + hint + body;
   drop.classList.add('open');
+}
+
+function browseAccountClass(dropId, cls) {
+  const drop = document.getElementById('drop-' + dropId);
+  if (!drop) return;
+  const input = drop.previousElementSibling;
+  if (!input) return;
+  manualEntryFields.delete(dropId);
+  input.value = cls;
+  if (dropId.startsWith('m-')) {
+    const [, qiStr, liStr] = dropId.split('-');
+    const qi = parseInt(qiStr, 10),
+      li = parseInt(liStr, 10);
+    if (ecrQueue[qi]?.lignes?.[li]) ecrQueue[qi].lignes[li].compte = cls;
+    updateAccountSuggestMulti(qi, li, input);
+  } else {
+    const idx = parseInt(dropId.split('-')[1], 10);
+    const mode = dropId.startsWith('c-') ? 'card' : 'table';
+    if (lignes[idx]) lignes[idx].compte = cls;
+    updateAccountSuggest(idx, input, mode);
+  }
+  input.focus();
 }
 
 function closeAccountDropdown(dropId) {
@@ -7815,6 +7859,7 @@ window.updateAccountSuggest = updateAccountSuggest;
 window.selectAccount = selectAccount;
 window.hideDropdown = hideDropdown;
 window.closeAccountDropdown = closeAccountDropdown;
+window.browseAccountClass = browseAccountClass;
 window.updateAccountSuggestMulti = updateAccountSuggestMulti;
 window.selectAccountMulti = selectAccountMulti;
 window.updateBalance = updateBalance;
