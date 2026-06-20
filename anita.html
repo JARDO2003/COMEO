@@ -657,168 +657,43 @@
     </div>
 
     <!-- JOURNAL REDESIGNÉ — GROUPÉ PAR OPÉRATION -->
-<!-- ═══════════════════════════════════════════════════════
-     JOURNAL FULLSCREEN — Éditeur + Assistant COMEO
-     ═══════════════════════════════════════════════════════ -->
-
-<!-- Vue Journal (dans le shell, ne montre que le bouton d'ouverture) -->
-<div class="view" id="view-journal">
-  <!-- Cette vue est immédiatement redirigée vers le mode plein écran via navigate() -->
-</div>
-
-<!-- JOURNAL FULLSCREEN OVERLAY -->
-<div id="journalFullscreen" class="journal-fs" style="display:none">
-
-  <!-- TOPBAR JOURNAL -->
-  <div class="jfs-topbar">
-    <div class="jfs-topbar-left">
-      <button class="jfs-back-btn" onclick="closeJournalFullscreen()">← Retour</button>
-      <div class="jfs-title-wrap">
-        <span class="jfs-title">Journal Comptable</span>
-        <span class="jfs-meta" id="jfsJournalMeta">Journal général · SYSCOHADA</span>
-      </div>
-    </div>
-    <div class="jfs-topbar-center">
-      <select id="jfs-journal-type" class="jfs-select" onchange="updateJournalMeta()">
-        <option value="AC">AC — Achats</option>
-        <option value="VE">VE — Ventes</option>
-        <option value="BQ">BQ — Banque</option>
-        <option value="CA">CA — Caisse</option>
-        <option value="OD">OD — Opérations Diverses</option>
-        <option value="AN">AN — À Nouveau</option>
-        <option value="IN">IN — Inventaire</option>
-      </select>
-      <input type="date" id="jfs-date" class="jfs-date-input">
-      <input type="text" id="jfs-piece" class="jfs-piece-input" placeholder="N° pièce (auto)">
-    </div>
-    <div class="jfs-topbar-right">
-      <button class="jfs-btn jfs-btn-wire" onclick="openExportModal()">⎙ Exporter</button>
-      <button class="jfs-btn jfs-btn-save" onclick="saveJournalEntry()">💾 Enregistrer</button>
-    </div>
-  </div>
-
-  <!-- CORPS PRINCIPAL : éditeur gauche + inbox COMEO droite -->
-  <div class="jfs-body">
-
-    <!-- ══ ÉDITEUR JOURNAL (gauche) ══ -->
-    <div class="jfs-editor-pane" id="jfsEditorPane">
-
-      <!-- En-tête écriture -->
-      <div class="jfs-editor-header">
-        <div class="jfs-field-group">
-          <label class="jfs-label">Libellé général</label>
-          <input type="text" id="jfs-libelle" class="jfs-input-full" placeholder="Ex : Achat marchandises facture n°…">
+    <div class="view" id="view-journal">
+      <div class="ph">
+        <div><h1>Journal général</h1><p>Opérations regroupées — 3 écritures liées par opération</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-sm-wire" onclick="openExportModal()">⎙ Exporter</button>
+          <button class="btn btn-ink" onclick="navigate('saisie')">+ Nouvelle</button>
         </div>
       </div>
 
-      <!-- Table d'écritures comptables -->
-      <div class="jfs-table-wrap">
-        <table class="jfs-table">
-          <thead>
-            <tr>
-              <th style="width:130px">Compte</th>
-              <th>Libellé ligne</th>
-              <th style="width:130px;text-align:right">Débit (FCFA)</th>
-              <th style="width:130px;text-align:right">Crédit (FCFA)</th>
-              <th style="width:36px"></th>
-            </tr>
-          </thead>
-          <tbody id="jfsLignesBody"></tbody>
-        </table>
-      </div>
-      <button class="jfs-add-line-btn" onclick="jfsAddLigne()">＋ Ajouter une ligne</button>
-
-      <!-- Barre de balance -->
-      <div class="jfs-bal-bar">
-        <div class="jfs-bal-item">
-          <span class="jfs-bal-label">Débit</span>
-          <span class="jfs-bal-val blue" id="jfsTotalDebit">0</span>
-        </div>
-        <div class="jfs-bal-item">
-          <span class="jfs-bal-label">Crédit</span>
-          <span class="jfs-bal-val green" id="jfsTotalCredit">0</span>
-        </div>
-        <div class="jfs-bal-item jfs-bal-solde">
-          <span class="jfs-bal-label">Solde</span>
-          <span class="jfs-bal-val" id="jfsSolde">0</span>
-        </div>
-        <div class="jfs-bal-item" style="margin-left:auto">
-          <span class="jfs-equil" id="jfsEquilBadge">⚖ En attente</span>
-        </div>
+      <div class="filtre-periode-bar">
+        <label>Du</label><input type="date" id="jnl-date-debut" onchange="renderJournal()">
+        <label>Au</label><input type="date" id="jnl-date-fin" onchange="renderJournal()">
+        <label>Journal</label>
+        <select id="journalFilter" onchange="renderJournal()">
+          <option value="">Tous</option>
+          <option value="AC">Achats</option><option value="VE">Ventes</option>
+          <option value="BQ">Banque</option><option value="CA">Caisse</option>
+          <option value="OD">OD</option><option value="IN">Inventaire</option>
+        </select>
+        <input type="text" class="search-input" placeholder="Rechercher compte / libellé…" id="journalSearch" oninput="renderJournal()" style="min-width:160px;flex:1">
+        <button class="btn-filtre-reset" onclick="resetJournalFiltre()">✕ Effacer</button>
       </div>
 
-      <!-- Historique des écritures enregistrées -->
-      <div class="jfs-history-header">
-        <span>Écritures enregistrées</span>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" class="jfs-search-small" id="jfsSearch" placeholder="Compte / libellé…" oninput="renderJfsHistory()">
-          <select id="jfsFilterJnl" class="jfs-select-sm" onchange="renderJfsHistory()">
-            <option value="">Tous</option>
-            <option value="AC">Achats</option><option value="VE">Ventes</option>
-            <option value="BQ">Banque</option><option value="CA">Caisse</option>
-            <option value="OD">OD</option><option value="IN">Inventaire</option>
-          </select>
-        </div>
-      </div>
-      <div class="jfs-history-list" id="jfsHistoryList">
-        <div class="empty-state" style="padding:32px 0"><p>Aucune écriture enregistrée</p></div>
-      </div>
+      <div id="journal-analyse" style="display:none" class="analyse-card"></div>
+      <div id="journalContent"></div>
 
-    </div>
-
-    <!-- ══ INBOX COMEO — Assistant (droite) ══ -->
-    <div class="jfs-comeo-pane" id="jfsComeoPane">
-      <div class="jfs-comeo-header">
-        <div class="jfs-comeo-avatar">
-          <img src="images/marciodev.jpg" onerror="this.style.display='none';document.getElementById('jfsCAvFb').style.display='flex'">
-          <div class="jfs-comeo-av-fb" id="jfsCAvFb">CA</div>
-          <div class="jfs-comeo-online-dot"></div>
-        </div>
-        <div>
-          <div class="jfs-comeo-name">COMEO AI</div>
-          <div class="jfs-comeo-role">Expert Comptable SYSCOHADA · Ivoirien</div>
-        </div>
-        <button class="jfs-comeo-toggle" onclick="toggleComeoPane()" title="Masquer/Afficher">⟩</button>
-      </div>
-
-      <!-- Messages -->
-      <div class="jfs-comeo-messages" id="jfsComeoMessages">
-        <div class="jfs-msg jfs-msg-comeo">
-          <div class="jfs-msg-bubble">
-            Bonjour ! Je suis <strong>COMEO</strong>, votre expert comptable SYSCOHADA.<br><br>
-            Je peux vous aider à :<br>
-            • <em>Corriger</em> vos écritures<br>
-            • <em>Compléter</em> une imputation<br>
-            • <em>Rédiger</em> tout le journal à votre place<br><br>
-            Décrivez votre opération ou demandez-moi directement.
-          </div>
-          <span class="jfs-msg-time">COMEO AI</span>
-        </div>
-      </div>
-
-      <!-- Suggestions rapides -->
-      <div class="jfs-comeo-suggestions" id="jfsComeoSuggestions">
-        <button class="jfs-sugg-btn" onclick="jfsSendSuggestion('Corrige les erreurs dans mon journal')">🔍 Corriger les erreurs</button>
-        <button class="jfs-sugg-btn" onclick="jfsSendSuggestion('Génère les écritures pour un achat marchandises TTC avec TVA 18%')">📦 Achat TTC 18%</button>
-        <button class="jfs-sugg-btn" onclick="jfsSendSuggestion('Génère les écritures pour une vente avec règlement par banque')">💰 Vente banque</button>
-        <button class="jfs-sugg-btn" onclick="jfsSendSuggestion('Explique-moi le solde actuel de mon journal')">📊 Analyser le solde</button>
-        <button class="jfs-sugg-btn" onclick="jfsSendSuggestion('Ecris le journal complet pour une opération de paie')">👥 Journal de paie</button>
-      </div>
-
-      <!-- Zone de saisie -->
-      <div class="jfs-comeo-input-wrap">
-        <textarea id="jfsComeoInput" class="jfs-comeo-input" placeholder="Décrivez votre opération ou posez une question comptable…" rows="3" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();jfsSendToComeo();}"></textarea>
-        <div class="jfs-comeo-input-actions">
-          <span class="jfs-input-hint">Entrée pour envoyer · Maj+Entrée pour saut de ligne</span>
-          <button class="jfs-send-btn" onclick="jfsSendToComeo()" id="jfsSendBtn">
-            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-          </button>
+      <div id="journal-totaux-footer" style="display:none">
+        <div class="jnl-footer-totaux">
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Opérations</span><span class="jnl-footer-val" id="jnl-nb-groupes" style="color:var(--warm)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Écritures</span><span class="jnl-footer-val" id="jnl-nb-ecr" style="color:rgba(255,255,255,.5)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Lignes</span><span class="jnl-footer-val" id="jnl-nb-lignes" style="color:rgba(255,255,255,.3)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Total Débit</span><span class="jnl-footer-val d" id="jnl-total-debit">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Total Crédit</span><span class="jnl-footer-val c" id="jnl-total-credit">0</span></div>
+          <div class="jnl-footer-item"><span id="jnl-equil-label" class="jnl-footer-val eq">✓ Équilibré</span></div>
         </div>
       </div>
     </div>
-
-  </div><!-- /jfs-body -->
-</div><!-- /journalFullscreen -->
 
     <!-- GRAND LIVRE -->
     <div class="view" id="view-grandlivre">
