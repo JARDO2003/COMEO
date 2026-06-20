@@ -7758,3 +7758,8 @@ window.openFournisseurModal = openFournisseurModal;
 window.closeFournisseurModal = closeFournisseurModal;
 window.saveFournisseur = saveFournisseur;
 window.renderFournisseurs = renderFournisseurs;
+
+window.openJournalEditor = openJournalEditor;
+window.closeJournalEditor = closeJournalEditor;
+window.sendJournalAI = sendJournalAI;
+window.handleJournalAiKey = handleJournalAiKey;
