@@ -608,67 +608,70 @@
 
   <div class="saisie-ide-layout">
 
-    <!-- ── GAUCHE : ASSISTANT IA (panneau chat, comme Copilot Chat dans VS Code) ── -->
-    <div class="saisie-ide-left">
-      <div class="ide-left-header">
-        <div class="comeo-dot"></div>
-        <span class="ide-left-title">COMEO AI</span>
-        <span class="ide-left-sub">Assistant comptable</span>
-      </div>
-      <div class="comeo-messages" id="aiMessages-saisie">
-        <div class="msg ai"><div class="msg-av">C</div><div class="msg-body">Décrivez l'opération et je prépare les lignes. Pour un achat ou vente, je génère les <strong>3 écritures</strong> — cliquez <strong>"Tout enregistrer"</strong> pour les valider toutes en une fois.</div></div>
-      </div>
-      <div class="ai-fill-banner" id="aiFillBanner">
-        <div class="afi-icon">✨</div>
-        <div class="afi-text">
-          <strong>COMEO AI — Écriture <span id="aiFillNum"></span></strong> — <span id="aiFillDesc">—</span><br>
-          <span style="font-size:11px;color:var(--muted)">Vérifiez les lignes à droite avant de valider</span>
+   <div class="saisie-ide-layout">
+
+  <!-- ── GAUCHE : ÉDITEUR DE COMPTES (page principale) ── -->
+  <div class="saisie-ide-left">
+    <div class="card" style="margin-bottom:14px;flex-shrink:0">
+      <div class="card-title">En-tête de l'écriture</div>
+      <div class="fg c4">
+        <div class="field"><label>Date</label><input type="date" id="ecr-date"></div>
+        <div class="field"><label>Journal</label>
+          <select id="ecr-journal">
+            <option value="AC">AC — Achats</option><option value="VE">VE — Ventes</option>
+            <option value="BQ">BQ — Banque</option><option value="CA">CA — Caisse</option>
+            <option value="OD">OD — Opérations Diverses</option><option value="AN">AN — À Nouveau</option>
+            <option value="IN">IN — Inventaire</option>
+          </select>
         </div>
-        <button class="btn-dismiss" onclick="dismissFillBanner()">✕</button>
-      </div>
-      <div class="comeo-input-row">
-        <textarea class="comeo-input" id="aiInput-saisie" placeholder="ex: Achat matériel bureau 250000 FCFA HT par chèque, TVA 18%..." onkeydown="handleAiKey(event,'saisie')"></textarea>
-        <button class="btn btn-ink" onclick="sendToAI('saisie')">⚡</button>
+        <div class="field"><label>N° Pièce</label><input type="text" id="ecr-piece" placeholder="Auto"></div>
+        <div class="field"><label>Libellé général</label><input type="text" id="ecr-libelle" placeholder="Description…"></div>
       </div>
     </div>
 
-    <!-- ── DROITE : ÉDITEUR DE COMPTES (prend toute la page, comme l'éditeur principal) ── -->
-    <div class="saisie-ide-right">
-      <div class="card" style="margin-bottom:14px;flex-shrink:0">
-        <div class="card-title">En-tête de l'écriture</div>
-        <div class="fg c4">
-          <div class="field"><label>Date</label><input type="date" id="ecr-date"></div>
-          <div class="field"><label>Journal</label>
-            <select id="ecr-journal">
-              <option value="AC">AC — Achats</option><option value="VE">VE — Ventes</option>
-              <option value="BQ">BQ — Banque</option><option value="CA">CA — Caisse</option>
-              <option value="OD">OD — Opérations Diverses</option><option value="AN">AN — À Nouveau</option>
-              <option value="IN">IN — Inventaire</option>
-            </select>
-          </div>
-          <div class="field"><label>N° Pièce</label><input type="text" id="ecr-piece" placeholder="Auto"></div>
-          <div class="field"><label>Libellé général</label><input type="text" id="ecr-libelle" placeholder="Description…"></div>
-        </div>
+    <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="card-title">Lignes d'écriture</div>
+      <div class="et-wrapper" style="flex:1;overflow-y:auto">
+        <table class="et">
+          <thead><tr><th style="min-width:120px">Compte</th><th>Libellé</th><th style="min-width:110px;text-align:right">Débit (FCFA)</th><th style="min-width:110px;text-align:right">Crédit (FCFA)</th><th style="width:36px"></th></tr></thead>
+          <tbody id="lignesBody"></tbody>
+        </table>
       </div>
-
-      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
-        <div class="card-title">Lignes d'écriture</div>
-        <div class="et-wrapper" style="flex:1;overflow-y:auto">
-          <table class="et">
-            <thead><tr><th style="min-width:120px">Compte</th><th>Libellé</th><th style="min-width:110px;text-align:right">Débit (FCFA)</th><th style="min-width:110px;text-align:right">Crédit (FCFA)</th><th style="width:36px"></th></tr></thead>
-            <tbody id="lignesBody"></tbody>
-          </table>
-        </div>
-        <div id="lignesCardContainer"></div>
-        <button class="add-line-btn" onclick="addLigne()">＋ Ajouter une ligne</button>
-        <div class="bal-bar">
-          <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay" style="color:#60a5fa">0</span></div>
-          <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay" style="color:#4ade80">0</span></div>
-          <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
-        </div>
+      <div id="lignesCardContainer"></div>
+      <button class="add-line-btn" onclick="addLigne()">＋ Ajouter une ligne</button>
+      <div class="bal-bar">
+        <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay" style="color:#60a5fa">0</span></div>
+        <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay" style="color:#4ade80">0</span></div>
+        <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
       </div>
     </div>
+  </div>
 
+  <!-- ── DROITE : ASSISTANT IA (panneau fixe, comme Claude Code) ── -->
+  <div class="saisie-ide-right">
+    <div class="ide-right-header">
+      <div class="comeo-dot"></div>
+      <span class="ide-right-title">COMEO AI</span>
+      <span class="ide-right-sub">Assistant comptable</span>
+    </div>
+    <div class="comeo-messages" id="aiMessages-saisie">
+      <div class="msg ai"><div class="msg-av">C</div><div class="msg-body">Décrivez l'opération et je prépare les lignes. Pour un achat ou vente, je génère les <strong>3 écritures</strong> — cliquez <strong>"Tout enregistrer"</strong> pour les valider toutes en une fois.</div></div>
+    </div>
+    <div class="ai-fill-banner" id="aiFillBanner">
+      <div class="afi-icon">✨</div>
+      <div class="afi-text">
+        <strong>COMEO AI — Écriture <span id="aiFillNum"></span></strong> — <span id="aiFillDesc">—</span><br>
+        <span style="font-size:11px;color:var(--muted)">Vérifiez les lignes à gauche avant de valider</span>
+      </div>
+      <button class="btn-dismiss" onclick="dismissFillBanner()">✕</button>
+    </div>
+    <div class="comeo-input-row">
+      <textarea class="comeo-input" id="aiInput-saisie" placeholder="ex: Achat matériel bureau 250000 FCFA HT par chèque, TVA 18%..." onkeydown="handleAiKey(event,'saisie')"></textarea>
+      <button class="btn btn-ink" onclick="sendToAI('saisie')">⚡</button>
+    </div>
+  </div>
+
+</div>
   </div>
 </div>
 
