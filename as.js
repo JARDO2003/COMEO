@@ -2401,8 +2401,23 @@ function initSaisie() {
 }
 
 function addLigne(compte = '', libelle = '', debit = '', credit = '') {
-  lignes.push({ compte, libelle, debit, credit });
-  renderLignes();
+  const l = { compte, libelle, debit, credit };
+  lignes.push(l);
+  const i = lignes.length - 1;
+  const tbody = document.getElementById('lignesBody');
+  const cardContainer = document.getElementById('lignesCardContainer');
+  // Si le tableau n'existe pas encore (premier rendu), on fait un rendu complet.
+  if (!tbody) { renderLignes(); return; }
+  const tr = document.createElement('tr');
+  tr.innerHTML = ligneRowHTML(i, l);
+  tbody.appendChild(tr);
+  if (cardContainer) {
+    const card = document.createElement('div');
+    card.className = 'ligne-card';
+    card.innerHTML = ligneCardHTML(i, l);
+    cardContainer.appendChild(card);
+  }
+  updateBalance();
 }
 function removeLigne(i) {
   lignes.splice(i, 1);
@@ -2802,6 +2817,58 @@ function goToSaisie() {
 // ══════════════════════════════════════════
 // RENDER LIGNES
 // ══════════════════════════════════════════
+function ligneRowHTML(i, l) {
+  return `<tr data-li="${i}">
+      <td><div class="asw">
+        <input type="text" id="cpt-t-${i}" value="${l.compte}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
+          oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'table')"
+          onfocus="updateAccountSuggest(${i},this,'table')"
+          onblur="hideDropdown('t-${i}')">
+        <div class="adrop" id="drop-t-${i}"></div>
+      </div></td>
+      <td><input type="text" id="lib-t-${i}" value="${l.libelle || ''}" placeholder="Libellé…" style="width:100%" oninput="lignes[${i}].libelle=this.value"></td>
+      <td><input type="text" id="deb-t-${i}" value="${l.debit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
+        oninput="lignes[${i}].debit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateBalance()"></td>
+      <td><input type="text" id="cre-t-${i}" value="${l.credit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
+        oninput="lignes[${i}].credit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateBalance()"></td>
+      <td><button class="del-line" onclick="removeLigne(${i})">✕</button></td>`;
+}
+
+function ligneCardHTML(i, l) {
+  return `
+        <div class="ligne-card-row">
+          <div class="ligne-card-field">
+            <div class="ligne-card-label">Compte</div>
+            <div style="position:relative">
+              <input class="ligne-card-input" type="text" id="cpt-c-${i}" value="${l.compte}" placeholder="Compte…" style="font-family:var(--font-mono)"
+                oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'card')"
+                onfocus="updateAccountSuggest(${i},this,'card')"
+                onblur="hideDropdown('c-${i}')">
+              <div class="adrop" id="drop-c-${i}"></div>
+            </div>
+          </div>
+          <div class="ligne-card-field">
+            <div class="ligne-card-label">Libellé</div>
+            <input class="ligne-card-input" type="text" id="lib-c-${i}" value="${l.libelle || ''}" placeholder="Libellé…" oninput="lignes[${i}].libelle=this.value">
+          </div>
+        </div>
+        <div class="ligne-card-row">
+          <div class="ligne-card-field">
+            <div class="ligne-card-label" style="color:var(--blue)">Débit (FCFA)</div>
+            <input class="ligne-card-input" type="number" id="deb-c-${i}" value="${l.debit || ''}" placeholder="0" style="font-family:var(--font-mono)"
+              oninput="lignes[${i}].debit=parseFloat(this.value)||0;updateBalance()">
+          </div>
+          <div class="ligne-card-field">
+            <div class="ligne-card-label" style="color:var(--green)">Crédit (FCFA)</div>
+            <input class="ligne-card-input" type="number" id="cre-c-${i}" value="${l.credit || ''}" placeholder="0" style="font-family:var(--font-mono)"
+              oninput="lignes[${i}].credit=parseFloat(this.value)||0;updateBalance()">
+          </div>
+        </div>
+        <div class="ligne-card-actions">
+          <button class="del-line" style="opacity:.6" onclick="removeLigne(${i})">✕ Supprimer</button>
+        </div>`;
+}
+
 function renderLignes() {
   const tbody = document.getElementById('lignesBody');
   if (!tbody) return;
@@ -2811,57 +2878,13 @@ function renderLignes() {
 
   lignes.forEach((l, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><div class="asw">
-        <input type="text" value="${l.compte}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
-          oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'table')"
-          onfocus="updateAccountSuggest(${i},this,'table')"
-          onblur="hideDropdown('t-${i}')">
-        <div class="adrop" id="drop-t-${i}"></div>
-      </div></td>
-      <td><input type="text" value="${l.libelle || ''}" placeholder="Libellé…" style="width:100%" oninput="lignes[${i}].libelle=this.value"></td>
-      <td><input type="text" value="${l.debit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
-        oninput="lignes[${i}].debit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateBalance()"></td>
-      <td><input type="text" value="${l.credit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
-        oninput="lignes[${i}].credit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateBalance()"></td>
-      <td><button class="del-line" onclick="removeLigne(${i})">✕</button></td>`;
+    tr.innerHTML = ligneRowHTML(i, l);
     tbody.appendChild(tr);
 
     if (cardContainer) {
       const card = document.createElement('div');
       card.className = 'ligne-card';
-      card.innerHTML = `
-        <div class="ligne-card-row">
-          <div class="ligne-card-field">
-            <div class="ligne-card-label">Compte</div>
-            <div style="position:relative">
-              <input class="ligne-card-input" type="text" value="${l.compte}" placeholder="Compte…" style="font-family:var(--font-mono)"
-                oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'card')"
-                onfocus="updateAccountSuggest(${i},this,'card')"
-                onblur="hideDropdown('c-${i}')">
-              <div class="adrop" id="drop-c-${i}"></div>
-            </div>
-          </div>
-          <div class="ligne-card-field">
-            <div class="ligne-card-label">Libellé</div>
-            <input class="ligne-card-input" type="text" value="${l.libelle || ''}" placeholder="Libellé…" oninput="lignes[${i}].libelle=this.value">
-          </div>
-        </div>
-        <div class="ligne-card-row">
-          <div class="ligne-card-field">
-            <div class="ligne-card-label" style="color:var(--blue)">Débit (FCFA)</div>
-            <input class="ligne-card-input" type="number" value="${l.debit || ''}" placeholder="0" style="font-family:var(--font-mono)"
-              oninput="lignes[${i}].debit=parseFloat(this.value)||0;updateBalance()">
-          </div>
-          <div class="ligne-card-field">
-            <div class="ligne-card-label" style="color:var(--green)">Crédit (FCFA)</div>
-            <input class="ligne-card-input" type="number" value="${l.credit || ''}" placeholder="0" style="font-family:var(--font-mono)"
-              oninput="lignes[${i}].credit=parseFloat(this.value)||0;updateBalance()">
-          </div>
-        </div>
-        <div class="ligne-card-actions">
-          <button class="del-line" style="opacity:.6" onclick="removeLigne(${i})">✕ Supprimer</button>
-        </div>`;
+      card.innerHTML = ligneCardHTML(i, l);
       cardContainer.appendChild(card);
     }
   });
@@ -2895,17 +2918,30 @@ function renderAccountDropdown(dropId, query, buildSelectCall) {
     return;
   }
   const hint = browsing ? `<div class="adrop-hint">📂 Comptes principaux — tapez pour chercher parmi ${Object.keys(PC).length} comptes</div>` : '';
-  drop.innerHTML =
-    closeRow +
-    hint +
-    matches
-      .map(
-        ([code, lib]) =>
-          `<div class="aoption" onmousedown="${buildSelectCall(code, lib.replace(/'/g, "\\'"))}">
-        <span class="code">${code}</span><span class="name">${lib.substring(0, 46)}</span>
-      </div>`,
-      )
-      .join('');
+  // Regroupement par classe SYSCOHADA (1er chiffre du code) — même logique que le Plan Comptable.
+  const groups = {};
+  matches.forEach(([code, lib]) => {
+    const cl = code[0];
+    (groups[cl] = groups[cl] || []).push([code, lib]);
+  });
+  const body = Object.keys(groups)
+    .sort()
+    .map((cl) => {
+      const items = groups[cl]
+        .map(
+          ([code, lib]) =>
+            `<div class="aoption" onmousedown="${buildSelectCall(code, lib.replace(/'/g, "\\'"))}">
+          <span class="code">${code}</span><span class="name">${lib.substring(0, 46)}</span>
+        </div>`,
+        )
+        .join('');
+      return `<div class="adrop-class-group">
+        <div class="adrop-class-head"><span class="acg-num">${cl}</span><span class="acg-name">${CLASS_NAMES[cl] || 'Classe ' + cl}</span></div>
+        ${items}
+      </div>`;
+    })
+    .join('');
+  drop.innerHTML = closeRow + hint + body;
   drop.classList.add('open');
 }
 
@@ -2936,7 +2972,20 @@ function selectAccountMulti(qi, li, code, lib) {
 function selectAccount(idx, code, lib) {
   lignes[idx].compte = code;
   if (!lignes[idx].libelle) lignes[idx].libelle = lib.substring(0, 54);
-  renderLignes();
+  const cptT = document.getElementById('cpt-t-' + idx);
+  if (cptT) cptT.value = code;
+  const cptC = document.getElementById('cpt-c-' + idx);
+  if (cptC) cptC.value = code;
+  const libT = document.getElementById('lib-t-' + idx);
+  if (libT) libT.value = lignes[idx].libelle;
+  const libC = document.getElementById('lib-c-' + idx);
+  if (libC) libC.value = lignes[idx].libelle;
+  hideDropdownNow('t-' + idx);
+  hideDropdownNow('c-' + idx);
+}
+function hideDropdownNow(dropId) {
+  const d = document.getElementById('drop-' + dropId);
+  if (d) d.classList.remove('open');
 }
 function hideDropdown(dropId) {
   setTimeout(() => {
@@ -3661,30 +3710,49 @@ function renderTresorerie() {
 function renderPlanComptable() {
   const search = document.getElementById('pcSearch')?.value?.toLowerCase() || '';
   const cls = document.getElementById('pcClass')?.value || '';
-  const tbody = document.getElementById('pcBody');
-  if (!tbody) return;
-  const entries = Object.entries(PC)
-    .filter(([code, lib]) => {
-      if (cls && !code.startsWith(cls)) return false;
-      if (search && !code.includes(search) && !lib.toLowerCase().includes(search)) return false;
-      return true;
-    })
-    .slice(0, 300);
+  const container = document.getElementById('pcBody');
+  if (!container) return;
+  const entries = Object.entries(PC).filter(([code, lib]) => {
+    if (cls && code[0] !== cls) return false;
+    if (search && !code.includes(search) && !lib.toLowerCase().includes(search)) return false;
+    return true;
+  });
   if (!entries.length) {
-    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Aucun compte trouvé</p></div></td></tr>';
+    container.innerHTML = '<div class="pc3d-empty">Aucun compte trouvé</div>';
     return;
   }
-  tbody.innerHTML = entries
-    .map(([code, lib]) => {
-      const cl = code[0],
-        isH = lib === lib.toUpperCase() && lib.length > 3,
-        pad = (code.length - 1) * 10;
-      return `<tr>
-      <td><span class="ct">${code}</span></td>
-      <td style="padding-left:${Math.min(pad, 30)}px;font-weight:${isH ? '600' : '400'};color:${isH ? 'var(--ink)' : 'var(--slate)'}">${lib.substring(0, 70)}</td>
-      <td style="color:var(--muted);font-size:11px">${CLASS_NAMES[cl] || ''}</td>
-      <td><span style="font-size:10px;padding:2px 7px;border-radius:3px;background:var(--surface3);color:var(--muted)">${NATURE_MAP[cl] || ''}</span></td>
-    </tr>`;
+  // Regroupement par classe (1, 2, 3 … 8) — chaque classe = une carte 3D
+  // avec tous les numéros de compte qui lui sont liés, triés et indentés
+  // selon la hiérarchie SYSCOHADA (classe > poste > compte > sous-compte).
+  const groups = {};
+  entries.forEach(([code, lib]) => {
+    const cl = code[0];
+    (groups[cl] = groups[cl] || []).push([code, lib]);
+  });
+  const classesOrder = Object.keys(groups).sort();
+  container.innerHTML = classesOrder
+    .map((cl) => {
+      const accounts = groups[cl].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+      const rows = accounts
+        .map(([code, lib]) => {
+          const isHeader = lib === lib.toUpperCase() && lib.length > 3;
+          const pad = Math.min((code.length - 1) * 10, 30);
+          return `<div class="pc3d-account-row ${isHeader ? 'lvl-header' : ''}" style="padding-left:${16 + pad}px">
+            <span class="code">${code}</span><span>${lib.substring(0, 60)}</span>
+          </div>`;
+        })
+        .join('');
+      return `<div class="pc3d-card">
+        <div class="pc3d-head">
+          <div class="pc3d-num">${cl}</div>
+          <div class="pc3d-titles">
+            <h3>${CLASS_NAMES[cl] || 'Classe ' + cl}</h3>
+            <span>${accounts.length} compte${accounts.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="pc3d-nature-badge">${NATURE_MAP[cl] || ''}</div>
+        </div>
+        <div class="pc3d-body">${rows}</div>
+      </div>`;
     })
     .join('');
 }
