@@ -2873,6 +2873,13 @@ function formatDateFR(dateStr) {
 }
 
 function renderJournal() {
+  let ecritures = getEcritures();
+  // Trier du plus récent au plus ancien
+  ecritures = [...ecritures].sort((a, b) => {
+    const da = a.date || a.entries?.[0]?.date || '';
+    const db = b.date || b.entries?.[0]?.date || '';
+    return db.localeCompare(da);
+  });
   const search = (document.getElementById('journalSearch')?.value || '').toLowerCase();
   const filter = document.getElementById('journalFilter')?.value || '';
   const dateDebut = document.getElementById('jnl-date-debut')?.value || '';
@@ -7481,6 +7488,8 @@ async function callMistral(messages, systemPrompt) {
 function openJournalEditor() {
   const el = document.getElementById('journalEditor');
   el.style.display = 'flex';
+  el.style.flexDirection = 'row';
+  el.style.alignItems = 'stretch';
   document.body.style.overflow = 'hidden';
   // Initialiser date par défaut
   const d = document.getElementById('ecr-date');
