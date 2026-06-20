@@ -1374,7 +1374,17 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 .saisie-ide-right .comeo-input-row { flex-shrink:0; background:var(--ink); }
 .saisie-ide-right .comeo-input { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); color:#f0ece3; }
 .saisie-ide-right .comeo-input::placeholder { color:rgba(255,255,255,.25); }
-.saisie-ide-right .ai-fill-banner { margin:0 12px 10px; }
+.saisie-ide-right .ai-fill-banner {
+  margin:0 12px 10px;
+  background:linear-gradient(135deg, rgba(212,168,83,.18), rgba(212,168,83,.08));
+  border-color: rgba(212,168,83,.4);
+  color:#f0ece3;
+}
+.saisie-ide-right .ai-fill-banner .afi-text { color:#f0ece3; }
+.saisie-ide-right .ai-fill-banner .afi-text strong { color:var(--warm); }
+.saisie-ide-right .ai-fill-banner .afi-text span { color:rgba(240,236,227,.55); }
+.saisie-ide-right .btn-dismiss { color:rgba(240,236,227,.5); border-color:rgba(255,255,255,.18); }
+.saisie-ide-right .btn-dismiss:hover { background:rgba(255,255,255,.08); color:#fff; }
 
 @media(max-width:900px) {
   .saisie-ide-layout { flex-direction:column; height:auto; }
