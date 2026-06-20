@@ -7477,6 +7477,173 @@ async function callMistral(messages, systemPrompt) {
   return null; // Mistral épuisé
 }
 // ══════════════════════════════════════════
+// ─── JOURNAL EDITOR ────────────────────────────────────────────
+function openJournalEditor() {
+  const el = document.getElementById('journalEditor');
+  el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  // Initialiser date par défaut
+  const d = document.getElementById('ecr-date');
+  if (!d.value) d.value = new Date().toISOString().split('T')[0];
+  if (document.getElementById('lignesBody').children.length === 0) addLigne();
+}
+
+function closeJournalEditor() {
+  document.getElementById('journalEditor').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function handleJournalAiKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendJournalAI(); }
+}
+
+async function sendJournalAI(forcedMsg) {
+  const inp = document.getElementById('aiInput-journal');
+  const msg = forcedMsg || inp.value.trim();
+  if (!msg) return;
+  if (!forcedMsg) inp.value = '';
+
+  appendJournalMsg('user', msg);
+  const thinkingId = appendJournalMsg('ai', '…', true);
+
+  // Contexte écritures actuelles
+  const lignes = [];
+  document.querySelectorAll('#lignesBody tr').forEach(tr => {
+    const cells = tr.querySelectorAll('input');
+    if (cells.length >= 4) lignes.push({ compte: cells[0].value, libelle: cells[1].value, debit: cells[2].value, credit: cells[3].value });
+  });
+  const contexte = lignes.length ? `\n\nÉcritures actuelles:\n${JSON.stringify(lignes, null, 2)}` : '';
+  const libelle = document.getElementById('ecr-libelle').value;
+  const journal = document.getElementById('ecr-journal').value;
+
+  const systemPrompt = `Tu es COMEO AI, expert-comptable certifié SYSCOHADA, spécialiste des normes OHADA 2023 en vigueur en Côte d'Ivoire.
+
+RÈGLES ABSOLUES:
+- Toujours respecter la partie double: chaque opération doit être équilibrée (Débit = Crédit)
+- Pour les achats/ventes, passer systématiquement les 3 écritures SYSCOHADA: (1) achat/vente, (2) TVA si applicable, (3) règlement/paiement
+- Utiliser les comptes du plan SYSCOHADA révisé 2023
+- TVA en vigueur en Côte d'Ivoire: 18%
+- Écriture d'annulation = contre-passation (inverser débit/crédit avec libellé "Annulation de...")
+- Ne jamais supprimer une écriture erronée, toujours contre-passer
+- Répondre en français professionnel
+- Quand tu génères des écritures, les formatter en JSON strict dans une balise <ECRITURES> pour que l'interface puisse les injecter
+
+FORMAT JSON ÉCRITURES:
+<ECRITURES>
+[
+  {
+    "libelle_general": "...",
+    "journal": "AC|VE|BQ|CA|OD|AN|IN",
+    "lignes": [
+      {"compte": "601", "libelle": "...", "debit": 0, "credit": 0},
+      ...
+    ]
+  }
+]
+</ECRITURES>
+
+Contexte journal actif: ${journal}
+Libellé en cours: ${libelle || 'non défini'}${contexte}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: msg }]
+      })
+    });
+    const data = await res.json();
+    const fullText = data.content?.find(b => b.type === 'text')?.text || 'Erreur de réponse.';
+
+    // Extraire et injecter les écritures si présentes
+    const ecrMatch = fullText.match(/<ECRITURES>([\s\S]*?)<\/ECRITURES>/);
+    let displayText = fullText.replace(/<ECRITURES>[\s\S]*?<\/ECRITURES>/g, '').trim();
+
+    updateJournalMsg(thinkingId, displayText);
+
+    if (ecrMatch) {
+      try {
+        const ecritures = JSON.parse(ecrMatch[1].trim());
+        injectEcrituresFromAI(ecritures);
+      } catch(e) { console.error('Parse ecritures:', e); }
+    }
+  } catch(e) {
+    updateJournalMsg(thinkingId, 'Service temporairement indisponible.');
+  }
+}
+
+function appendJournalMsg(role, text, isThinking = false) {
+  const container = document.getElementById('aiMessages-journal');
+  const id = 'jmsg-' + Date.now();
+  const isAI = role === 'ai';
+
+  const wrap = document.createElement('div');
+  wrap.id = id;
+  wrap.style.cssText = `display:flex; gap:10px; align-items:flex-start; ${isAI ? '' : 'flex-direction:row-reverse;'}`;
+
+  const avatar = document.createElement('div');
+  avatar.style.cssText = `width:28px; height:28px; border-radius:50%; background:${isAI ? 'linear-gradient(135deg,#d4a853,#8b6914)' : 'rgba(255,255,255,.1)'}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:${isAI ? '#0a0b10' : 'rgba(255,255,255,.7)'}; flex-shrink:0; margin-top:2px; font-family:'Space Grotesk',sans-serif;`;
+  avatar.textContent = isAI ? 'C' : 'V';
+
+  const bubble = document.createElement('div');
+  bubble.style.cssText = `background:${isAI ? 'rgba(255,255,255,.04)' : 'rgba(212,168,83,.08)'}; border:1px solid ${isAI ? 'rgba(212,168,83,.12)' : 'rgba(212,168,83,.2)'}; border-radius:${isAI ? '0 12px 12px 12px' : '12px 0 12px 12px'}; padding:11px 13px; max-width:88%; font-size:12.5px; color:rgba(255,255,255,.82); line-height:1.65; font-family:'Space Grotesk',sans-serif;`;
+  bubble.innerHTML = isThinking
+    ? '<span style="color:rgba(212,168,83,.5); font-family:\'JetBrains Mono\',monospace; font-size:11px; letter-spacing:.1em;">● ● ●</span>'
+    : formatJournalResponse(text);
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function updateJournalMsg(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const bubble = el.querySelector('div:last-child');
+  if (bubble) bubble.innerHTML = formatJournalResponse(text);
+  document.getElementById('aiMessages-journal').scrollTop = 99999;
+}
+
+function formatJournalResponse(text) {
+  // Mise en forme professionnelle de la réponse
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#d4a853;">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em style="color:rgba(255,255,255,.65);">$1</em>')
+    .replace(/^### (.+)$/gm, '<div style="font-family:\'JetBrains Mono\',monospace; font-size:9px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(212,168,83,.6); margin:10px 0 4px;">$1</div>')
+    .replace(/^— (.+)$/gm, '<div style="padding-left:10px; border-left:2px solid rgba(212,168,83,.25); margin:3px 0; font-size:12px;">$1</div>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+function injectEcrituresFromAI(ecritures) {
+  if (!Array.isArray(ecritures) || !ecritures.length) return;
+  const first = ecritures[0];
+  if (first.libelle_general) document.getElementById('ecr-libelle').value = first.libelle_general;
+  if (first.journal) document.getElementById('ecr-journal').value = first.journal;
+
+  // Vider lignes actuelles
+  document.getElementById('lignesBody').innerHTML = '';
+  document.getElementById('lignesCardContainer').innerHTML = '';
+
+  // Si plusieurs écritures, les mettre en queue
+  if (ecritures.length > 1) {
+    window.aiEcrituresQueue = ecritures;
+    window.aiEcrituresQueueIndex = 0;
+    showQueueBar(ecritures.length);
+  }
+
+  // Injecter la première
+  (first.lignes || []).forEach(l => addLigne(l.compte, l.libelle, l.debit, l.credit));
+  updateBalance();
+
+  appendJournalMsg('ai', `✦ **${ecritures.length} écriture(s)** préparée(s). Vérifiez les lignes et cliquez **Valider** pour enregistrer.`);
+}
 // INIT SESSION
 // ══════════════════════════════════════════
 document.addEventListener('firebase-ready', async () => {
