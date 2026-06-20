@@ -1333,29 +1333,19 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
   overflow:hidden;
   box-shadow:var(--sh);
 }
-.saisie-ide-left {
-  width:360px;
-  flex-shrink:0;
+.saisie-ide-layout {
   display:flex;
-  flex-direction:column;
-  background:var(--ink);
-  border-right:1px solid rgba(255,255,255,.08);
-  min-height:0;
+  align-items:stretch;
+  height:calc(100vh - var(--topbar-h) - 150px);
+  min-height:540px;
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  overflow:hidden;
+  box-shadow:var(--sh);
 }
-.ide-left-header {
-  display:flex; align-items:center; gap:8px;
-  padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08);
-  flex-shrink:0;
-}
-.ide-left-title { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--warm); letter-spacing:.05em; }
-.ide-left-sub { margin-left:auto; font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
-.saisie-ide-left .comeo-messages { flex:1; height:auto; min-height:0; background:#0d0f1a; }
-.saisie-ide-left .comeo-input-row { flex-shrink:0; background:var(--ink); }
-.saisie-ide-left .comeo-input { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); color:#f0ece3; }
-.saisie-ide-left .comeo-input::placeholder { color:rgba(255,255,255,.25); }
-.saisie-ide-left .ai-fill-banner { margin:0 12px 10px; }
 
-.saisie-ide-right {
+/* GAUCHE — éditeur de comptes (page principale) */
+.saisie-ide-left {
   flex:1; min-width:0; min-height:0;
   display:flex; flex-direction:column;
   overflow-y:auto;
@@ -1363,8 +1353,31 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
   padding:16px;
 }
 
+/* DROITE — assistant IA (panneau fixe type "Claude Code") */
+.saisie-ide-right {
+  width:380px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  background:var(--ink);
+  border-left:1px solid rgba(255,255,255,.08);
+  min-height:0;
+}
+.ide-right-header {
+  display:flex; align-items:center; gap:8px;
+  padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08);
+  flex-shrink:0;
+}
+.ide-right-title { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--warm); letter-spacing:.05em; }
+.ide-right-sub { margin-left:auto; font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,.25); letter-spacing:.06em; }
+.saisie-ide-right .comeo-messages { flex:1; height:auto; min-height:0; background:#0d0f1a; }
+.saisie-ide-right .comeo-input-row { flex-shrink:0; background:var(--ink); }
+.saisie-ide-right .comeo-input { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); color:#f0ece3; }
+.saisie-ide-right .comeo-input::placeholder { color:rgba(255,255,255,.25); }
+.saisie-ide-right .ai-fill-banner { margin:0 12px 10px; }
+
 @media(max-width:900px) {
   .saisie-ide-layout { flex-direction:column; height:auto; }
-  .saisie-ide-left { width:100%; height:360px; border-right:none; border-bottom:1px solid rgba(255,255,255,.08); }
-  .saisie-ide-right { overflow-y:visible; }
+  .saisie-ide-right { width:100%; height:360px; border-left:none; border-top:1px solid rgba(255,255,255,.08); }
+  .saisie-ide-left { overflow-y:visible; }
 }
