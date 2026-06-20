@@ -317,6 +317,57 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 .del-line:hover { opacity:1; background:rgba(220,38,38,.08); }
 
 /* ═══════════════════════════════════════════════════════════
+   ★★★ SAISIE — ÉDITEUR MULTI-ÉCRITURES (généré par l'IA)
+   Affiche TOUTES les écritures d'une opération en même temps,
+   modifiables, pour vérification avant validation groupée.
+   ═══════════════════════════════════════════════════════════ */
+.multi-ecr-editor {
+  display:none; flex-direction:column; flex:1; min-height:0;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--sh); overflow:hidden;
+}
+.mei-toolbar { display:flex; align-items:baseline; gap:10px; padding:14px 16px 10px; flex-wrap:wrap; flex-shrink:0; }
+.mei-toolbar-count { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); display:flex; align-items:center; gap:7px; }
+.mei-toolbar-count::before { content:''; width:3px; height:14px; background:var(--warm); border-radius:2px; display:inline-block; }
+.mei-toolbar-hint { font-size:10.5px; color:var(--muted); }
+.mei-scroll { flex:1; overflow-y:auto; padding:0 16px 4px; display:flex; flex-direction:column; gap:12px; }
+.mei-block { border:1px solid var(--line2); border-radius:var(--rs); overflow:hidden; flex-shrink:0; }
+.mei-block-header {
+  background:var(--ink); padding:8px 10px; display:flex; align-items:center; gap:8px;
+  flex-wrap:wrap; border-bottom:2px solid rgba(212,168,83,.3);
+}
+.mei-block-n {
+  width:20px; height:20px; border-radius:50%; flex-shrink:0;
+  background:rgba(212,168,83,.15); border:1px solid rgba(212,168,83,.3); color:var(--warm);
+  font-family:var(--font-mono); font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+.mei-block-icon { font-size:13px; flex-shrink:0; }
+.mei-jnl-select {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:#f0ece3;
+  border-radius:4px; padding:5px 7px; font-size:10.5px; font-family:var(--font-mono); outline:none; flex-shrink:0;
+}
+.mei-jnl-select:focus { border-color:var(--warm); }
+.mei-jnl-select option { background:var(--ink); color:#f0ece3; }
+.mei-libelle-input {
+  flex:1; min-width:140px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  color:#f0ece3; border-radius:4px; padding:5px 9px; font-size:12px; font-family:var(--font-body); outline:none;
+}
+.mei-libelle-input::placeholder { color:rgba(255,255,255,.3); }
+.mei-libelle-input:focus { border-color:var(--warm); background:rgba(255,255,255,.1); }
+.mei-block-balance { font-family:var(--font-mono); font-size:9.5px; font-weight:700; white-space:nowrap; padding:3px 7px; border-radius:3px; }
+.mei-block-balance.bok { background:rgba(74,222,128,.14); }
+.mei-block-balance.bbad { background:rgba(248,113,113,.14); }
+.mei-del-btn {
+  background:transparent; border:1px solid rgba(220,38,38,.25); color:rgba(248,113,113,.55);
+  border-radius:4px; cursor:pointer; font-size:11px; padding:4px 8px; transition:all .14s; flex-shrink:0;
+}
+.mei-del-btn:hover { background:rgba(220,38,38,.12); color:#f87171; border-color:rgba(220,38,38,.5); }
+.mei-block .et { min-width:0; }
+.mei-block .add-line-btn { margin:0 10px 10px; width:calc(100% - 20px); padding:6px 12px; font-size:11px; }
+.multi-ecr-editor > .bal-bar { border-radius:0; flex-shrink:0; }
+
+/* ═══════════════════════════════════════════════════════════
    ★★★ JOURNAL — GROUPES D'OPÉRATIONS (3 ÉCRITURES LIÉES)
    ═══════════════════════════════════════════════════════════ */
 
