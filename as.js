@@ -7772,3 +7772,17 @@ window.openJournalEditor = openJournalEditor;
 window.closeJournalEditor = closeJournalEditor;
 window.sendJournalAI = sendJournalAI;
 window.handleJournalAiKey = handleJournalAiKey;
+// ── Journal Editor (nouvelles fonctions) ──
+window.openJournalEditor = openJournalEditor;
+window.closeJournalEditor = closeJournalEditor;
+window.sendJournalAI = sendJournalAI;
+window.handleJournalAiKey = handleJournalAiKey;
+window.appendJournalMsg = appendJournalMsg;
+window.updateJournalMsg = updateJournalMsg;
+window.injectEcrituresFromAI = injectEcrituresFromAI;
+window.formatJournalResponse = formatJournalResponse;
+window.confirmWavePaymentManual = confirmWavePaymentManual;
+window.updateExportOptions = updateExportOptions;
+window.buildPDFHeader = buildPDFHeader;
+window.openRobot = openRobot;
+window.closeRobot = closeRobot;
