@@ -2926,7 +2926,7 @@ function renderJournal() {
   soloList.forEach((e) => {
     groups.push({ type: 'solo', date: e.date, ecritures: [e], libelle: e.libelle || 'Écriture', isGroupe: false });
   });
-  groups.sort((a, b) => a.date.localeCompare(b.date) || (a.ecritures[0].createdAt || '').localeCompare(b.ecritures[0].createdAt || ''));
+groups.sort((a, b) => b.date.localeCompare(a.date) || (b.ecritures[0].createdAt || '').localeCompare(a.ecritures[0].createdAt || ''));
 
   const byDate = {};
   groups.forEach((g) => {
@@ -2941,8 +2941,9 @@ function renderJournal() {
   let html = '';
 
   Object.keys(byDate)
-    .sort()
-    .forEach((date) => {
+  .sort()
+  .reverse()
+  .forEach((date) => {
       html += `<div class="jnl-date-sep">
       <div class="jnl-date-sep-line"></div>
       <div class="jnl-date-sep-label">📅 ${formatDateFR(date)}</div>
