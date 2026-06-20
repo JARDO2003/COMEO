@@ -2058,10 +2058,11 @@ POUR UNE QUESTION COMPTABLE SIMPLE :
   → Citer la règle SYSCOHADA applicable si pertinent.
 
 POUR UNE DEMANDE D'ÉCRITURE :
-  → Phrase d'introduction : "Voici les X écritures nécessaires pour cette opération :"
-  → Explication du raisonnement (HT/TVA/TTC, pourquoi ce nombre d'écritures)
-  → Blocs ###ECRITURE### avec JSON strict
-  → Phrase de validation : confirmer l'équilibre et la conformité SYSCOHADA
+  → Une SEULE phrase d'introduction courte : "Voici les X écritures pour cette opération :"
+  → IMMÉDIATEMENT les blocs ###ECRITURE### avec JSON strict — PAS de calculs intermédiaires avant les blocs
+  → Les calculs (HT, TVA, TTC) sont intégrés dans les libellés des lignes JSON uniquement
+  → INTERDICTION d'écrire les calculs en texte avant ou entre les blocs ###ECRITURE###
+  → Phrase de validation APRÈS tous les blocs : confirmer l'équilibre et la conformité SYSCOHADA
 
 POUR UNE ANALYSE OU UN DIAGNOSTIC :
   → Énoncer les faits observés (chiffres exacts du contexte)
@@ -4285,8 +4286,9 @@ async function sendToAI(context) {
       }
 
       // Traitement ÉCRITURE
-    } else if (fullText.includes('###ECRITURE###')) {
-      const parts = fullText.split('###ECRITURE###');
+    } else if (fullText.includes('###ECRITURE###') || fullText.includes('###ÉCRITURE###')) {
+      const normalizedText = fullText.replace(/###ÉCRITURE###/g, '###ECRITURE###');
+      const parts = normalizedText.split('###ECRITURE###');
       const textBeforeFirst = parts[0].trim();
       const ecrituresAI = [];
       for (let i = 1; i < parts.length; i++) {
@@ -4311,8 +4313,12 @@ async function sendToAI(context) {
                 })),
               );
               ecr.lignes = corrigerComptesErreurs(ecr.lignes);
-              if (Math.abs(d - c) <= 5) ecrituresAI.push(ecr);
-              else console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d - c)} FCFA`);
+              if (Math.abs(d - c) <= 5) {
+                ecrituresAI.push(ecr);
+              } else {
+                console.warn(`Écriture ${i} rejetée — Déséquilibre : ${Math.abs(d - c)} FCFA`);
+                appendMsg(context, 'ai', `⚠️ Écriture ${i} rejetée car déséquilibrée de ${Math.abs(d - c)} FCFA (Débit: ${d} / Crédit: ${c}). Veuillez vérifier les montants.`);
+              }
             }
           } catch (pe) {
             console.warn('JSON parse error écriture', i, ':', pe.message);
