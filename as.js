@@ -2620,8 +2620,13 @@ function renderMultiEcrEditor() {
       .map(
         (l, li) => `
         <tr>
-          <td><input type="text" value="${String(l.compte || '').replace(/"/g, '&quot;')}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
-            oninput="ecrQueue[${qi}].lignes[${li}].compte=this.value"></td>
+          <td><div class="asw">
+            <input type="text" value="${String(l.compte || '').replace(/"/g, '&quot;')}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
+              oninput="ecrQueue[${qi}].lignes[${li}].compte=this.value;updateAccountSuggestMulti(${qi},${li},this)"
+              onfocus="updateAccountSuggestMulti(${qi},${li},this)"
+              onblur="hideDropdown('m-${qi}-${li}')">
+            <div class="adrop" id="drop-m-${qi}-${li}"></div>
+          </div></td>
           <td><input type="text" value="${String(l.libelle || '').replace(/"/g, '&quot;')}" placeholder="Libellé…" style="width:100%"
             oninput="ecrQueue[${qi}].lignes[${li}].libelle=this.value"></td>
           <td><input type="text" value="${l.debit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
@@ -2810,6 +2815,7 @@ function renderLignes() {
       <td><div class="asw">
         <input type="text" value="${l.compte}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
           oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'table')"
+          onfocus="updateAccountSuggest(${i},this,'table')"
           onblur="hideDropdown('t-${i}')">
         <div class="adrop" id="drop-t-${i}"></div>
       </div></td>
@@ -2831,6 +2837,7 @@ function renderLignes() {
             <div style="position:relative">
               <input class="ligne-card-input" type="text" value="${l.compte}" placeholder="Compte…" style="font-family:var(--font-mono)"
                 oninput="lignes[${i}].compte=this.value;updateAccountSuggest(${i},this,'card')"
+                onfocus="updateAccountSuggest(${i},this,'card')"
                 onblur="hideDropdown('c-${i}')">
               <div class="adrop" id="drop-c-${i}"></div>
             </div>
@@ -2861,31 +2868,69 @@ function renderLignes() {
   updateBalance();
 }
 
-function updateAccountSuggest(idx, input, mode) {
-  const q = input.value.toLowerCase().trim();
-  const dropId = mode === 'card' ? 'c-' + idx : 't-' + idx;
+// ══════════════════════════════════════════
+// PLAN COMPTABLE — OUVERTURE AUTOMATIQUE À LA SAISIE
+// S'ouvre dès le focus sur le champ "Compte" (parcours du plan
+// comptable), se filtre en tapant, et peut être fermé explicitement
+// pour saisir le numéro de compte librement au clavier.
+// ══════════════════════════════════════════
+const manualEntryFields = new Set();
+
+function accountMatchesFor(query) {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) {
+    return { matches: Object.entries(PC).filter(([code]) => code.length <= 3).slice(0, 18), browsing: true };
+  }
+  return { matches: Object.entries(PC).filter(([code, lib]) => code.startsWith(q) || lib.toLowerCase().includes(q)).slice(0, 15), browsing: false };
+}
+
+function renderAccountDropdown(dropId, query, buildSelectCall) {
   const drop = document.getElementById('drop-' + dropId);
   if (!drop) return;
-  if (!q || q.length < 2) {
-    drop.classList.remove('open');
-    return;
-  }
-  const matches = Object.entries(PC)
-    .filter(([code, lib]) => code.startsWith(q) || lib.toLowerCase().includes(q))
-    .slice(0, 12);
+  const { matches, browsing } = accountMatchesFor(query);
+  const closeRow = `<div class="adrop-close" onmousedown="closeAccountDropdown('${dropId}')">✕ Fermer — saisir librement</div>`;
   if (!matches.length) {
-    drop.classList.remove('open');
+    drop.innerHTML = closeRow + `<div class="adrop-empty">Aucun compte trouvé pour "${(query || '').replace(/"/g, '&quot;')}"</div>`;
+    drop.classList.add('open');
     return;
   }
-  drop.innerHTML = matches
-    .map(
-      ([code, lib]) =>
-        `<div class="aoption" onmousedown="selectAccount(${idx},'${code}','${lib.replace(/'/g, "\\'")}')">
-      <span class="code">${code}</span><span class="name">${lib.substring(0, 46)}</span>
-    </div>`,
-    )
-    .join('');
+  const hint = browsing ? `<div class="adrop-hint">📂 Comptes principaux — tapez pour chercher parmi ${Object.keys(PC).length} comptes</div>` : '';
+  drop.innerHTML =
+    closeRow +
+    hint +
+    matches
+      .map(
+        ([code, lib]) =>
+          `<div class="aoption" onmousedown="${buildSelectCall(code, lib.replace(/'/g, "\\'"))}">
+        <span class="code">${code}</span><span class="name">${lib.substring(0, 46)}</span>
+      </div>`,
+      )
+      .join('');
   drop.classList.add('open');
+}
+
+function closeAccountDropdown(dropId) {
+  manualEntryFields.add(dropId);
+  const d = document.getElementById('drop-' + dropId);
+  if (d) d.classList.remove('open');
+}
+
+function updateAccountSuggest(idx, input, mode) {
+  const dropId = mode === 'card' ? 'c-' + idx : 't-' + idx;
+  if (manualEntryFields.has(dropId)) return;
+  renderAccountDropdown(dropId, input.value, (code, lib) => `selectAccount(${idx},'${code}','${lib}')`);
+}
+
+function updateAccountSuggestMulti(qi, li, input) {
+  const dropId = `m-${qi}-${li}`;
+  if (manualEntryFields.has(dropId)) return;
+  renderAccountDropdown(dropId, input.value, (code, lib) => `selectAccountMulti(${qi},${li},'${code}','${lib}')`);
+}
+
+function selectAccountMulti(qi, li, code, lib) {
+  ecrQueue[qi].lignes[li].compte = code;
+  if (!ecrQueue[qi].lignes[li].libelle) ecrQueue[qi].lignes[li].libelle = lib.substring(0, 54);
+  renderMultiEcrEditor();
 }
 
 function selectAccount(idx, code, lib) {
@@ -2893,10 +2938,11 @@ function selectAccount(idx, code, lib) {
   if (!lignes[idx].libelle) lignes[idx].libelle = lib.substring(0, 54);
   renderLignes();
 }
-function hideDropdown(id) {
+function hideDropdown(dropId) {
   setTimeout(() => {
-    const d = document.getElementById('drop-' + id);
+    const d = document.getElementById('drop-' + dropId);
     if (d) d.classList.remove('open');
+    manualEntryFields.delete(dropId);
   }, 200);
 }
 
@@ -7700,6 +7746,9 @@ window.saveEcriture = saveEcriture;
 window.updateAccountSuggest = updateAccountSuggest;
 window.selectAccount = selectAccount;
 window.hideDropdown = hideDropdown;
+window.closeAccountDropdown = closeAccountDropdown;
+window.updateAccountSuggestMulti = updateAccountSuggestMulti;
+window.selectAccountMulti = selectAccountMulti;
 window.updateBalance = updateBalance;
 window.autoSaveAllEcritures = autoSaveAllEcritures;
 window.autoSaveAllFromNotif = autoSaveAllFromNotif;
