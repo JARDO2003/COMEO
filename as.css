@@ -1,663 +1,1320 @@
-ode et nouveau code
+:root {
+  --ink: #0a0b10;
+  --paper: #f5f3ee;
+  --cream: #ede9e0;
+  --warm: #d4a853;
+  --warm2: #e8c278;
+  --warm-dim: rgba(212,168,83,.12);
+  --warm-glow: rgba(212,168,83,.06);
+  --rust: #c0392b;
+  --teal: #1a7a6e;
+  --slate: #2c3e50;
+  --muted: #8a8070;
+  --faint: #c8c0b0;
+  --line: #e0dbd0;
+  --line2: #ccc4b4;
+  --surface: #ffffff;
+  --surface2: #faf8f4;
+  --surface3: #f0ece3;
+  --blue: #2563eb;
+  --green: #16a34a;
+  --red: #dc2626;
+  --r: 6px; --rs: 4px;
+  --sh: 0 1px 8px rgba(0,0,0,.08), 0 4px 24px rgba(0,0,0,.04);
+  --sh2: 0 2px 16px rgba(0,0,0,.1);
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--font-body); background:var(--paper); color:var(--ink); min-height:100vh; font-size:14px; line-height:1.5; }
+/* AUTH */
+#authOverlay {
+  position:fixed; inset:0; z-index:9999;
+  background: linear-gradient(135deg, #0a0b10 0%, #1a1208 50%, #0a0b10 100%);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+#authOverlay::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(212,168,83,.12) 0%, transparent 70%);
+  pointer-events:none;
+}
+.auth-box {
+  position:relative; z-index:1;
+  background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.2);
+  border-radius:16px; padding:44px 40px; width:430px; max-width:100%;
+  backdrop-filter:blur(20px); box-shadow:0 32px 80px rgba(0,0,0,.6);
+}
+@media(max-width:480px){.auth-box{padding:28px 20px;}}
+.auth-emblem { text-align:center; margin-bottom:28px; }
+.auth-emblem .logo-big { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--warm); letter-spacing:.06em; }
+.auth-emblem .ai-badge { display:inline-block; margin-top:4px; font-family:var(--font-mono); font-size:9px; color:rgba(212,168,83,.5); letter-spacing:.18em; text-transform:uppercase; }
+.auth-tabs { display:flex; background:rgba(255,255,255,.04); border-radius:6px; padding:3px; margin-bottom:24px; border:1px solid rgba(255,255,255,.06); }
+.auth-tab { flex:1; text-align:center; padding:8px; border-radius:4px; font-size:11.5px; cursor:pointer; color:rgba(255,255,255,.3); transition:all .18s; font-family:var(--font-mono); letter-spacing:.06em; }
+.auth-tab.active { background:rgba(212,168,83,.15); color:var(--warm); border:1px solid rgba(212,168,83,.25); }
+.auth-form { display:flex; flex-direction:column; gap:14px; }
+.af-field { display:flex; flex-direction:column; gap:5px; }
+.af-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.16em; color:rgba(212,168,83,.6); }
+.af-input { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:6px; color:#f0ece3; padding:10px 13px; font-size:13px; font-family:var(--font-body); outline:none; transition:all .18s; }
+.af-input:focus { border-color:rgba(212,168,83,.5); background:rgba(255,255,255,.08); }
+.af-input::placeholder { color:rgba(255,255,255,.2); }
+.auth-btn { background:linear-gradient(135deg, var(--warm), #b8912e); color:#0a0b10; border:none; border-radius:6px; padding:12px; font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; font-family:var(--font-body); letter-spacing:.04em; margin-top:4px; }
+.auth-btn:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(212,168,83,.35); }
+.auth-err { background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.2); border-radius:4px; padding:8px 12px; font-size:11.5px; color:#fca5a5; display:none; }
+.auth-err.show { display:block; }
 
-18:40
-Je vais lire les fichiers CSS et JS pour bien comprendre l'existant.
+/* SHELL */
+.shell { display:grid; grid-template-columns:var(--sidebar-w) 1fr; grid-template-rows:var(--topbar-h) 1fr; min-height:100vh; }
 
+/* TOPBAR */
+.topbar {
+  grid-column:1/-1; background:var(--ink);
+  border-bottom:2px solid var(--warm); display:flex; align-items:center;
+  padding:0 10px; gap:6px; position:sticky; top:0; z-index:100;
+  flex-wrap:nowrap; overflow:hidden;
+}
+.logo-wrap { display:flex; align-items:baseline; gap:5px; flex-shrink:0; }
+.logo { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--warm); letter-spacing:.04em; }
+.logo-sub { font-family:var(--font-mono); font-size:8px; color:rgba(212,168,83,.4); letter-spacing:.2em; text-transform:uppercase; }
+.tb-sep { width:1px; height:24px; background:rgba(255,255,255,.08); flex-shrink:0; }
+.company-pill { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; padding:3px 8px; font-size:11px; color:rgba(255,255,255,.5); min-width:0; overflow:hidden; max-width:140px; }
+.company-pill strong { color:var(--warm); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.ex-pill { display:flex; align-items:center; gap:4px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; padding:4px 8px; font-size:11px; color:rgba(255,255,255,.4); }
+.ex-pill input { background:none; border:none; color:var(--warm); font-size:12px; width:38px; text-align:center; font-family:var(--font-mono); outline:none; }
+.chip-badge { background:var(--warm-dim); border:1px solid rgba(212,168,83,.25); color:var(--warm); font-size:9px; font-weight:600; padding:3px 7px; border-radius:3px; font-family:var(--font-mono); letter-spacing:.1em; white-space:nowrap; }
+.btn { padding:6px 11px; border-radius:var(--rs); font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all .14s; font-family:var(--font-body); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; letter-spacing:.02em; }
+.btn-gold { background:var(--warm); color:var(--ink); }
+.btn-gold:hover { background:var(--warm2); transform:translateY(-1px); }
+.btn-gold:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+.btn-outline { background:transparent; color:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.1); }
+.btn-outline:hover { background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.2); }
+.btn-danger-outline { background:transparent; color:#fca5a5; border:1px solid rgba(220,38,38,.25); }
+.btn-danger-outline:hover { background:rgba(220,38,38,.08); }
 
-A consulté 3 fichiers
-A consulté 3 fichiers
-J'ai tout ce qu'il me faut. Voici l'ancien code et le nouveau code.
+/* MOBILE MENU BUTTON */
+.mobile-menu-btn {
+  display:none; background:transparent; border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.7); border-radius:4px; padding:5px 8px; cursor:pointer;
+  font-size:16px; flex-shrink:0;
+}
+@media(max-width:768px){ .mobile-menu-btn { display:flex; align-items:center; } }
 
-ANCIEN CODE — index.html (view-saisie, lignes 592–657)
-html
-<!-- SAISIE -->
-<div class="view" id="view-saisie">
-  <div class="ph">
-    <div><h1>Saisie des écritures</h1><p>Saisie manuelle ou assistée par COMEO AI</p></div>
-    <div class="ph-actions">
-      <button class="btn btn-ink" onclick="saveEcriture()">↳ Valider l'écriture</button>
-    </div>
-  </div>
-  <div class="saisie-queue-bar" id="saisieQueueBar">
-    <span class="sqb-label">ÉCRITURES EN FILE</span>
-    <span class="sqb-counter" id="sqbCounter">0</span>
-    <span style="color:rgba(255,255,255,.4);font-size:11px;flex:1">Validez cette écriture pour passer à la suivante</span>
-    <button class="btn-validate-all" id="btnValidateAll" onclick="autoSaveAllEcritures()">⚡ Tout enregistrer</button>
-    <button class="sqb-skip" onclick="skipToNextEcriture()">Ignorer →</button>
-  </div>
-  <div class="comeo-box">
-    <div class="comeo-header"><div class="comeo-dot"></div><span class="comeo-title">COMEO AI — Saisie assistée</span><span class="comeo-sub">Décrivez → COMEO remplit les lignes automatiquement</span></div>
-    <div class="comeo-messages" id="aiMessages-saisie" style="height:130px">
-      <div class="msg ai"><div class="msg-av">C</div><div class="msg-body">Décrivez l'opération et je prépare les lignes. Pour un achat ou vente, je génère les <strong>3 écritures</strong> — cliquez <strong>"Tout enregistrer"</strong> pour les valider toutes en une fois.</div></div>
-    </div>
-    <div class="comeo-input-row">
-      <textarea class="comeo-input" id="aiInput-saisie" placeholder="ex: Achat matériel bureau 250000 FCFA HT par chèque, TVA 18%..." onkeydown="handleAiKey(event,'saisie')"></textarea>
-      <button class="btn btn-ink" onclick="sendToAI('saisie')">⚡</button>
-    </div>
-  </div>
-  <div class="ai-fill-banner" id="aiFillBanner">...</div>
-  <div class="card">
-    <div class="card-title">En-tête de l'écriture</div>
-    <div class="fg c4">
-      <div class="field"><label>Date</label><input type="date" id="ecr-date"></div>
-      <div class="field"><label>Journal</label><select id="ecr-journal">...</select></div>
-      <div class="field"><label>N° Pièce</label><input type="text" id="ecr-piece" placeholder="Auto"></div>
-      <div class="field"><label>Libellé général</label><input type="text" id="ecr-libelle" placeholder="Description…"></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Lignes d'écriture</div>
-    <div class="et-wrapper">
-      <table class="et">
-        <thead><tr><th>Compte</th><th>Libellé</th><th>Débit (FCFA)</th><th>Crédit (FCFA)</th><th></th></tr></thead>
-        <tbody id="lignesBody"></tbody>
-      </table>
-    </div>
-    <div id="lignesCardContainer"></div>
-    <button class="add-line-btn" onclick="addLigne()">＋ Ajouter une ligne</button>
-    <div class="bal-bar">
-      <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay">0</span></div>
-      <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay">0</span></div>
-      <div class="bal-item"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
-    </div>
-  </div>
-</div>
-NOUVEAU CODE — remplace entièrement view-saisie
-html
-<!-- JOURNAL EDITOR FULLSCREEN OVERLAY -->
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; display:none; flex-direction:row;">
+/* SIDEBAR */
+.sidebar {
+  background:var(--ink); border-right:1px solid rgba(255,255,255,.06);
+  padding:16px 0 28px; overflow-y:auto; position:sticky; top:var(--topbar-h); height:calc(100vh - var(--topbar-h));
+  transition:transform .25s ease;
+}
+.sb-section { padding:0 10px; margin-top:20px; }
+.sb-section:first-child { margin-top:8px; }
+.sb-title { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.22em; color:rgba(255,255,255,.2); padding:0 6px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:5px; cursor:pointer; color:rgba(255,255,255,.35); font-size:12px; font-weight:500; transition:all .14s; border:1px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,.04); color:rgba(255,255,255,.7); }
+.nav-item.active { background:rgba(212,168,83,.1); color:var(--warm); border-color:rgba(212,168,83,.18); }
+.nav-icon { font-size:12px; width:18px; text-align:center; flex-shrink:0; }
+.sb-stats-card { margin:20px 10px 0; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:6px; padding:12px; }
+.stat-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:10.5px; border-bottom:1px solid rgba(255,255,255,.04); }
+.stat-row:last-child { border-bottom:none; }
+.stat-row .lbl { color:rgba(255,255,255,.25); }
+.stat-row .val { font-family:var(--font-mono); color:rgba(255,255,255,.45); font-size:10px; }
+.stat-row .val.g { color:#4ade80; } .stat-row .val.r { color:#f87171; }
 
-  <!-- ZONE JOURNAL (gauche) -->
-  <div id="journalEditorLeft" style="flex:1; display:flex; flex-direction:column; overflow:hidden; border-right:1px solid rgba(212,168,83,.15);">
+/* SIDEBAR OVERLAY (MOBILE) */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:90; }
+.sidebar-overlay.show { display:block; }
 
-    <!-- Topbar éditeur -->
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 18px; background:#0a0b10; border-bottom:1.5px solid rgba(212,168,83,.2); flex-shrink:0;">
-      <div style="font-family:'Playfair Display',serif; font-size:16px; color:#d4a853; font-weight:700; letter-spacing:.04em;">comeo</div>
-      <div style="width:1px; height:18px; background:rgba(255,255,255,.08);"></div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,.35); letter-spacing:.12em; text-transform:uppercase;">Éditeur de journal</div>
-      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-        <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; padding:4px 8px;">
-          <label style="font-size:10px; color:rgba(255,255,255,.4);">Date</label>
-          <input type="date" id="ecr-date" style="background:none; border:none; color:#d4a853; font-size:11px; font-family:'JetBrains Mono',monospace; outline:none; width:110px;">
-        </div>
-        <select id="ecr-journal" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; color:rgba(255,255,255,.6); font-size:11px; padding:5px 8px; font-family:'Space Grotesk',sans-serif; outline:none;">
-          <option value="AC">AC — Achats</option><option value="VE">VE — Ventes</option>
-          <option value="BQ">BQ — Banque</option><option value="CA">CA — Caisse</option>
-          <option value="OD">OD — Opérations Diverses</option><option value="AN">AN — À Nouveau</option>
-          <option value="IN">IN — Inventaire</option>
-        </select>
-        <input type="text" id="ecr-piece" placeholder="N° Pièce" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; color:rgba(255,255,255,.6); font-size:11px; padding:5px 8px; width:90px; font-family:'JetBrains Mono',monospace; outline:none;">
-        <div class="saisie-queue-bar" id="saisieQueueBar" style="margin:0; border-radius:4px; padding:4px 10px; display:none;">
-          <span class="sqb-label">FILE</span>
-          <span class="sqb-counter" id="sqbCounter">0</span>
-          <button class="btn-validate-all" id="btnValidateAll" onclick="autoSaveAllEcritures()">⚡ Tout enregistrer</button>
-          <button class="sqb-skip" onclick="skipToNextEcriture()">Ignorer →</button>
-        </div>
-        <button onclick="saveEcriture()" style="background:linear-gradient(135deg,#d4a853,#b8912e); color:#0a0b10; border:none; border-radius:4px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Space Grotesk',sans-serif; white-space:nowrap;">↳ Valider</button>
-        <button onclick="closeJournalEditor()" style="background:rgba(220,38,38,.1); border:1px solid rgba(220,38,38,.2); color:#fca5a5; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-family:'Space Grotesk',sans-serif;">✕ Fermer</button>
-      </div>
-    </div>
+/* MAIN */
+.main { overflow-y:auto; padding:20px 24px; background:var(--paper); }
+.view { display:none; } .view.active { display:block; }
 
-    <!-- Libellé général -->
-    <div style="padding:10px 18px 0; flex-shrink:0;">
-      <input type="text" id="ecr-libelle" placeholder="Libellé général de l'écriture…" style="width:100%; background:rgba(255,255,255,.03); border:none; border-bottom:1px solid rgba(212,168,83,.2); color:rgba(255,255,255,.8); font-size:13px; padding:8px 0; font-family:'Space Grotesk',sans-serif; outline:none;">
-    </div>
+/* PAGE HEADER */
+.ph { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+.ph h1 { font-family:var(--font-display); font-size:26px; font-weight:700; color:var(--ink); letter-spacing:.01em; line-height:1.1; }
+.ph p { font-size:11.5px; color:var(--muted); margin-top:4px; }
+.ph-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.btn-ink { background:var(--ink); color:var(--warm); border:none; }
+.btn-ink:hover { background:#1a1c28; transform:translateY(-1px); }
+.btn-wire { background:transparent; color:var(--ink); border:1.5px solid var(--ink); }
+.btn-wire:hover { background:var(--ink); color:var(--warm); }
+.btn-sm-wire { background:transparent; color:var(--muted); border:1px solid var(--line2); font-size:11px; padding:5px 10px; }
+.btn-sm-wire:hover { background:var(--surface3); color:var(--ink); border-color:var(--ink); }
 
-    <!-- Bannière fill IA -->
-    <div class="ai-fill-banner" id="aiFillBanner" style="margin:8px 18px 0; flex-shrink:0;">
-      <div class="afi-icon">✨</div>
-      <div class="afi-text">
-        <strong>COMEO AI — Écriture <span id="aiFillNum"></span></strong> — <span id="aiFillDesc">—</span><br>
-        <span style="font-size:11px;color:var(--muted)">Vérifiez les lignes ci-dessous avant de valider</span>
-      </div>
-      <button class="btn-dismiss" onclick="dismissFillBanner()">✕</button>
-    </div>
+.btn-validate-all {
+  background:linear-gradient(135deg, #16a34a, #15803d);
+  color:#fff; border:none; border-radius:var(--rs);
+  padding:9px 18px; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:var(--font-body);
+  display:inline-flex; align-items:center; gap:7px;
+  transition:all .16s; box-shadow:0 4px 16px rgba(22,163,74,.3);
+  letter-spacing:.03em;
+}
+.btn-validate-all:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(22,163,74,.45); }
+.btn-validate-all:disabled { opacity:.4; cursor:not-allowed; transform:none; }
 
-    <!-- TABLE écritures -->
-    <div style="flex:1; overflow:auto; padding:12px 18px;">
-      <div class="et-wrapper" style="border-radius:6px; overflow:hidden;">
-        <table class="et" style="width:100%;">
-          <thead><tr>
-            <th style="min-width:130px;">Compte</th>
-            <th>Libellé</th>
-            <th style="min-width:120px; text-align:right;">Débit (FCFA)</th>
-            <th style="min-width:120px; text-align:right;">Crédit (FCFA)</th>
-            <th style="width:36px;"></th>
-          </tr></thead>
-          <tbody id="lignesBody"></tbody>
-        </table>
-      </div>
-      <div id="lignesCardContainer"></div>
-      <button class="add-line-btn" onclick="addLigne()" style="margin-top:10px;">＋ Ajouter une ligne</button>
-      <div class="bal-bar" style="margin-top:10px;">
-        <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay" style="color:#60a5fa">0</span></div>
-        <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay" style="color:#4ade80">0</span></div>
-        <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
-      </div>
-    </div>
-  </div>
+/* STATS GRID */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px 14px; position:relative; box-shadow:var(--sh); }
+.kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--warm); border-radius:var(--r) var(--r) 0 0; }
+.kpi-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); margin-bottom:6px; }
+.kpi-value { font-family:var(--font-mono); font-size:20px; color:var(--ink); font-weight:400; line-height:1; }
+.kpi-sub { font-size:10px; color:var(--faint); margin-top:4px; }
 
-  <!-- INBOX COMEO AI (droite) -->
-  <div id="comeoInbox" style="width:360px; flex-shrink:0; display:flex; flex-direction:column; background:linear-gradient(180deg,#0c0d15 0%,#0a0b10 100%);">
+/* COMEO AI BOX */
+.comeo-box { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-bottom:18px; box-shadow:var(--sh); }
+.comeo-header { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--ink); flex-wrap:wrap; }
+.comeo-dot { width:7px; height:7px; border-radius:50%; background:var(--warm); box-shadow:0 0 8px var(--warm); animation:comeo-pulse 2.4s infinite; flex-shrink:0; }
+@keyframes comeo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.2;transform:scale(.75)} }
+.comeo-title { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--warm); letter-spacing:.06em; }
+.comeo-sub { margin-left:auto; font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,.25); letter-spacing:.08em; }
+.comeo-messages { height:280px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; background:var(--surface2); }
+.comeo-messages::-webkit-scrollbar { width:3px; }
+.comeo-messages::-webkit-scrollbar-thumb { background:var(--line2); border-radius:2px; }
+.msg { display:flex; gap:8px; max-width:98%; }
+.msg.user { align-self:flex-end; flex-direction:row-reverse; }
+.msg-av { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; font-family:var(--font-mono); font-weight:700; }
+.msg.ai .msg-av { background:var(--ink); color:var(--warm); border:1.5px solid var(--warm); }
+.msg.user .msg-av { background:var(--surface3); color:var(--muted); border:1px solid var(--line); font-size:10px; }
+.msg-body { background:var(--surface); border:1px solid var(--line); border-radius:var(--rs); padding:8px 11px; font-size:12px; line-height:1.65; color:var(--ink); box-shadow:var(--sh); max-width:100%; overflow-x:auto; }
+.msg.user .msg-body { background:var(--ink); color:var(--warm); border-color:var(--ink); }
+.msg-body code { background:var(--surface3); padding:1px 5px; border-radius:3px; font-family:var(--font-mono); font-size:10.5px; color:var(--teal); }
+.msg-body table { border-collapse:collapse; width:100%; margin-top:8px; font-size:11px; border:1px solid var(--line); }
+.msg-body th { background:var(--ink); color:var(--warm); padding:5px 8px; text-align:left; font-size:8.5px; text-transform:uppercase; letter-spacing:.1em; font-family:var(--font-mono); }
+.msg-body td { padding:4px 8px; border-bottom:1px solid var(--line); color:var(--slate); }
+.msg-body tr:last-child td { border-bottom:none; }
+.msg-body tr:nth-child(even) td { background:var(--surface2); }
+.typing { display:flex; gap:4px; align-items:center; padding:2px 0; }
+.typing span { width:5px; height:5px; background:var(--warm); border-radius:50%; animation:tdot 1.3s infinite; }
+.typing span:nth-child(2) { animation-delay:.2s; } .typing span:nth-child(3) { animation-delay:.4s; }
+@keyframes tdot { 0%,100%{transform:translateY(0);opacity:.2} 50%{transform:translateY(-5px);opacity:1} }
+.comeo-input-row { display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--line); background:var(--surface); }
+.comeo-input { flex:1; background:var(--surface2); border:1.5px solid var(--line); border-radius:var(--rs); color:var(--ink); padding:8px 11px; font-size:12.5px; font-family:var(--font-body); outline:none; transition:border-color .18s; resize:none; height:38px; min-width:0; }
+.comeo-input:focus { border-color:var(--warm); background:var(--surface); }
+.comeo-input::placeholder { color:var(--faint); }
 
-    <!-- Header inbox -->
-    <div style="padding:16px 18px 14px; border-bottom:1px solid rgba(212,168,83,.12); flex-shrink:0;">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-        <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#d4a853,#8b6914); display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:13px; font-weight:700; color:#0a0b10; flex-shrink:0;">C</div>
-        <div>
-          <div style="font-family:'Playfair Display',serif; font-size:14px; font-weight:700; color:#d4a853; line-height:1.2;">COMEO AI</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:rgba(212,168,83,.45); letter-spacing:.14em; text-transform:uppercase;">Expert Comptable · SYSCOHADA</div>
-        </div>
-        <div style="margin-left:auto; display:flex; align-items:center; gap:5px;">
-          <div style="width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></div>
-          <span style="font-size:10px; color:#22c55e; font-family:'JetBrains Mono',monospace;">En ligne</span>
-        </div>
-      </div>
-      <!-- Chips suggestions -->
-      <div style="display:flex; flex-wrap:wrap; gap:5px;">
-        <button onclick="sendJournalAI('Rédige toutes les écritures pour cette opération')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">✦ Rédiger le journal</button>
-        <button onclick="sendJournalAI('Corrige les erreurs dans mes écritures')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">⊘ Corriger erreurs</button>
-        <button onclick="sendJournalAI('Passe une écriture d annulation de la dernière opération')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">↩ Annulation</button>
-      </div>
-    </div>
+/* BANDEAU MULTI-ÉCRITURES */
+.multi-ecr-banner {
+  display:none; background:linear-gradient(135deg,rgba(22,163,74,.1),rgba(22,163,74,.04));
+  border:1.5px solid rgba(22,163,74,.3); border-radius:var(--rs); padding:10px 14px;
+  margin-bottom:12px; font-size:12px; color:var(--ink); gap:10px; align-items:flex-start;
+  animation: fadein .3s ease;
+}
+.multi-ecr-banner.show { display:flex; }
+.meb-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.meb-text { flex:1; }
+.meb-text strong { color:#16a34a; }
+.meb-list { list-style:none; margin:5px 0 0; display:flex; flex-direction:column; gap:4px; }
+.meb-list li { display:flex; align-items:center; gap:8px; font-size:11.5px; }
+.meb-list li .meb-n { font-family:var(--font-mono); font-size:9px; background:#16a34a; color:#fff; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.meb-list li .meb-jnl { font-family:var(--font-mono); color:var(--warm); font-size:9px; background:var(--warm-dim); padding:1px 5px; border-radius:2px; }
+.meb-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.meb-btn-nav { background:var(--ink); color:var(--warm); border:none; border-radius:var(--rs); padding:6px 13px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:var(--font-body); transition:all .14s; }
+.meb-btn-nav:hover { background:#1a1c28; }
+.meb-btn-auto { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:var(--rs); padding:6px 13px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:var(--font-body); transition:all .14s; }
+.meb-btn-auto:hover { transform:translateY(-1px); }
+.meb-btn-dismiss { background:transparent; color:var(--muted); border:1px solid var(--line2); border-radius:var(--rs); padding:6px 10px; font-size:11px; cursor:pointer; font-family:var(--font-body); }
 
-    <!-- Messages -->
-    <div id="aiMessages-journal" style="flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth;">
-      <!-- Message accueil -->
-      <div style="display:flex; gap:10px; align-items:flex-start;">
-        <div style="width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#d4a853,#8b6914); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#0a0b10; flex-shrink:0; margin-top:2px;">C</div>
-        <div style="background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.12); border-radius:0 12px 12px 12px; padding:12px 14px; max-width:100%;">
-          <div style="font-size:10px; font-weight:700; color:#d4a853; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; font-family:'JetBrains Mono',monospace;">COMEO AI · Expert Comptable</div>
-          <div style="font-size:12.5px; color:rgba(255,255,255,.8); line-height:1.65; font-family:'Space Grotesk',sans-serif;">
-            Bonjour. Je suis votre assistant expert en comptabilité <strong style="color:#d4a853;">SYSCOHADA</strong> et normes <strong style="color:#d4a853;">OHADA 2023</strong>.<br><br>
-            Je peux <strong>rédiger vos écritures</strong>, <strong>corriger vos erreurs</strong>, passer des <strong>écritures d'annulation</strong>, d'<strong>inventaire</strong> ou de <strong>clôture</strong>.<br><br>
-            Décrivez simplement votre opération.
-          </div>
-        </div>
-      </div>
-    </div>
+/* AI FILL BANNER */
+.ai-fill-banner {
+  display:none; background:linear-gradient(135deg,rgba(212,168,83,.12),rgba(212,168,83,.06));
+  border:1.5px solid rgba(212,168,83,.35); border-radius:var(--rs); padding:10px 14px;
+  margin-bottom:14px; font-size:12px; color:var(--ink); gap:10px; align-items:center;
+  animation: fadein .3s ease; flex-wrap:wrap;
+}
+.ai-fill-banner.show { display:flex; }
+@keyframes fadein { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.ai-fill-banner .afi-icon { font-size:18px; }
+.ai-fill-banner .afi-text { flex:1; min-width:160px; }
+.ai-fill-banner .afi-text strong { color:var(--warm); }
+.btn-apply { background:var(--warm); color:var(--ink); border:none; border-radius:var(--rs); padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-body); transition:all .14s; }
+.btn-apply:hover { background:var(--warm2); }
+.btn-dismiss { background:transparent; color:var(--muted); border:1px solid var(--line2); border-radius:var(--rs); padding:6px 10px; font-size:11px; cursor:pointer; font-family:var(--font-body); }
 
-    <!-- Input zone -->
-    <div style="padding:12px 14px; border-top:1px solid rgba(212,168,83,.1); flex-shrink:0;">
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.15); border-radius:10px; overflow:hidden; transition:border-color .2s;" onfocusin="this.style.borderColor='rgba(212,168,83,.4)'" onfocusout="this.style.borderColor='rgba(212,168,83,.15)'">
-        <textarea id="aiInput-journal" placeholder="Décrivez l'opération, demandez une correction ou une annulation…" onkeydown="handleJournalAiKey(event)" style="width:100%; background:transparent; border:none; color:rgba(255,255,255,.85); font-size:12.5px; line-height:1.6; padding:12px 14px; resize:none; outline:none; font-family:'Space Grotesk',sans-serif; min-height:72px; max-height:140px;"></textarea>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px 8px;">
-          <span style="font-size:9.5px; color:rgba(255,255,255,.2); font-family:'JetBrains Mono',monospace;">Entrée pour envoyer · Maj+Entrée pour saut de ligne</span>
-          <button onclick="sendJournalAI()" style="background:linear-gradient(135deg,#d4a853,#b8912e); border:none; border-radius:6px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="#0a0b10"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+/* SAISIE QUEUE BAR */
+.saisie-queue-bar {
+  display:none; background:var(--ink); border:1.5px solid var(--warm); border-radius:var(--rs);
+  padding:9px 14px; margin-bottom:12px; gap:10px; align-items:center; flex-wrap:wrap;
+}
+.saisie-queue-bar.show { display:flex; }
+.sqb-label { font-family:var(--font-mono); font-size:10px; color:var(--warm); letter-spacing:.08em; }
+.sqb-counter { background:var(--warm); color:var(--ink); border-radius:3px; padding:2px 8px; font-size:11px; font-weight:700; font-family:var(--font-mono); }
+.sqb-next { background:var(--warm); color:var(--ink); border:none; border-radius:var(--rs); padding:5px 12px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:var(--font-body); }
+.sqb-skip { background:transparent; color:rgba(255,255,255,.4); border:1px solid rgba(255,255,255,.1); border-radius:var(--rs); padding:5px 10px; font-size:11px; cursor:pointer; font-family:var(--font-body); }
 
-<!-- SAISIE (vue normale — maintenant sert juste de launcher) -->
-<div class="view" id="view-saisie">
-  <div class="ph">
-    <div><h1>Saisie des écritures</h1><p>Cliquez pour ouvrir l'éditeur complet</p></div>
-  </div>
-  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; gap:24px;">
-    <div style="font-family:'Playfair Display',serif; font-size:22px; color:rgba(255,255,255,.15); text-align:center;">Éditeur de journal</div>
-    <p style="color:rgba(255,255,255,.35); font-size:13px; text-align:center; max-width:340px; line-height:1.7;">Ouvrez l'éditeur plein écran pour saisir vos écritures manuellement ou laisser COMEO AI les rédiger pour vous.</p>
-    <button onclick="openJournalEditor()" style="background:linear-gradient(135deg,#d4a853,#b8912e); color:#0a0b10; border:none; border-radius:8px; padding:14px 32px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Space Grotesk',sans-serif; letter-spacing:.04em; box-shadow:0 8px 32px rgba(212,168,83,.25); transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-      ✎ Ouvrir l'éditeur de journal
-    </button>
-  </div>
-</div>
-NOUVEAU CODE — à ajouter dans as.js (fonctions JS)
-javascript
-// ─── JOURNAL EDITOR ────────────────────────────────────────────
-function openJournalEditor() {
-  const el = document.getElementById('journalEditor');
-  el.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  // Initialiser date par défaut
-  const d = document.getElementById('ecr-date');
-  if (!d.value) d.value = new Date().toISOString().split('T')[0];
-  if (document.getElementById('lignesBody').children.length === 0) addLigne();
+/* AUTO SAVE BAR */
+.auto-save-bar {
+  display:none; background:var(--ink); border:1.5px solid #16a34a; border-radius:var(--rs);
+  padding:10px 14px; margin-bottom:12px; gap:10px; align-items:center; flex-wrap:wrap;
+  animation: fadein .3s ease;
+}
+.auto-save-bar.show { display:flex; }
+.asb-icon { font-size:18px; }
+.asb-text { flex:1; color:rgba(255,255,255,.8); font-size:12px; }
+.asb-text strong { color:#4ade80; }
+.asb-progress { width:100%; height:4px; background:rgba(255,255,255,.1); border-radius:2px; margin-top:6px; overflow:hidden; }
+.asb-progress-bar { height:100%; background:linear-gradient(90deg,#16a34a,#4ade80); border-radius:2px; transition:width .3s ease; }
+
+/* CHIPS */
+.chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:20px; }
+.chip { background:var(--surface); border:1px solid var(--line); color:var(--muted); padding:5px 12px; border-radius:20px; font-size:11px; cursor:pointer; transition:all .14s; }
+.chip:hover { background:var(--ink); border-color:var(--ink); color:var(--warm); }
+
+/* CARD */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:16px; box-shadow:var(--sh); }
+.card-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:7px; }
+.card-title::before { content:''; width:3px; height:14px; background:var(--warm); border-radius:2px; }
+
+/* FORM */
+.fg { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.fg.c3 { grid-template-columns:1fr 1fr 1fr; }
+.fg.c4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+.field { display:flex; flex-direction:column; gap:5px; }
+.field.full { grid-column:1/-1; }
+.field label { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+.field input, .field select, .field textarea { background:var(--surface2); border:1.5px solid var(--line); border-radius:var(--rs); color:var(--ink); padding:8px 10px; font-size:12.5px; font-family:var(--font-body); outline:none; transition:all .18s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color:var(--warm); background:var(--surface); }
+.field select option { background:var(--surface); }
+.field textarea { resize:vertical; min-height:62px; }
+
+/* ACCOUNT SUGGEST */
+.asw { position:relative; }
+.adrop { position:absolute; top:calc(100% + 2px); left:0; right:0; background:var(--surface); border:1.5px solid var(--warm); border-radius:var(--rs); max-height:180px; overflow-y:auto; z-index:200; display:none; box-shadow:var(--sh2); }
+.adrop.open { display:block; }
+.aoption { padding:7px 11px; cursor:pointer; font-size:11.5px; display:flex; align-items:center; gap:9px; transition:background .1s; }
+.aoption:hover { background:var(--surface3); }
+.aoption .code { font-family:var(--font-mono); color:var(--warm); font-size:10px; min-width:44px; font-weight:600; }
+.aoption .name { color:var(--muted); }
+
+/* SAISIE TABLE */
+.et-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.et { width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
+.et th { text-align:left; padding:9px 10px; background:var(--ink); color:var(--warm); border-bottom:2px solid var(--warm); font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; font-family:var(--font-mono); }
+.et td { padding:5px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.et tr:hover td { background:var(--surface2); }
+.et td input { background:transparent; border:none; color:var(--ink); padding:3px; font-size:12px; font-family:var(--font-body); width:100%; outline:none; }
+.et td input:focus { background:var(--surface2); border-radius:3px; padding:3px 7px; }
+
+/* CARD VIEW (mobile) */
+.ligne-card { display:none; background:var(--surface); border:1px solid var(--line); border-radius:var(--rs); padding:10px; margin-bottom:8px; gap:8px; }
+.ligne-card-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ligne-card-field { display:flex; flex-direction:column; gap:3px; }
+.ligne-card-label { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+.ligne-card-input { background:var(--surface2); border:1px solid var(--line); border-radius:3px; color:var(--ink); padding:7px 9px; font-size:12.5px; font-family:var(--font-body); outline:none; transition:border-color .18s; width:100%; }
+.ligne-card-input:focus { border-color:var(--warm); }
+.ligne-card-actions { display:flex; justify-content:flex-end; margin-top:4px; }
+
+.bal-bar { display:flex; align-items:center; gap:14px; padding:10px 12px; background:var(--ink); border-top:1px solid rgba(255,255,255,.08); border-radius:0 0 var(--r) var(--r); flex-wrap:wrap; }
+.bal-item { display:flex; align-items:center; gap:7px; }
+.bal-item label { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.3); font-family:var(--font-mono); }
+.bal-item .val { font-family:var(--font-mono); font-size:13px; }
+.bok { color:#4ade80; } .bbad { color:#f87171; }
+.add-line-btn { display:flex; align-items:center; justify-content:center; gap:5px; padding:8px 14px; background:transparent; border:1.5px dashed var(--line2); border-radius:var(--rs); color:var(--muted); font-size:11.5px; cursor:pointer; transition:all .14s; width:100%; margin-top:6px; }
+.add-line-btn:hover { border-color:var(--warm); color:var(--warm); background:var(--warm-glow); }
+.del-line { background:none; border:none; color:var(--red); cursor:pointer; font-size:13px; opacity:.25; padding:3px 6px; border-radius:3px; transition:opacity .14s; }
+.del-line:hover { opacity:1; background:rgba(220,38,38,.08); }
+
+/* ═══════════════════════════════════════════════════════════
+   ★★★ JOURNAL — GROUPES D'OPÉRATIONS (3 ÉCRITURES LIÉES)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Séparateur de date */
+.jnl-date-sep {
+  display:flex; align-items:center; gap:10px;
+  padding:16px 0 8px;
+}
+.jnl-date-sep-line { flex:1; height:1px; background:var(--line2); }
+.jnl-date-sep-label {
+  font-family:var(--font-mono); font-size:9.5px; font-weight:700;
+  color:var(--muted); text-transform:uppercase; letter-spacing:.14em;
+  white-space:nowrap; background:var(--paper); padding:0 6px;
 }
 
-function closeJournalEditor() {
-  document.getElementById('journalEditor').style.display = 'none';
-  document.body.style.overflow = '';
+/* ── GROUPE D'OPÉRATION ── */
+.jnl-groupe {
+  margin-bottom:18px;
+  border-radius:var(--r);
+  overflow:hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05);
+  border: 1px solid var(--line2);
 }
 
-function handleJournalAiKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendJournalAI(); }
+/* En-tête du groupe — identifie l'opération entière */
+.jnl-groupe-header {
+  background: var(--ink);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid rgba(212,168,83,.3);
+  flex-wrap: wrap;
+  min-height: 46px;
+}
+.jnl-groupe-icon {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  background: rgba(212,168,83,.12);
+  border: 1px solid rgba(212,168,83,.2);
+  flex-shrink: 0;
+}
+.jnl-groupe-info { flex: 1; min-width: 0; }
+.jnl-groupe-libelle {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,.9);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 500px;
+}
+.jnl-groupe-meta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(255,255,255,.28);
+  margin-top: 2px;
+  letter-spacing: .06em;
+}
+.jnl-groupe-total {
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.jnl-groupe-total-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,.2);
+}
+.jnl-groupe-total-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--warm);
+  margin-top: 1px;
+}
+.jnl-groupe-badge-count {
+  background: rgba(212,168,83,.15);
+  border: 1px solid rgba(212,168,83,.25);
+  color: var(--warm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.jnl-groupe-del {
+  background:transparent; border:1px solid rgba(220,38,38,.18);
+  color:rgba(248,113,113,.3); border-radius:3px; cursor:pointer;
+  font-size:10px; padding:4px 8px; transition:all .14s; white-space:nowrap;
+  font-family:var(--font-mono);
+}
+.jnl-groupe-del:hover { background:rgba(220,38,38,.1); color:#f87171; border-color:rgba(220,38,38,.4); }
+
+/* Corps du groupe — liste des écritures */
+.jnl-groupe-body { background: var(--surface); }
+
+/* ── ÉCRITURE INDIVIDUELLE dans le groupe ── */
+.jnl-ecriture {
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.jnl-ecriture:last-child { border-bottom: none; }
+
+/* Barre latérale colorée selon le type d'écriture */
+.jnl-ecriture::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 3px;
+}
+.jnl-ecriture.type-AC::before { background: #3b82f6; }
+.jnl-ecriture.type-VE::before { background: #22c55e; }
+.jnl-ecriture.type-IN::before { background: var(--warm); }
+.jnl-ecriture.type-BQ::before { background: #8b5cf6; }
+.jnl-ecriture.type-CA::before { background: #f59e0b; }
+.jnl-ecriture.type-OD::before { background: #6b7280; }
+.jnl-ecriture.type-AN::before { background: #14b8a6; }
+
+/* Sous-en-tête de l'écriture */
+.jnl-ecriture-subheader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 17px;
+  background: var(--surface3);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.jnl-step-badge {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--warm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.jnl-step-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.jnl-step-piece {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--muted);
+  letter-spacing: .06em;
+}
+.jnl-step-jnl-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+.jnl-step-jnl-badge.AC { background:rgba(59,130,246,.15); color:#60a5fa; border:1px solid rgba(59,130,246,.25); }
+.jnl-step-jnl-badge.VE { background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.25); }
+.jnl-step-jnl-badge.BQ { background:rgba(139,92,246,.15); color:#c4b5fd; border:1px solid rgba(139,92,246,.25); }
+.jnl-step-jnl-badge.CA { background:rgba(245,158,11,.15); color:#fde047; border:1px solid rgba(245,158,11,.25); }
+.jnl-step-jnl-badge.OD { background:rgba(212,168,83,.15); color:#d4a853; border:1px solid rgba(212,168,83,.25); }
+.jnl-step-jnl-badge.IN { background:rgba(212,168,83,.12); color:#d4a853; border:1px solid rgba(212,168,83,.2); }
+.jnl-step-jnl-badge.AN { background:rgba(20,184,166,.15); color:#5eead4; border:1px solid rgba(20,184,166,.25); }
+
+.jnl-step-totaux {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.jnl-step-equil {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.jnl-step-equil.ok { background:rgba(74,222,128,.08); color:#4ade80; border:1px solid rgba(74,222,128,.18); }
+.jnl-step-equil.nok { background:rgba(248,113,113,.08); color:#f87171; border:1px solid rgba(248,113,113,.18); }
+.jnl-step-del {
+  background:transparent; border:none; color:rgba(248,113,113,.25);
+  cursor:pointer; font-size:11px; padding:2px 5px; border-radius:2px;
+  transition:all .12s; line-height:1;
+}
+.jnl-step-del:hover { color:#f87171; background:rgba(220,38,38,.08); }
+
+/* Lignes de l'écriture */
+.jnl-ecriture-body { overflow-x:auto; }
+.jnl-lignes-table { width:100%; border-collapse:collapse; min-width:480px; }
+.jnl-lignes-table thead th {
+  padding: 5px 14px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--faint);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+.jnl-lignes-table thead th.right { text-align:right; }
+.jnl-lignes-table tbody tr { border-bottom:1px solid var(--line); }
+.jnl-lignes-table tbody tr:last-child { border-bottom:none; }
+.jnl-lignes-table tbody tr:hover td { background:var(--surface2); }
+.jnl-lignes-table tbody td { padding:8px 14px; font-size:12px; color:var(--slate); vertical-align:middle; }
+
+.jnl-compte-badge { display:inline-flex; align-items:center; gap:5px; }
+.jnl-compte-code {
+  font-family:var(--font-mono); font-size:10px; font-weight:600;
+  color:var(--warm); background:var(--warm-dim); border:1px solid rgba(212,168,83,.2);
+  border-radius:3px; padding:2px 7px; white-space:nowrap;
+}
+.jnl-compte-name {
+  font-size:9.5px; color:var(--faint); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:160px; display:inline-block;
+}
+.jnl-libelle-ligne { color:var(--ink); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px; }
+.jnl-debit-cell { text-align:right; font-family:var(--font-mono); font-size:11.5px; font-weight:600; color:var(--blue); white-space:nowrap; }
+.jnl-credit-cell { text-align:right; font-family:var(--font-mono); font-size:11.5px; font-weight:600; color:var(--green); white-space:nowrap; }
+.jnl-empty-cell { text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--line2); }
+
+/* Footer totaux journal */
+.jnl-footer-totaux {
+  background:var(--ink); border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--r); padding:12px 16px; margin-top:4px;
+  display:flex; align-items:center; justify-content:flex-end; gap:20px; flex-wrap:wrap;
+}
+.jnl-footer-item { display:flex; align-items:center; gap:8px; font-size:11px; }
+.jnl-footer-label { font-family:var(--font-mono); font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.3); }
+.jnl-footer-val { font-family:var(--font-mono); font-size:13px; font-weight:600; }
+.jnl-footer-val.d { color:#60a5fa; }
+.jnl-footer-val.c { color:#4ade80; }
+.jnl-footer-val.eq { color:#4ade80; font-size:11px; }
+.jnl-footer-val.neq { color:#f87171; font-size:11px; }
+
+/* Barre filtre période */
+.filtre-periode-bar {
+  display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--rs); padding:8px 12px; margin-bottom:12px; flex-wrap:wrap;
+}
+.filtre-periode-bar label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+.filtre-periode-bar input, .filtre-periode-bar select { background:var(--surface2); border:1px solid var(--line); border-radius:3px; color:var(--ink); padding:5px 8px; font-size:12px; font-family:var(--font-body); outline:none; }
+.filtre-periode-bar input:focus, .filtre-periode-bar select:focus { border-color:var(--warm); }
+.btn-filtre { background:var(--ink); color:var(--warm); border:none; border-radius:var(--rs); padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all .14s; }
+.btn-filtre:hover { background:#1a1c28; }
+.btn-filtre-reset { background:transparent; color:var(--muted); border:1px solid var(--line2); border-radius:var(--rs); padding:6px 10px; font-size:11px; cursor:pointer; font-family:var(--font-body); }
+.fb-loading { text-align:center; padding:28px; color:var(--muted); font-size:12px; font-family:var(--font-mono); letter-spacing:.08em; }
+
+/* DATA TABLE */
+.dtw { overflow-x:auto; border-radius:var(--r); border:1px solid var(--line); box-shadow:var(--sh); }
+.dt { width:100%; border-collapse:collapse; font-size:12px; min-width:560px; }
+.dt th { text-align:left; padding:9px 12px; background:var(--ink); color:var(--warm); border-bottom:2px solid var(--warm); font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; position:sticky; top:0; white-space:nowrap; font-family:var(--font-mono); }
+.dt td { padding:8px 12px; border-bottom:1px solid var(--line); color:var(--slate); vertical-align:middle; }
+.dt tbody tr:hover td { background:var(--surface2); color:var(--ink); }
+.dt tbody tr:last-child td { border-bottom:none; }
+.dt .mono { font-family:var(--font-mono); }
+.dt .debit { color:var(--blue); font-family:var(--font-mono); text-align:right; }
+.dt .credit { color:var(--green); font-family:var(--font-mono); text-align:right; }
+.dt .total-row td { background:var(--surface3); font-weight:700; color:var(--ink); border-top:2px solid var(--line2); }
+
+/* BILAN */
+.bilan-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.bilan-col { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); overflow:hidden; box-shadow:var(--sh); }
+.bilan-col-header { padding:12px 15px; border-bottom:2px solid; background:var(--ink); font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.04em; }
+.bilan-col-header.actif { color:#60a5fa; border-color:#60a5fa; }
+.bilan-col-header.passif { color:#4ade80; border-color:#4ade80; }
+.bilan-section { padding:10px 14px; border-bottom:1px solid var(--line); }
+.bilan-section-title { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); margin-bottom:8px; }
+.bilan-line { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:11px; border-bottom:1px dotted var(--line); }
+.bilan-line:last-child { border-bottom:none; }
+.bilan-line .acc-code { font-family:var(--font-mono); color:var(--warm); font-size:9px; min-width:34px; font-weight:600; }
+.bilan-line .acc-name { color:var(--slate); flex:1; padding:0 6px; }
+.bilan-line .acc-amount { font-family:var(--font-mono); color:var(--ink); font-size:10.5px; font-weight:600; }
+.bilan-total { padding:11px 15px; display:flex; justify-content:space-between; font-family:var(--font-mono); background:var(--ink); color:var(--warm); font-size:13px; font-weight:600; }
+
+/* RESULTAT */
+.rlist { display:flex; flex-direction:column; gap:2px; }
+.rrow { display:flex; align-items:center; justify-content:space-between; padding:6px 13px; border-radius:4px; font-size:12px; }
+.rrow.header { background:var(--ink); color:var(--warm); font-weight:700; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; font-family:var(--font-mono); }
+.rrow.sub { color:var(--slate); padding-left:28px; }
+.rrow.total { background:var(--surface3); font-weight:700; color:var(--ink); border:1px solid var(--line2); margin-top:2px; }
+.rrow.result { background:var(--ink); border:1.5px solid var(--warm); color:var(--warm); font-weight:700; font-size:14px; font-family:var(--font-display); letter-spacing:.02em; }
+.rrow .amount { font-family:var(--font-mono); }
+.rrow .pos { color:var(--green); } .rrow .neg { color:var(--red); }
+
+/* GRAND LIVRE */
+.gl-account { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); margin-bottom:8px; overflow:hidden; box-shadow:var(--sh); }
+.gl-account-header { display:flex; align-items:center; gap:9px; padding:10px 13px; background:var(--ink); border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; transition:background .12s; flex-wrap:wrap; }
+.gl-account-header:hover { background:#1a1c28; }
+.gl-code { font-family:var(--font-mono); color:var(--warm); font-weight:600; font-size:12px; min-width:50px; }
+.gl-name { color:rgba(255,255,255,.7); font-weight:400; flex:1; font-size:12px; }
+.gl-balance { font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:3px; font-weight:600; }
+.gl-balance.debit { background:rgba(96,165,250,.1); color:#60a5fa; }
+.gl-balance.credit { background:rgba(74,222,128,.1); color:#4ade80; }
+
+/* TOOLBAR */
+.toolbar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.search-input { background:var(--surface); border:1.5px solid var(--line); border-radius:var(--rs); color:var(--ink); padding:7px 11px; font-size:12px; font-family:var(--font-body); outline:none; transition:border-color .18s; min-width:140px; }
+.search-input:focus { border-color:var(--warm); }
+.search-input::placeholder { color:var(--faint); }
+
+/* TAG */
+.ct { display:inline-flex; align-items:center; background:var(--warm-dim); border:1px solid rgba(212,168,83,.2); border-radius:3px; padding:1px 6px; font-family:var(--font-mono); font-size:9.5px; color:var(--warm); font-weight:600; }
+
+/* DIVIDER */
+.divider { height:1px; background:var(--line); margin:12px 0; }
+
+/* EMPTY */
+.empty-state { text-align:center; padding:40px 20px; color:var(--faint); }
+.empty-state .icon { font-size:32px; margin-bottom:10px; opacity:.2; }
+.empty-state p { font-size:13px; }
+
+/* TOAST */
+.toast-container { position:fixed; bottom:16px; right:16px; z-index:1000; display:flex; flex-direction:column; gap:6px; max-width:calc(100vw - 32px); }
+.toast { background:var(--ink); border:1px solid rgba(255,255,255,.08); border-radius:var(--r); padding:10px 14px; font-size:12px; display:flex; align-items:center; gap:9px; min-width:220px; animation:slideIn .24s ease; box-shadow:0 8px 32px rgba(0,0,0,.4); transition:opacity .5s; color:rgba(255,255,255,.8); }
+.toast.success { border-color:rgba(74,222,128,.25); } .toast.error { border-color:rgba(220,38,38,.25); } .toast.info { border-color:rgba(212,168,83,.25); }
+@keyframes slideIn { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* EXPORT MODAL */
+.modal-overlay { position:fixed; inset:0; z-index:8888; background:rgba(10,11,16,.7); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); padding:16px; }
+.modal-box { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:28px; width:420px; max-width:100%; box-shadow:0 24px 60px rgba(0,0,0,.25); }
+.modal-title { font-family:var(--font-display); font-size:20px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+.modal-sub { font-size:12px; color:var(--muted); margin-bottom:20px; }
+.export-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
+.export-opt { display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 12px; border:2px solid var(--line); border-radius:8px; cursor:pointer; transition:all .18s; }
+.export-opt:hover { border-color:var(--warm); background:var(--warm-glow); }
+.export-opt.selected { border-color:var(--warm); background:var(--warm-dim); }
+.export-opt .opt-icon { font-size:28px; }
+.export-opt .opt-label { font-size:13px; font-weight:700; color:var(--ink); }
+.export-opt .opt-sub { font-size:10px; color:var(--muted); text-align:center; }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+.btn-modal-cancel { background:transparent; color:var(--muted); border:1px solid var(--line); padding:8px 16px; border-radius:var(--rs); font-size:12.5px; cursor:pointer; font-family:var(--font-body); transition:all .14s; }
+.btn-modal-cancel:hover { background:var(--surface3); color:var(--ink); }
+.btn-modal-ok { background:var(--ink); color:var(--warm); border:none; padding:8px 20px; border-radius:var(--rs); font-size:12.5px; font-weight:700; cursor:pointer; font-family:var(--font-body); letter-spacing:.04em; transition:all .14s; }
+.btn-modal-ok:hover { background:#1a1c28; transform:translateY(-1px); }
+
+/* ANALYSE CARD */
+.analyse-card {
+  background: linear-gradient(135deg, rgba(212,168,83,.08), rgba(212,168,83,.03));
+  border: 1.5px solid rgba(212,168,83,.25); border-radius: var(--r);
+  padding: 12px 15px; margin-bottom: 14px; font-size: 12.5px; line-height: 1.7;
+}
+.analyse-card .analyse-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--warm); margin-bottom: 8px; }
+
+/* NOTIFICATION SAISIE IA */
+.saisie-notification {
+  display:none; position:fixed; bottom:72px; right:16px; z-index:900;
+  background:var(--ink); border:2px solid var(--warm); border-radius:10px;
+  padding:14px 16px; max-width:300px; width:calc(100vw - 32px); box-shadow:0 12px 40px rgba(0,0,0,.4);
+  animation: slideIn .3s ease;
+}
+.saisie-notification.show { display:block; }
+.sn-title { font-family:var(--font-display); font-size:13px; color:var(--warm); font-weight:700; margin-bottom:6px; }
+.sn-body { font-size:11.5px; color:rgba(255,255,255,.7); line-height:1.5; margin-bottom:10px; }
+.sn-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.sn-btn-go { background:var(--warm); color:var(--ink); border:none; border-radius:var(--rs); padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-body); }
+.sn-btn-auto { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; border:none; border-radius:var(--rs); padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-body); }
+.sn-btn-dismiss { background:transparent; color:rgba(255,255,255,.4); border:1px solid rgba(255,255,255,.1); border-radius:var(--rs); padding:7px 10px; font-size:11px; cursor:pointer; font-family:var(--font-body); }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  :root { --sidebar-w: 0px; }
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position:fixed; left:0; top:var(--topbar-h); height:calc(100vh - var(--topbar-h)); z-index:95; width:240px; transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .kpi-grid { grid-template-columns:1fr 1fr; }
+  .bilan-grid { grid-template-columns:1fr; }
+  .fg.c4 { grid-template-columns:1fr 1fr; }
+  .fg.c3 { grid-template-columns:1fr 1fr; }
+  .chips { gap:5px; }
+  .chip { font-size:10.5px; padding:4px 10px; }
+  .comeo-sub { display:none; }
+  .chip-badge { display:none; }
+  .ex-pill { display:none; }
+  .main { padding:12px 10px; }
+  .ph h1 { font-size:20px; }
+  .comeo-messages { height:200px; }
+  .et-wrapper { display:none; }
+  .ligne-card { display:flex; flex-direction:column; }
+  .jnl-groupe-libelle { max-width: 200px; }
+  .jnl-groupe-total { display:none; }
+}
+@media(max-width:480px) {
+  .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; }
+  .fg { grid-template-columns:1fr; }
+  .fg.c4, .fg.c3 { grid-template-columns:1fr; }
+  .ph-actions { width:100%; }
+  .ph-actions .btn { flex:1; justify-content:center; font-size:11px; padding:7px 8px; }
+  .export-options { grid-template-columns:1fr; }
+  .topbar { padding:0 8px; gap:4px; }
+  .logo { font-size:15px; }
+  .logo-sub { display:none; }
+  .company-pill { max-width:90px; font-size:10px; }
+}
+@media print {
+  .sidebar, .topbar, .comeo-box, .chips, .btn { display:none!important; }
+  .shell { display:block; }
+  .main { padding:0; }
+  body { background:#fff; color:#000; }
+}
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:var(--surface2); }
+::-webkit-scrollbar-thumb { background:var(--line2); border-radius:2px; }
+
+/* ═══════════════════════════════════════
+   COMEO ROBOT — Design Premium v2
+   ═══════════════════════════════════════ */
+
+.robot-fab {
+  position:fixed; bottom:28px; left:28px; z-index:800;
+  width:58px; height:58px; border-radius:50%;
+  background:linear-gradient(135deg,#d4a853,#b8912e);
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .2s; animation:fabPulse 3s ease-in-out infinite;
+  box-shadow:0 4px 20px rgba(212,168,83,.4);
+}
+.robot-fab:hover { transform:scale(1.08); }
+.robot-fab svg { width:26px; height:26px; fill:#0a0b10; }
+@keyframes fabPulse {
+  0%,100%{ box-shadow:0 4px 20px rgba(212,168,83,.4); }
+  50%{ box-shadow:0 4px 30px rgba(212,168,83,.7),0 0 0 8px rgba(212,168,83,.06); }
+}
+.robot-fab-label {
+  position:absolute; left:68px; top:50%; transform:translateY(-50%);
+  background:#0d0f1c; color:#d4a853; font-size:10px; font-weight:700;
+  padding:5px 12px; border-radius:5px; white-space:nowrap;
+  font-family:var(--font-mono); letter-spacing:.08em;
+  border:1px solid rgba(212,168,83,.2); pointer-events:none;
+  opacity:0; transition:opacity .2s;
+}
+.robot-fab:hover .robot-fab-label { opacity:1; }
+
+/* PANNEAU PLEIN ÉCRAN */
+/* PANNEAU PLEIN ÉCRAN */
+.robot-panel {
+  position:fixed; inset:0; z-index:9000;
+  background:#06070f;
+  display:none; flex-direction:column;
+  overflow:hidden;
+  height:100vh;
+  width:100vw;
+}
+.robot-panel.open { display:flex; animation:rOpen .35s cubic-bezier(.4,0,.2,1); }
+@keyframes rOpen { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+
+.robot-body {
+  position:relative; z-index:5;
+  flex:1 1 0;
+  min-height:0;
+  overflow-y:auto;
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:20px 24px; gap:18px;
+}
+@keyframes rOpen { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+
+/* Canvas fond */
+.robot-canvas {
+  position:absolute; inset:0; pointer-events:none; overflow:hidden;
+}
+.r-orb {
+  position:absolute; border-radius:50%; filter:blur(70px); opacity:.15;
+}
+.r-orb1 {
+  width:480px; height:480px;
+  background:radial-gradient(circle,#d4a853,transparent 70%);
+  top:-120px; left:50%; transform:translateX(-50%);
+  animation:orbFloat 9s ease-in-out infinite alternate;
+}
+.r-orb2 {
+  width:300px; height:300px;
+  background:radial-gradient(circle,#8b5cf6,transparent 70%);
+  bottom:60px; left:-60px;
+  animation:orbFloat 12s ease-in-out infinite alternate-reverse;
+}
+.r-orb3 {
+  width:220px; height:220px;
+  background:radial-gradient(circle,#3b82f6,transparent 70%);
+  bottom:80px; right:-40px;
+  animation:orbFloat 10s ease-in-out infinite alternate;
+}
+@keyframes orbFloat { from{transform:translateY(0)} to{transform:translateY(-24px)} }
+.r-orb1 { animation:orbFloat1 9s ease-in-out infinite alternate; }
+@keyframes orbFloat1 { from{transform:translateX(-50%) translateY(0)} to{transform:translateX(-50%) translateY(-24px)} }
+.r-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(212,168,83,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(212,168,83,.035) 1px,transparent 1px);
+  background-size:52px 52px;
 }
 
-async function sendJournalAI(forcedMsg) {
-  const inp = document.getElementById('aiInput-journal');
-  const msg = forcedMsg || inp.value.trim();
-  if (!msg) return;
-  if (!forcedMsg) inp.value = '';
+/* TOPBAR */
+.robot-topbar {
+  position:relative; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 28px;
+  border-bottom:1px solid rgba(212,168,83,.1);
+  background:rgba(6,7,15,.75); backdrop-filter:blur(16px);
+}
+.robot-topbar-left { display:flex; align-items:center; gap:12px; }
+.r-pulse-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:#22c55e; box-shadow:0 0 10px #22c55e;
+  animation:rDot 2.4s infinite;
+}
+@keyframes rDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.65)} }
+.robot-name { font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--warm); letter-spacing:.05em; }
+.robot-version { font-family:var(--font-mono); font-size:9px; color:rgba(255,255,255,.2); margin-left:4px; letter-spacing:.1em; }
+.robot-status-pill {
+  font-family:var(--font-mono); font-size:9px; font-weight:700;
+  padding:3px 10px; border-radius:3px; letter-spacing:.12em;
+  background:rgba(34,197,94,.1); color:#4ade80; border:1px solid rgba(34,197,94,.25);
+  transition:all .3s;
+}
+.robot-status-pill.listening { background:rgba(212,168,83,.15); color:var(--warm); border-color:rgba(212,168,83,.35); }
+.robot-status-pill.thinking  { background:rgba(139,92,246,.12); color:#c4b5fd; border-color:rgba(139,92,246,.3); }
+.robot-status-pill.speaking  { background:rgba(59,130,246,.12);  color:#93c5fd; border-color:rgba(59,130,246,.3); }
+.robot-close {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.5); border-radius:6px; padding:8px 18px;
+  font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font-body);
+  transition:all .15s; letter-spacing:.04em;
+}
+.robot-close:hover { background:rgba(255,255,255,.1); color:rgba(255,255,255,.9); }
 
-  appendJournalMsg('user', msg);
-  const thinkingId = appendJournalMsg('ai', '…', true);
-
-  // Contexte écritures actuelles
-  const lignes = [];
-  document.querySelectorAll('#lignesBody tr').forEach(tr => {
-    const cells = tr.querySelectorAll('input');
-    if (cells.length >= 4) lignes.push({ compte: cells[0].value, libelle: cells[1].value, debit: cells[2].value, credit: cells[3].value });
-  });
-  const contexte = lignes.length ? `\n\nÉcritures actuelles:\n${JSON.stringify(lignes, null, 2)}` : '';
-  const libelle = document.getElementById('ecr-libelle').value;
-  const journal = document.getElementById('ecr-journal').value;
-
-  const systemPrompt = `Tu es COMEO AI, expert-comptable certifié SYSCOHADA, spécialiste des normes OHADA 2023 en vigueur en Côte d'Ivoire.
-
-RÈGLES ABSOLUES:
-- Toujours respecter la partie double: chaque opération doit être équilibrée (Débit = Crédit)
-- Pour les achats/ventes, passer systématiquement les 3 écritures SYSCOHADA: (1) achat/vente, (2) TVA si applicable, (3) règlement/paiement
-- Utiliser les comptes du plan SYSCOHADA révisé 2023
-- TVA en vigueur en Côte d'Ivoire: 18%
-- Écriture d'annulation = contre-passation (inverser débit/crédit avec libellé "Annulation de...")
-- Ne jamais supprimer une écriture erronée, toujours contre-passer
-- Répondre en français professionnel
-- Quand tu génères des écritures, les formatter en JSON strict dans une balise <ECRITURES> pour que l'interface puisse les injecter
-
-FORMAT JSON ÉCRITURES:
-<ECRITURES>
-[
-  {
-    "libelle_general": "...",
-    "journal": "AC|VE|BQ|CA|OD|AN|IN",
-    "lignes": [
-      {"compte": "601", "libelle": "...", "debit": 0, "credit": 0},
-      ...
-    ]
-  }
-]
-</ECRITURES>
-
-Contexte journal actif: ${journal}
-Libellé en cours: ${libelle || 'non défini'}${contexte}`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: msg }]
-      })
-    });
-    const data = await res.json();
-    const fullText = data.content?.find(b => b.type === 'text')?.text || 'Erreur de réponse.';
-
-    // Extraire et injecter les écritures si présentes
-    const ecrMatch = fullText.match(/<ECRITURES>([\s\S]*?)<\/ECRITURES>/);
-    let displayText = fullText.replace(/<ECRITURES>[\s\S]*?<\/ECRITURES>/g, '').trim();
-
-    updateJournalMsg(thinkingId, displayText);
-
-    if (ecrMatch) {
-      try {
-        const ecritures = JSON.parse(ecrMatch[1].trim());
-        injectEcrituresFromAI(ecritures);
-      } catch(e) { console.error('Parse ecritures:', e); }
-    }
-  } catch(e) {
-    updateJournalMsg(thinkingId, 'Service temporairement indisponible.');
-  }
+/* CORPS */
+.robot-body {
+  position:relative; z-index:5;
+  flex:1 1 0;
+  min-height:0;
+  overflow-y:auto;
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:20px 24px; gap:18px;
 }
 
-function appendJournalMsg(role, text, isThinking = false) {
-  const container = document.getElementById('aiMessages-journal');
-  const id = 'jmsg-' + Date.now();
-  const isAI = role === 'ai';
+/* AVATAR RINGS */
+.avatar-rings-wrap {
+  position:relative; width:230px; height:230px;
+  display:flex; align-items:center; justify-content:center;
+}
+.r-ring {
+  position:absolute; border-radius:50%;
+  border:1px solid rgba(212,168,83,.1);
+  animation:rRing linear infinite;
+}
+.r-ring.r1 { width:210px; height:210px; border-style:dashed; animation-duration:20s; }
+.r-ring.r2 { width:178px; height:178px; animation-duration:13s; animation-direction:reverse; border-color:rgba(139,92,246,.1); }
+.r-ring.r3 { width:152px; height:152px; border-style:dotted; animation-duration:24s; border-color:rgba(59,130,246,.08); }
+@keyframes rRing { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.r-ring-dot {
+  position:absolute; width:7px; height:7px; border-radius:50%;
+  top:50%; left:0; margin-top:-3.5px; margin-left:-3.5px;
+}
+.r-ring.r1 .r-ring-dot { background:var(--warm); box-shadow:0 0 10px var(--warm); transform-origin:115px 3.5px; animation:rRing 20s linear infinite; }
+.r-ring.r2 .r-ring-dot { background:#8b5cf6; box-shadow:0 0 10px #8b5cf6; transform-origin:99px 3.5px; animation:rRing 13s linear infinite reverse; }
 
-  const wrap = document.createElement('div');
-  wrap.id = id;
-  wrap.style.cssText = `display:flex; gap:10px; align-items:flex-start; ${isAI ? '' : 'flex-direction:row-reverse;'}`;
-
-  const avatar = document.createElement('div');
-  avatar.style.cssText = `width:28px; height:28px; border-radius:50%; background:${isAI ? 'linear-gradient(135deg,#d4a853,#8b6914)' : 'rgba(255,255,255,.1)'}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:${isAI ? '#0a0b10' : 'rgba(255,255,255,.7)'}; flex-shrink:0; margin-top:2px; font-family:'Space Grotesk',sans-serif;`;
-  avatar.textContent = isAI ? 'C' : 'V';
-
-  const bubble = document.createElement('div');
-  bubble.style.cssText = `background:${isAI ? 'rgba(255,255,255,.04)' : 'rgba(212,168,83,.08)'}; border:1px solid ${isAI ? 'rgba(212,168,83,.12)' : 'rgba(212,168,83,.2)'}; border-radius:${isAI ? '0 12px 12px 12px' : '12px 0 12px 12px'}; padding:11px 13px; max-width:88%; font-size:12.5px; color:rgba(255,255,255,.82); line-height:1.65; font-family:'Space Grotesk',sans-serif;`;
-  bubble.innerHTML = isThinking
-    ? '<span style="color:rgba(212,168,83,.5); font-family:\'JetBrains Mono\',monospace; font-size:11px; letter-spacing:.1em;">● ● ●</span>'
-    : formatJournalResponse(text);
-
-  wrap.appendChild(avatar);
-  wrap.appendChild(bubble);
-  container.appendChild(wrap);
-  container.scrollTop = container.scrollHeight;
-  return id;
+/* AVATAR PRINCIPAL */
+.robot-avatar-main {
+  position:relative; z-index:2;
+  width:124px; height:124px; border-radius:50%;
+  background:linear-gradient(135deg,#1a1c2e,#0d0f1c);
+  border:2px solid rgba(212,168,83,.25);
+  overflow:hidden; transition:border-color .3s,box-shadow .3s;
+}
+.robot-avatar-main.speaking {
+  border-color:var(--warm);
+  box-shadow:0 0 0 4px rgba(212,168,83,.12),0 0 48px rgba(212,168,83,.2);
+}
+.robot-avatar-main.listening {
+  border-color:#22c55e;
+  box-shadow:0 0 0 4px rgba(34,197,94,.1),0 0 36px rgba(34,197,94,.15);
+}
+.robot-avatar-halo {
+  position:absolute; inset:-5px; border-radius:50%; z-index:1;
+  opacity:0; transition:opacity .4s;
+  background:conic-gradient(from 0deg,rgba(212,168,83,.8),transparent 40%,rgba(212,168,83,.8) 70%,transparent);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),white calc(100% - 2px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2px),white calc(100% - 2px));
+  animation:haloSpin 2.5s linear infinite;
+}
+.robot-avatar-main.speaking .robot-avatar-halo,
+.robot-avatar-main.listening .robot-avatar-halo { opacity:1; }
+@keyframes haloSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.robot-avatar-img { width:100%; height:100%; object-fit:cover; display:block; }
+.robot-avatar-fallback {
+  width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-size:38px; font-weight:700; color:var(--warm);
+}
+.robot-avatar-badge {
+  position:absolute; bottom:-1px; right:-1px; z-index:3;
+  width:32px; height:32px; border-radius:50%;
+  background:linear-gradient(135deg,var(--warm),#b8912e);
+  border:2px solid #06070f;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:800; color:#0a0b10; font-family:var(--font-mono);
+  letter-spacing:.06em;
 }
 
-function updateJournalMsg(id, text) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const bubble = el.querySelector('div:last-child');
-  if (bubble) bubble.innerHTML = formatJournalResponse(text);
-  document.getElementById('aiMessages-journal').scrollTop = 99999;
+/* VISUALISEUR */
+.robot-viz {
+  display:flex; align-items:center; gap:3px; height:48px;
+  margin-top:6px;
+}
+.rv-bar {
+  width:3px; border-radius:2px;
+  background:var(--warm); opacity:.3; height:4px;
+  transition:opacity .2s;
 }
 
-function formatJournalResponse(text) {
-  // Mise en forme professionnelle de la réponse
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#d4a853;">$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em style="color:rgba(255,255,255,.65);">$1</em>')
-    .replace(/^### (.+)$/gm, '<div style="font-family:\'JetBrains Mono\',monospace; font-size:9px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(212,168,83,.6); margin:10px 0 4px;">$1</div>')
-    .replace(/^— (.+)$/gm, '<div style="padding-left:10px; border-left:2px solid rgba(212,168,83,.25); margin:3px 0; font-size:12px;">$1</div>')
-    .replace(/\n\n/g, '<br><br>')
-    .replace(/\n/g, '<br>');
+/* META */
+.robot-meta { text-align:center; }
+.robot-meta-name { font-family:var(--font-display); font-size:19px; font-weight:700; color:var(--warm); }
+.robot-meta-role { font-family:var(--font-mono); font-size:9.5px; color:rgba(255,255,255,.22); letter-spacing:.1em; margin-top:3px; }
+
+/* BULLE */
+.robot-bubble {
+  width:100%; max-width:600px;
+  box-sizing:border-box;
+  max-height:35vh;
+  overflow-y:auto;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(212,168,83,.12);
+  border-radius:18px; padding:18px 24px;
+  position:relative; min-height:68px;
+  transition:opacity .25s;
+}
+.robot-bubble::before {
+  content:''; position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(45deg);
+  width:14px; height:14px;
+  background:rgba(255,255,255,.03);
+  border-left:1px solid rgba(212,168,83,.12);
+  border-top:1px solid rgba(212,168,83,.12);
+}
+.robot-bubble.fading { opacity:0; }
+.robot-bubble-text {
+  font-size:14px; line-height:1.8; color:rgba(255,255,255,.85); text-align:center;
+}
+.robot-bubble-text strong { color:var(--warm); font-weight:700; }
+.blink-cur {
+  display:inline-block; width:2px; height:13px;
+  background:var(--warm); vertical-align:middle; margin-left:2px;
+  animation:bCur .85s step-end infinite;
+}
+@keyframes bCur { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* CONTRÔLES */
+.robot-controls {
+  display:flex; align-items:center; gap:14px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:60px; padding:14px 22px;
+}
+.rctrl-btn {
+  width:46px; height:46px; border-radius:50%;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+  color:rgba(255,255,255,.4); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .18s;
+}
+.rctrl-btn:hover { background:rgba(255,255,255,.09); color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.18); }
+.rctrl-btn svg { width:18px; height:18px; fill:currentColor; }
+.robot-mic-btn {
+  width:72px; height:72px; border-radius:50%;
+  background:linear-gradient(145deg, rgba(212,168,83,.18), rgba(212,168,83,.06));
+  border:2px solid rgba(212,168,83,.35);
+  color:var(--warm); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  position:relative; flex-shrink:0;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .2s, border-color .2s;
+  box-shadow:0 4px 24px rgba(212,168,83,.15), inset 0 1px 0 rgba(255,255,255,.12);
+  overflow:visible;
+}
+.robot-mic-btn:hover { transform:scale(1.04); border-color:rgba(212,168,83,.55); box-shadow:0 6px 28px rgba(212,168,83,.25); }
+.robot-mic-btn .mic-core {
+  position:relative; z-index:3;
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%;
+  transition:transform .12s;
+}
+.robot-mic-btn .mic-core svg { width:30px; height:30px; fill:currentColor; filter:drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.robot-mic-btn .mic-glow-ring {
+  position:absolute; inset:-4px; border-radius:50%; z-index:1;
+  border:2px solid rgba(212,168,83,.25);
+  animation:micIdleGlow 2.4s ease-in-out infinite;
+}
+.robot-mic-btn .mic-ripple {
+  position:absolute; inset:0; border-radius:50%; z-index:0;
+  border:2px solid rgba(212,168,83,.4);
+  opacity:0; pointer-events:none;
+}
+.robot-mic-btn .mic-r1 { animation:micRipple 2.8s ease-out infinite; }
+.robot-mic-btn .mic-r2 { animation:micRipple 2.8s ease-out infinite .9s; }
+.robot-mic-btn .mic-r3 { animation:micRipple 2.8s ease-out infinite 1.8s; }
+.robot-mic-btn .mic-wave-bars {
+  position:absolute; bottom:-22px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:flex-end; gap:3px; height:18px;
+  opacity:0; transition:opacity .2s; pointer-events:none; z-index:4;
+}
+.robot-mic-btn .mic-wave-bars span {
+  width:3px; border-radius:2px; background:linear-gradient(to top, #22c55e, #86efac);
+  height:4px; animation:micWaveBar .55s ease-in-out infinite alternate;
+}
+.robot-mic-btn .mic-wave-bars span:nth-child(1){ animation-delay:0s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(2){ animation-delay:.08s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(3){ animation-delay:.16s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(4){ animation-delay:.24s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(5){ animation-delay:.32s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(6){ animation-delay:.16s; }
+.robot-mic-btn .mic-wave-bars span:nth-child(7){ animation-delay:.08s; }
+
+/* État actif / maintien (style WhatsApp) */
+.robot-mic-btn.active .mic-glow-ring { border-color:rgba(34,197,94,.5); animation:micActiveGlow .8s ease-in-out infinite; }
+.robot-mic-btn.holding {
+  transform:scale(1.12);
+  background:linear-gradient(145deg, rgba(34,197,94,.35), rgba(34,197,94,.12));
+  border-color:#22c55e;
+  color:#fff;
+  box-shadow:0 0 0 6px rgba(34,197,94,.2), 0 0 40px rgba(34,197,94,.45), 0 8px 32px rgba(34,197,94,.3);
+}
+.robot-mic-btn.holding .mic-core { transform:scale(1.08); animation:micCorePulse .6s ease-in-out infinite; }
+.robot-mic-btn.holding .mic-glow-ring { inset:-8px; border-color:#22c55e; animation:micHoldRing 1s ease-out infinite; }
+.robot-mic-btn.holding .mic-ripple { border-color:rgba(34,197,94,.6); animation:micRippleFast 1.2s ease-out infinite; }
+.robot-mic-btn.holding .mic-r2 { animation-delay:.4s; }
+.robot-mic-btn.holding .mic-r3 { animation-delay:.8s; }
+.robot-mic-btn.holding .mic-wave-bars { opacity:1; }
+
+/* Glisser vers le haut = annuler */
+.robot-mic-btn.cancel {
+  background:linear-gradient(145deg, rgba(239,68,68,.35), rgba(239,68,68,.12));
+  border-color:#ef4444;
+  box-shadow:0 0 0 6px rgba(239,68,68,.2), 0 0 40px rgba(239,68,68,.4);
+  transform:scale(1.06);
+}
+.robot-mic-btn.cancel .mic-glow-ring { border-color:#ef4444; }
+.robot-mic-btn.cancel .mic-wave-bars span { background:linear-gradient(to top, #ef4444, #fca5a5); }
+
+@keyframes micIdleGlow { 0%,100%{ opacity:.5; transform:scale(1); } 50%{ opacity:1; transform:scale(1.03); } }
+@keyframes micActiveGlow { 0%,100%{ opacity:.6; box-shadow:0 0 12px rgba(34,197,94,.3); } 50%{ opacity:1; box-shadow:0 0 24px rgba(34,197,94,.55); } }
+@keyframes micRipple { 0%{ transform:scale(1); opacity:.55; } 100%{ transform:scale(1.85); opacity:0; } }
+@keyframes micRippleFast { 0%{ transform:scale(1); opacity:.7; } 100%{ transform:scale(2.1); opacity:0; } }
+@keyframes micHoldRing { 0%{ transform:scale(1); opacity:.8; } 100%{ transform:scale(1.35); opacity:0; } }
+@keyframes micCorePulse { 0%,100%{ transform:scale(1.05); } 50%{ transform:scale(1.12); } }
+@keyframes micWaveBar { 0%{ height:4px; opacity:.5; } 100%{ height:16px; opacity:1; } }
+
+.robot-ptt-hint {
+  display:block; margin-top:10px; font-size:10px; letter-spacing:.06em;
+  color:rgba(255,255,255,.35); font-family:var(--font-mono);
+}
+.robot-ptt-hint.cancel { color:#f87171; }
+
+/* HINT */
+.robot-hint {
+  font-family:var(--font-mono); font-size:10px;
+  color:rgba(255,255,255,.2); letter-spacing:.1em; text-align:center;
+  margin-top:-6px;
 }
 
-function injectEcrituresFromAI(ecritures) {
-  if (!Array.isArray(ecritures) || !ecritures.length) return;
-  const first = ecritures[0];
-  if (first.libelle_general) document.getElementById('ecr-libelle').value = first.libelle_general;
-  if (first.journal) document.getElementById('ecr-journal').value = first.journal;
-
-  // Vider lignes actuelles
-  document.getElementById('lignesBody').innerHTML = '';
-  document.getElementById('lignesCardContainer').innerHTML = '';
-
-  // Si plusieurs écritures, les mettre en queue
-  if (ecritures.length > 1) {
-    window.aiEcrituresQueue = ecritures;
-    window.aiEcrituresQueueIndex = 0;
-    showQueueBar(ecritures.length);
-  }
-
-  // Injecter la première
-  (first.lignes || []).forEach(l => addLigne(l.compte, l.libelle, l.debit, l.credit));
-  updateBalance();
-
-  appendJournalMsg('ai', `✦ **${ecritures.length} écriture(s)** préparée(s). Vérifiez les lignes et cliquez **Valider** pour enregistrer.`);
+/* STATS BAR */
+.robot-stats-bar {
+  position:relative; z-index:10;
+  display:flex; align-items:center; justify-content:center; gap:28px;
+  padding:11px 24px;
+  border-top:1px solid rgba(255,255,255,.05);
+  background:rgba(6,7,15,.65);
 }
-Ce qu'apporte le nouveau code :
+.rstat { display:flex; align-items:center; gap:7px; font-size:10.5px; color:rgba(255,255,255,.25); }
+.rstat-dot { width:5px; height:5px; border-radius:50%; }
+.rstat-val { color:rgba(255,255,255,.4); font-family:var(--font-mono); font-size:9.5px; }
 
-Clic sur "Saisie" → ouvre un éditeur plein écran avec l'éditeur à gauche et l'inbox COMEO AI à droite
-L'inbox a un design luxieux et professionnel : avatar doré, bulles stylisées, chips de suggestion
-COMEO AI peut rédiger toutes les écritures, corriger, contre-passer comme un expert-comptable
-Les réponses sont formatées (gras doré, titres, listes) — jamais du texte brut
-Les écritures générées sont injectées automatiquement dans le tableau
-5anita.html:729 Uncaught ReferenceError: openJournalEditor is not defined
-    at HTMLButtonElement.onclick (index.html:729:448)
-
-18:52
-La fonction openJournalEditor est dans le JS mais l'overlay a display:none avec un conflit. Deux corrections rapides.
-
-CORRECTION 1 — index.html : l'overlay journal
-Ancien :
-
-html
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; display:none; flex-direction:row;">
-Nouveau :
-
-html
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; flex-direction:row;">
-display:none était écrit deux fois, ce qui annulait le flex au moment de l'ouverture.
-
-CORRECTION 2 — as.js : déplacer les fonctions hors du module
-Le problème principal est que as.js est chargé avec type="module" — les fonctions définies dedans ne sont pas accessibles depuis les onclick inline du HTML.
-
-Ancien (dans index.html) :
-
-html
-<script type="module" src="as.js"></script>
-Nouveau :
-
-html
-<script src="as.js"></script>
-Si tu ne peux pas retirer type="module", ajoute ceci à la fin de as.js pour exposer les fonctions globalement :
-
-javascript
-// Exposer les fonctions au scope global (requis avec type="module")
-window.openJournalEditor = openJournalEditor;
-window.closeJournalEditor = closeJournalEditor;
-window.sendJournalAI = sendJournalAI;
-window.handleJournalAiKey = handleJournalAiKey;
-Ces deux corrections ensemble règlent l'erreur openJournalEditor is not defined.
-
-as.js:1 Uncaught SyntaxError: Cannot use import statement outside a module (at as.js:1:1)
-
-18:56
-Le fichier as.js utilise import donc il doit rester type="module". Il faut juste exposer les fonctions globalement à la fin du fichier.
-
-CORRECTION — as.js : ajouter à la toute fin du fichier
-Ajouter ces lignes à la fin de as.js :
-
-javascript
-// Exposer toutes les fonctions au scope global (requis avec type="module")
-window.openJournalEditor = openJournalEditor;
-window.closeJournalEditor = closeJournalEditor;
-window.sendJournalAI = sendJournalAI;
-window.handleJournalAiKey = handleJournalAiKey;
-CORRECTION — index.html : remettre type="module"
-Ancien :
-
-html
-<script src="as.js"></script>
-Nouveau :
-
-html
-<script type="module" src="as.js"></script>
-C'est tout. Le import dans as.js exige type="module", et type="module" isole les fonctions du scope global — window.xxx = xxx à la fin du fichier résout les deux problèmes en même temps.
-
-1781974753715_image.png
-1781974833202_image.png
-ca ne s'affiche pas comme je veux, prenons l'exemple sur vs code, comeo doit etre à droit, et concernant la liste des journal elle doit s'afficher en ordre, les nouveau journal s'affiche en premier pas en dernier et améliore l'export en pdf ou en word, ce n'est pas dutout styliser comme je le veux et sur le document ca doit contenir la nom de l'entreprise et non comeo
-
-19:02
-Je vois le problème sur les images. L'inbox COMEO est en bas au lieu d'être à droite, et plusieurs autres corrections sont nécessaires. Voici les corrections précises.
-
-CORRECTION 1 — index.html : l'overlay doit être flex dès le départ
-Ancien :
-
-html
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; flex-direction:row;">
-Nouveau :
-
-html
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; flex-direction:row; overflow:hidden;">
-CORRECTION 2 — as.js : openJournalEditor doit forcer flex
-Ancien :
-
-javascript
-function openJournalEditor() {
-  const el = document.getElementById('journalEditor');
-  el.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-Nouveau :
-
-javascript
-function openJournalEditor() {
-  const el = document.getElementById('journalEditor');
-  el.style.display = 'flex';
-  el.style.flexDirection = 'row';
-  el.style.alignItems = 'stretch';
-  document.body.style.overflow = 'hidden';
-CORRECTION 3 — as.js : journal trié du plus récent au plus ancien
-Cherche la fonction renderJournal dans as.js et ajoute le tri au début :
-
-Ancien :
-
-javascript
-function renderJournal() {
-  let ecritures = getEcritures();
-Nouveau :
-
-javascript
-function renderJournal() {
-  let ecritures = getEcritures();
-  // Trier du plus récent au plus ancien
-  ecritures = [...ecritures].sort((a, b) => {
-    const da = a.date || a.entries?.[0]?.date || '';
-    const db = b.date || b.entries?.[0]?.date || '';
-    return db.localeCompare(da);
-  });
-CORRECTION 4 — as.js : export PDF/Word avec nom de l'entreprise et style professionnel
-Cherche la fonction doExport ou exportPDF et remplace la logique d'en-tête :
-
-Ancien (en-tête PDF) :
-
-javascript
-doc.text('COMEO AI — Journal Général', ...);
-// ou toute ligne qui met "COMEO" comme titre du document
-Nouveau :
-
-javascript
-// ─── EXPORT PDF PROFESSIONNEL ───────────────────────────────
-function buildPDFHeader(doc, titre, periode) {
-  const companyName = document.getElementById('topCompanyName')?.textContent?.trim() || 'Mon Entreprise';
-  const exercice = document.getElementById('exerciceYear')?.value || '2024';
-
-  // Fond header
-  doc.setFillColor(10, 11, 16);
-  doc.rect(0, 0, 210, 36, 'F');
-
-  // Nom entreprise
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(212, 168, 83);
-  doc.text(companyName, 14, 14);
-
-  // Sous-titre
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(180, 160, 120);
-  doc.text('Comptabilité SYSCOHADA · Exercice ' + exercice + ' · OHADA 2023', 14, 20);
-
-  // Titre du document
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(255, 255, 255);
-  doc.text(titre.toUpperCase(), 14, 28);
-
-  // Période si fournie
-  if (periode) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(150, 140, 120);
-    doc.text(periode, 210 - 14, 28, { align: 'right' });
-  }
-
-  // Date d'édition
-  const now = new Date();
-  const dateStr = 'Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  doc.setFontSize(7);
-  doc.setTextColor(100, 90, 80);
-  doc.text(dateStr, 210 - 14, 20, { align: 'right' });
-
-  // Ligne dorée séparatrice
-  doc.setDrawColor(212, 168, 83);
-  doc.setLineWidth(0.6);
-  doc.line(0, 36, 210, 36);
-
-  return 42; // Y de départ pour le contenu
+@media(max-width:768px) {
+  .robot-stats-bar { gap:14px; padding:9px 12px; flex-wrap:wrap; }
+  .robot-bubble { padding:14px 16px; }
+  .r-ring.r1 { width:180px; height:180px; }
+  .r-ring.r2 { width:152px; height:152px; }
+  .r-ring.r3 { width:130px; height:130px; }
+  .avatar-rings-wrap { width:190px; height:190px; }
 }
-Puis dans chaque export remplace le vieux header par :
 
-javascript
-// Exemple pour le journal
-const { jsPDF } = window.jspdf;
-const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-const startY = buildPDFHeader(doc, 'Journal Général', 'Période : ' + debut + ' au ' + fin);
+/* ═══════════════════════════════════════
+   STATUTS FACTURES
+   ═══════════════════════════════════════ */
+.statut-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700;
+  font-family:var(--font-mono); letter-spacing:.06em; white-space:nowrap;
+}
+.statut-brouillon { background:rgba(139,92,246,.1); color:#c4b5fd; border:1px solid rgba(139,92,246,.25); }
+.statut-envoyee   { background:rgba(59,130,246,.1);  color:#93c5fd; border:1px solid rgba(59,130,246,.25); }
+.statut-payee     { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+.statut-partielle { background:rgba(245,158,11,.1);  color:#fde047; border:1px solid rgba(245,158,11,.25); }
+.statut-annulee   { background:rgba(107,114,128,.1); color:#9ca3af; border:1px solid rgba(107,114,128,.2); text-decoration:line-through; }
+.statut-retard    { background:rgba(220,38,38,.1);   color:#f87171; border:1px solid rgba(220,38,38,.25); }
 
-doc.autoTable({
-  startY: startY,
-  head: [['Date', 'Pièce', 'Journal', 'Compte', 'Libellé', 'Débit', 'Crédit']],
-  body: rows,
-  styles: { font: 'helvetica', fontSize: 8, cellPadding: 3 },
-  headStyles: { fillColor: [10, 11, 16], textColor: [212, 168, 83], fontStyle: 'bold', lineColor: [212, 168, 83], lineWidth: 0.3 },
-  alternateRowStyles: { fillColor: [250, 248, 244] },
-  footStyles: { fillColor: [10, 11, 16], textColor: [212, 168, 83], fontStyle: 'bold' },
-  didDrawPage: (data) => {
-    // Pied de page
-    const pageCount = doc.internal.getNumberOfPages();
-    doc.setFontSize(7);
-    doc.setTextColor(150);
-    doc.text(companyName + ' · SYSCOHADA · Page ' + data.pageNumber + '/' + pageCount, 14, doc.internal.pageSize.height - 6);
-  }
-});
-Ces 4 corrections règlent : la disposition côte à côte, le tri des écritures, et l'export avec le nom de l'entreprise en en-tête professionnel.
+/* BOUTONS ACTIONS TABLE */
+.btn-action {
+  background:transparent; border:1px solid var(--line2); border-radius:3px;
+  color:var(--muted); cursor:pointer; font-size:10px; padding:3px 8px;
+  font-family:var(--font-mono); transition:all .13s;
+}
+.btn-action:hover { background:var(--ink); color:var(--warm); border-color:var(--ink); }
+.btn-action.danger:hover { background:rgba(220,38,38,.1); color:#f87171; border-color:rgba(220,38,38,.3); }
 
-Uncaught SyntaxError: Cannot use import statement outside a module
-3anita.html:30 Uncaught ReferenceError: doLogin is not defined
-    at HTMLButtonElement.onclick (anita.html:30:48)
+/* LIGNE FACTURE (hover) */
+.fac-row-retard td { background:rgba(220,38,38,.03); }
+.fac-row-payee td  { background:rgba(34,197,94,.03); }
 
-19:12
-Le problème vient du fait que as.js utilise import donc doit être type="module", mais les fonctions onclick du HTML ne peuvent pas y accéder. Solution : exposer toutes les fonctions globales à la fin de as.js.
+/* APERÇU FACTURE PDF */
+.fac-preview {
+  background:#fff; color:#000; padding:32px 40px;
+  font-family:'Space Grotesk', Arial, sans-serif; font-size:12px;
+  line-height:1.6; max-width:794px; margin:0 auto;
+}
+.fac-preview-header { display:flex; justify-content:space-between; margin-bottom:28px; }
+.fac-preview-logo { font-family:'Playfair Display', Georgia, serif; font-size:22px; font-weight:700; color:#0a0b10; }
+.fac-preview-num { font-size:11px; color:#888; font-family:monospace; }
+.fac-preview-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:11px; }
+.fac-preview-table th { background:#0a0b10; color:#d4a853; padding:7px 10px; text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:.1em; }
+.fac-preview-table td { padding:7px 10px; border-bottom:1px solid #eee; }
+.fac-preview-table tr:nth-child(even) td { background:#fafafa; }
+.fac-preview-totaux { margin-left:auto; width:260px; }
+.fac-preview-totaux-row { display:flex; justify-content:space-between; padding:4px 0; font-size:11px; border-bottom:1px solid #eee; }
+.fac-preview-totaux-row.total { font-size:14px; font-weight:700; color:#0a0b10; border-bottom:none; margin-top:4px; }
+.fac-preview-footer { margin-top:24px; padding-top:12px; border-top:1px solid #eee; font-size:10px; color:#999; }
 
+/* ── Abonnement Premium / Wave ── */
+.auth-trial-note { font-size:11px; color:rgba(212,168,83,.75); text-align:center; margin-top:10px; line-height:1.5; }
+.premium-paywall {
+  position:fixed; inset:0; z-index:20000;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px; box-sizing:border-box;
+  background:rgba(4,5,12,.94); backdrop-filter:blur(16px);
+}
+.premium-paywall-inner {
+  width:min(100%,420px); padding:32px 26px;
+  background:linear-gradient(165deg,#1a1c2e,#0a0b10);
+  border:1px solid rgba(212,168,83,.2); border-radius:20px;
+  text-align:center; color:#fff;
+}
+.premium-emblem { font-size:12px; letter-spacing:.15em; color:var(--warm); font-weight:700; margin-bottom:8px; }
+.premium-title { font-family:var(--font-display); font-size:22px; margin:0 0 10px; }
+.premium-desc { font-size:13px; color:rgba(255,255,255,.6); line-height:1.6; margin:0 0 18px; }
+.premium-price { font-size:32px; font-weight:700; color:var(--warm); margin-bottom:22px; }
+.premium-price span { font-size:14px; font-weight:400; color:rgba(255,255,255,.5); }
+.premium-wave-btn {
+  width:100%; padding:16px 20px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#1dc8ff,#00a0e9);
+  color:#fff; font-size:17px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  box-shadow:0 8px 28px rgba(0,160,233,.35);
+}
+.wave-icon {
+  width:28px; height:28px; border-radius:8px; background:#fff; color:#00a0e9;
+  font-weight:800; font-size:16px; display:flex; align-items:center; justify-content:center;
+}
+.premium-wave-hint { font-size:11px; color:rgba(255,255,255,.4); margin:12px 0 20px; }
+.premium-wave-hint a { color:var(--warm); }
+.premium-divider { font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.3); margin:16px 0 12px; }
+.premium-code-input {
+  width:100%; box-sizing:border-box; padding:12px 14px; margin-bottom:8px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; color:#fff; font-size:14px; text-align:center;
+}
+.premium-activate-btn {
+  width:100%; padding:14px; margin-bottom:10px; border:none; border-radius:12px;
+  background:var(--warm); color:#0a0b10; font-weight:700; font-size:15px; cursor:pointer;
+}
+.premium-claim-btn {
+  width:100%; padding:12px; margin-bottom:14px; border:1px solid rgba(255,255,255,.15);
+  border-radius:12px; background:transparent; color:rgba(255,255,255,.7);
+  font-size:13px; cursor:pointer;
+}
+.premium-logout-btn { background:none; border:none; color:rgba(255,255,255,.35); font-size:12px; cursor:pointer; text-decoration:underline; margin-top:8px; }
+.premium-step-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.45); margin:18px 0 10px; text-align:left; }
+.premium-form-desc { font-size:12px; color:rgba(255,255,255,.55); margin:0 0 12px; line-height:1.5; text-align:left; }
+.paywall-success-panel { text-align:center; padding:8px 0; }
+.paywall-stickers { font-size:36px; letter-spacing:8px; margin-bottom:16px; animation:stickerPop .6s ease; }
+@keyframes stickerPop { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
+.paywall-success-text { font-size:14px; line-height:1.75; color:rgba(255,255,255,.8); margin:0 0 20px; }
+.paywall-success-box {
+  background:rgba(255,255,255,.06); border:1px solid rgba(212,168,83,.2);
+  border-radius:14px; padding:16px 18px; margin-bottom:20px;
+  font-size:13px; line-height:2; color:rgba(255,255,255,.65); text-align:left;
+}
+.paywall-success-box span { margin-right:6px; }
+.sub-badge {
+  display:inline-flex; align-items:center; padding:4px 10px; border-radius:20px;
+  font-size:10px; font-weight:700; font-family:var(--font-mono); letter-spacing:.04em;
+}
+.sub-badge-trial { background:rgba(59,130,246,.15); color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
+.sub-badge-premium { background:rgba(212,168,83,.15); color:var(--warm); border:1px solid rgba(212,168,83,.35); }
+.service-unavailable-banner {
+  grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:12px 20px;
+  background:rgba(245,158,11,.12); border-bottom:1px solid rgba(245,158,11,.25);
+  color:#fcd34d; font-size:13px; line-height:1.5;
+}
+.service-msg-inline { color:rgba(255,255,255,.75); font-size:14px; line-height:1.6; }
 
-A consulté 3 fichiers, exécuté 2 commandes
-A consulté 3 fichiers, exécuté 2 commandes
+/* ── Page Admin ── */
+.admin-body { min-height:100vh; background:var(--bg,#06070f); margin:0; }
+.admin-login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.admin-login-box {
+  width:min(100%,400px); padding:32px 28px;
+  background:var(--surface,#111); border:1px solid var(--line2,rgba(255,255,255,.1));
+  border-radius:16px;
+}
+.admin-logo { font-size:22px; font-weight:700; color:var(--warm,#d4a853); text-align:center; margin-bottom:6px; }
+.admin-login-sub { font-size:13px; color:rgba(255,255,255,.5); text-align:center; margin:0 0 24px; }
+.admin-login-note { font-size:11px; color:rgba(255,255,255,.35); text-align:center; margin-top:14px; line-height:1.5; }
+.admin-panel { max-width:900px; margin:0 auto; padding:24px 20px 48px; }
+.admin-header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:24px; }
+.admin-title { font-size:22px; color:#fff; margin:0 0 4px; }
+.admin-sub { font-size:12px; color:rgba(255,255,255,.45); margin:0; }
+.admin-header-actions { display:flex; gap:10px; }
+.admin-stats { display:flex; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+.admin-stat-card {
+  flex:1; min-width:120px; padding:16px 20px; border-radius:12px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); text-align:center;
+}
+.admin-stat-num { display:block; font-size:28px; font-weight:700; color:var(--warm,#d4a853); }
+.admin-stat-lbl { font-size:11px; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; }
+.admin-loading, .admin-empty, .admin-error {
+  text-align:center; padding:40px 20px; color:rgba(255,255,255,.5); font-size:14px;
+}
+.admin-list { display:flex; flex-direction:column; gap:14px; }
+.admin-request-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.15);
+  border-radius:14px; padding:18px 20px;
+}
+.admin-request-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.admin-request-head strong { color:#fff; font-size:16px; }
+.admin-request-date { font-size:11px; color:rgba(255,255,255,.4); font-family:var(--font-mono,monospace); }
+.admin-request-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-bottom:16px; font-size:13px; color:rgba(255,255,255,.75); }
+.admin-request-grid span { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.35); margin-bottom:2px; }
+.admin-wave-num { color:#1dc8ff; font-family:var(--font-mono,monospace); }
+.admin-request-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.admin-btn-activate {
+  flex:1; min-width:180px; padding:12px 16px; border:none; border-radius:10px;
+  background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; font-weight:700;
+  font-size:14px; cursor:pointer;
+}
+.admin-btn-reject {
+  padding:12px 16px; border:1px solid rgba(248,113,113,.4); border-radius:10px;
+  background:transparent; color:#f87171; font-size:13px; cursor:pointer;
+}
+.admin-btn-activate:disabled, .admin-btn-reject:disabled { opacity:.5; cursor:not-allowed; }
 
-Lire le début de as.js pour voir les imports et les fonctions
+.admin-tabs { display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap; }
+.admin-tab {
+  padding:10px 18px; border-radius:10px; border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04); color:rgba(255,255,255,.6);
+  font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.admin-tab.active { background:rgba(212,168,83,.15); border-color:rgba(212,168,83,.4); color:var(--warm,#d4a853); }
+.admin-tab-panel { animation:adminFade .25s ease; }
+@keyframes adminFade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.admin-section-title { font-size:15px; color:rgba(255,255,255,.85); margin:0 0 14px; font-weight:600; }
+.admin-section-mt { margin-top:32px; }
+.admin-toolbar { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.admin-search, .admin-select {
+  flex:1; min-width:180px; padding:10px 14px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05);
+  color:#fff; font-size:13px; font-family:inherit;
+}
+.admin-select { flex:0 0 auto; min-width:160px; }
+.admin-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,.08); }
+.admin-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.admin-table th {
+  text-align:left; padding:12px 14px; background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.45); font-size:10px; text-transform:uppercase; letter-spacing:.08em;
+  white-space:nowrap;
+}
+.admin-table td { padding:12px 14px; border-top:1px solid rgba(255,255,255,.06); color:rgba(255,255,255,.8); vertical-align:middle; }
+.admin-table-users td:first-child { font-weight:500; }
+.admin-td-muted { color:rgba(255,255,255,.35)!important; text-align:center; padding:24px!important; }
+.admin-td-actions { white-space:nowrap; }
+.admin-btn-sm { padding:8px 12px!important; font-size:12px!important; min-width:auto!important; flex:none!important; }
+.admin-badge {
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:10px; font-weight:700; letter-spacing:.04em; white-space:nowrap;
+}
+.badge-premium { background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+.badge-trial { background:rgba(59,130,246,.15); color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
+.badge-pending { background:rgba(245,158,11,.15); color:#fcd34d; border:1px solid rgba(245,158,11,.3); }
+.badge-expired { background:rgba(248,113,113,.12); color:#f87171; border:1px solid rgba(248,113,113,.25); }
 
-Extraire toutes les fonctions déclarées dans as.js
-
-Script
-
-Extraire la suite des fonctions et la fin du fichier
-
-Script
-
-Voir la fin du fichier as.js
-
-Voir les window exports existants
-Terminé
-Parfait. Je vois exactement où ajouter. Les nouvelles fonctions du journal editor ne sont pas encore exposées. Voici la correction unique :
-
-CORRECTION — ajouter à la toute fin de as.js
-javascript
-// ── Journal Editor (nouvelles fonctions) ──
-window.openJournalEditor = openJournalEditor;
-window.closeJournalEditor = closeJournalEditor;
-window.sendJournalAI = sendJournalAI;
-window.handleJournalAiKey = handleJournalAiKey;
-window.appendJournalMsg = appendJournalMsg;
-window.updateJournalMsg = updateJournalMsg;
-window.injectEcrituresFromAI = injectEcrituresFromAI;
-window.formatJournalResponse = formatJournalResponse;
-window.confirmWavePaymentManual = confirmWavePaymentManual;
-window.updateExportOptions = updateExportOptions;
-window.buildPDFHeader = buildPDFHeader;
-window.openRobot = openRobot;
-window.closeRobot = closeRobot;
-C'est la seule modification à faire. Toutes les fonctions du nouveau code que tu as ajouté dans as.js n'étaient pas exposées sur window, donc le HTML ne pouvait pas les appeler via onclick. Cette ligne règle définitivement le problème.
-
-as.js:1 Uncaught SyntaxError: Cannot use import statement outside a module (at as.js:1:1)
-
-19:14
-Le fichier index.html n'a pas type="module" sur la balise script. Une seule correction :
-
-CORRECTION — index.html dernière ligne
-Ancien :
-
-html
-<script src="as.js"></script>
-Nouveau :
-
-html
-<script type="module" src="as.js"></script>
-C'est tout. Le fichier as.js commence par import donc il exige type="module" sur la balise script dans le HTML. Sans ça, le navigateur refuse de l'exécuter.
-
-
-
-Souhaitez-vous être averti lorsque Claude répond ?
-Claude Fable 5 est actuellement indisponible.
-En savoir plus(opens in new tab)
-
-
-
-
-Claude est une IA et peut faire des erreurs. Veuillez vérifier les réponses.
-
-
-
-as.css
-74.45 Ko•1 320 lignes
-•
-Le formatage peut être différent de la source
-
+#robotLinkOverlay.robot-link-overlay { position:fixed; inset:0; z-index:10050; }
