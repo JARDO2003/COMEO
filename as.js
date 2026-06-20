@@ -2391,7 +2391,12 @@ function fs(n) {
 function initSaisie() {
   document.getElementById('ecr-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('ecr-piece').placeholder = 'N°' + String(pieceCounter).padStart(5, '0');
-  if (lignes.length === 0) {
+if (lignes.length === 0) {
+    addLigne();
+    addLigne();
+    addLigne();
+    addLigne();
+    addLigne();
     addLigne();
     addLigne();
   }
