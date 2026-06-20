@@ -7506,307 +7506,21 @@ async function doForgotPassword() {
     toast('Erreur : ' + e.message, 'error');
   }
 }
-
-// ══════════════════════════════════════════════════════════════
-// JOURNAL EDITOR — Fonctions plein écran avec COMEO AI à droite
-// ══════════════════════════════════════════════════════════════
-function openJournalEditor() {
-  const el = document.getElementById('journalEditor');
-  if (!el) return;
-  el.style.display = 'flex';
-  el.style.flexDirection = 'row';
-  el.style.alignItems = 'stretch';
-  document.body.style.overflow = 'hidden';
-  const d = document.getElementById('ecr-date');
-  if (d && !d.value) d.value = new Date().toISOString().split('T')[0];
-  if (document.getElementById('lignesBody') && document.getElementById('lignesBody').children.length === 0) addLigne();
-}
-
-function closeJournalEditor() {
-  const el = document.getElementById('journalEditor');
-  if (el) el.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-function handleJournalAiKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendJournalAI(); }
-}
-
-function formatJournalResponse(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#d4a853;">$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em style="color:rgba(255,255,255,.65);">$1</em>')
-    .replace(/^### (.+)$/gm, '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(212,168,83,.7);margin:10px 0 4px;">$1</div>')
-    .replace(/^— (.+)$/gm, '<div style="padding-left:10px;border-left:2px solid rgba(212,168,83,.3);margin:3px 0;font-size:12px;">$1</div>')
-    .replace(/\n\n/g, '<br><br>')
-    .replace(/\n/g, '<br>');
-}
-
-function appendJournalMsg(role, text, isThinking = false) {
-  const container = document.getElementById('aiMessages-journal');
-  if (!container) return null;
-  const id = 'jmsg-' + Date.now() + Math.random().toString(36).slice(2,6);
-  const isAI = role === 'ai';
-  const wrap = document.createElement('div');
-  wrap.id = id;
-  wrap.style.cssText = `display:flex;gap:10px;align-items:flex-start;${isAI ? '' : 'flex-direction:row-reverse;'}margin-bottom:4px;`;
-  const avatar = document.createElement('div');
-  avatar.style.cssText = `width:28px;height:28px;border-radius:50%;background:${isAI ? 'linear-gradient(135deg,#d4a853,#8b6914)' : 'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${isAI ? '#0a0b10' : 'rgba(255,255,255,.7)'};flex-shrink:0;margin-top:2px;font-family:'Space Grotesk',sans-serif;`;
-  avatar.textContent = isAI ? 'C' : 'V';
-  const bubble = document.createElement('div');
-  bubble.style.cssText = `background:${isAI ? 'rgba(255,255,255,.04)' : 'rgba(212,168,83,.08)'};border:1px solid ${isAI ? 'rgba(212,168,83,.12)' : 'rgba(212,168,83,.22)'};border-radius:${isAI ? '0 12px 12px 12px' : '12px 0 12px 12px'};padding:11px 13px;max-width:90%;font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.65;font-family:'Space Grotesk',sans-serif;word-break:break-word;`;
-  bubble.innerHTML = isThinking
-    ? '<span style="color:rgba(212,168,83,.5);font-family:\'JetBrains Mono\',monospace;font-size:14px;letter-spacing:.2em;">● ● ●</span>'
-    : formatJournalResponse(text);
-  wrap.appendChild(avatar);
-  wrap.appendChild(bubble);
-  container.appendChild(wrap);
-  container.scrollTop = container.scrollHeight;
-  return id;
-}
-
-function updateJournalMsg(id, text) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const bubble = el.querySelector('div:last-child');
-  if (bubble) bubble.innerHTML = formatJournalResponse(text);
-  const c = document.getElementById('aiMessages-journal');
-  if (c) c.scrollTop = c.scrollHeight;
-}
-
-function injectEcrituresFromAI(ecritures) {
-  if (!Array.isArray(ecritures) || !ecritures.length) return;
-  const first = ecritures[0];
-  if (first.libelle_general) {
-    const el = document.getElementById('ecr-libelle');
-    if (el) el.value = first.libelle_general;
-  }
-  if (first.journal) {
-    const el = document.getElementById('ecr-journal');
-    if (el) el.value = first.journal;
-  }
-  const body = document.getElementById('lignesBody');
-  const container = document.getElementById('lignesCardContainer');
-  if (body) body.innerHTML = '';
-  if (container) container.innerHTML = '';
-  if (ecritures.length > 1) {
-    window.aiEcrituresQueue = ecritures;
-    window.aiEcrituresQueueIndex = 0;
-  }
-  (first.lignes || []).forEach(l => addLigne(l.compte || '', l.libelle || '', l.debit || '', l.credit || ''));
-  if (typeof updateBalance === 'function') updateBalance();
-}
-
-async function sendJournalAI(forcedMsg) {
-  const inp = document.getElementById('aiInput-journal');
-  const msg = (forcedMsg || (inp ? inp.value.trim() : '')).trim();
-  if (!msg) return;
-  if (!forcedMsg && inp) inp.value = '';
-
-  appendJournalMsg('user', msg);
-  const thinkingId = appendJournalMsg('ai', '', true);
-
-  // Contexte écritures en cours
-  const lignes = [];
-  document.querySelectorAll('#lignesBody tr').forEach(tr => {
-    const cells = tr.querySelectorAll('input');
-    if (cells.length >= 4) lignes.push({ compte: cells[0].value, libelle: cells[1].value, debit: cells[2].value, credit: cells[3].value });
-  });
-  const libelle = (document.getElementById('ecr-libelle') || {}).value || '';
-  const journal = (document.getElementById('ecr-journal') || {}).value || 'OD';
-  const companyName = (document.getElementById('topCompanyName') || {}).textContent?.trim() || 'Entreprise';
-  const exercice = (document.getElementById('exerciceYear') || {}).value || '2024';
-  const contexte = lignes.length ? `\n\nÉcritures actuelles dans l'éditeur:\n${JSON.stringify(lignes, null, 2)}` : '';
-
-  const systemPrompt = `Tu es COMEO AI, expert-comptable certifié SYSCOHADA, spécialiste des normes OHADA 2023 en vigueur en Côte d'Ivoire.
-Entreprise: ${companyName} | Exercice: ${exercice} | Journal actif: ${journal} | Libellé: ${libelle || 'non défini'}
-
-RÈGLES ABSOLUES:
-- Partie double obligatoire: Total Débit = Total Crédit pour chaque écriture
-- Achats/ventes: passer systématiquement les 3 écritures SYSCOHADA
-- TVA Côte d'Ivoire: 18% (compte 4431 TVA collectée, compte 4452 TVA récupérable)
-- Comptes fournisseurs: 401xxx | Clients: 411xxx | Banque: 521 | Caisse: 571 | Achats: 601-608 | Ventes: 701-708
-- Écriture d'annulation = contre-passation exacte avec libellé préfixé "Annulation :"
-- Ne jamais supprimer une écriture erronée: toujours contre-passer
-- Charges: classe 6 | Produits: classe 7 | Immobilisations: classe 2 | Stocks: classe 3 | Tiers: classe 4 | Trésorerie: classe 5
-- Amortissements: débit 681 / crédit 28xxx
-- Salaires: débit 661 / crédit 422 (net), 431 (cotisations), 447 (impôts)
-- Répondre en français professionnel et structuré
-- Quand tu génères des écritures, les inclure OBLIGATOIREMENT dans la balise <ECRITURES> en JSON strict
-
-FORMAT JSON OBLIGATOIRE dans <ECRITURES>:
-[
-  {
-    "libelle_general": "Description de l'opération",
-    "journal": "AC|VE|BQ|CA|OD|AN|IN",
-    "lignes": [
-      {"compte": "601", "libelle": "Libellé de la ligne", "debit": 0, "credit": 0}
-    ]
-  }
-]${contexte}`;
-
-  // Essayer d'abord l'API Anthropic (claude-sonnet-4-6)
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: msg }]
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const fullText = data.content?.find(b => b.type === 'text')?.text || '';
-      if (fullText) {
-        const ecrMatch = fullText.match(/<ECRITURES>([\s\S]*?)<\/ECRITURES>/);
-        const displayText = fullText.replace(/<ECRITURES>[\s\S]*?<\/ECRITURES>/g, '').trim();
-        updateJournalMsg(thinkingId, displayText || 'Écritures générées.');
-        if (ecrMatch) {
-          try { injectEcrituresFromAI(JSON.parse(ecrMatch[1].trim())); } catch(e) {}
-        }
-        return;
-      }
-    }
-  } catch(e) {}
-
-  // Fallback Groq si Anthropic indisponible
-  if (GROQ_API_KEYS.length > 0) {
-    try {
-      const key = GROQ_API_KEYS[groqKeyIdx % GROQ_API_KEYS.length];
-      const model = GROQ_MODELS[0] || 'llama-3.3-70b-versatile';
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1500,
-          temperature: 0.05,
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: msg }]
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const fullText = data.choices?.[0]?.message?.content || '';
-        const ecrMatch = fullText.match(/<ECRITURES>([\s\S]*?)<\/ECRITURES>/);
-        const displayText = fullText.replace(/<ECRITURES>[\s\S]*?<\/ECRITURES>/g, '').trim();
-        updateJournalMsg(thinkingId, displayText || 'Écritures générées.');
-        if (ecrMatch) {
-          try { injectEcrituresFromAI(JSON.parse(ecrMatch[1].trim())); } catch(e) {}
-        }
-        return;
-      }
-    } catch(e) {}
-  }
-
-  updateJournalMsg(thinkingId, 'Service temporairement indisponible. Veuillez réessayer dans quelques instants.');
-}
-
-// ══════════════════════════════════════════════════════════════
-// EXPORT PDF/WORD PROFESSIONNEL — avec nom de l'entreprise
-// ══════════════════════════════════════════════════════════════
-function buildPDFHeader(doc, titre, periode) {
-  const companyName = (document.getElementById('topCompanyName') || {}).textContent?.trim() || 'Mon Entreprise';
-  const exercice = (document.getElementById('exerciceYear') || {}).value || '2024';
-  const isLandscape = doc.internal.pageSize.width > doc.internal.pageSize.height;
-  const pageW = doc.internal.pageSize.width;
-
-  // Bande noire en-tête
-  doc.setFillColor(10, 11, 16);
-  doc.rect(0, 0, pageW, 38, 'F');
-
-  // Ligne dorée bas de header
-  doc.setDrawColor(212, 168, 83);
-  doc.setLineWidth(0.8);
-  doc.line(0, 38, pageW, 38);
-
-  // Nom entreprise
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.setTextColor(212, 168, 83);
-  doc.text(companyName.toUpperCase(), 12, 13);
-
-  // Sous-ligne entreprise
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(160, 140, 100);
-  doc.text('Comptabilité SYSCOHADA · Exercice ' + exercice + ' · Normes OHADA 2023', 12, 20);
-
-  // Titre document
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text(titre.toUpperCase(), 12, 30);
-
-  // Période (droite)
-  if (periode) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(180, 160, 100);
-    doc.text(periode, pageW - 12, 30, { align: 'right' });
-  }
-
-  // Date édition
-  const now = new Date();
-  const dateStr = 'Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  doc.setFontSize(7);
-  doc.setTextColor(100, 90, 80);
-  doc.text(dateStr, pageW - 12, 20, { align: 'right' });
-
-  return 44; // Y de départ contenu
-}
-
-function addPDFFooter(doc, companyName) {
-  const pageCount = doc.internal.getNumberOfPages();
-  const pageW = doc.internal.pageSize.width;
-  const pageH = doc.internal.pageSize.height;
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(212, 168, 83);
-    doc.setLineWidth(0.3);
-    doc.line(12, pageH - 10, pageW - 12, pageH - 10);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(140, 130, 110);
-    doc.text(companyName + ' · Document confidentiel · SYSCOHADA', 12, pageH - 5);
-    doc.text('Page ' + i + ' / ' + pageCount, pageW - 12, pageH - 5, { align: 'right' });
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// EXPOSITION GLOBALE — TOUTES LES FONCTIONS
-// ══════════════════════════════════════════════════════════════
-// Auth
+window.doForgotPassword = doForgotPassword;
+window.openWavePayment = openWavePayment;
+window.claimWavePayment = claimWavePayment;
+window.activatePremiumWithCode = activatePremiumWithCode;
+// ══════════════════════════════════════════
+// EXPOSITION GLOBALE
+// ══════════════════════════════════════════
+window.sendToAI = sendToAI;
+window.handleAiKey = handleAiKey;
+window.quickAI = quickAI;
 window.doLogin = doLogin;
 window.doRegister = doRegister;
 window.doLogout = doLogout;
 window.switchTab = switchTab;
-window.doForgotPassword = doForgotPassword;
-
-// Paiement
-window.openWavePayment = openWavePayment;
-window.claimWavePayment = claimWavePayment;
-window.activatePremiumWithCode = activatePremiumWithCode;
-
-// Navigation
 window.navigate = navigate;
-window.toggleMobileSidebar = toggleMobileSidebar;
-window.closeMobileSidebar = closeMobileSidebar;
-window.updateStats = updateStats;
-
-// Journal Editor (nouveau)
-window.openJournalEditor = openJournalEditor;
-window.closeJournalEditor = closeJournalEditor;
-window.sendJournalAI = sendJournalAI;
-window.handleJournalAiKey = handleJournalAiKey;
-window.appendJournalMsg = appendJournalMsg;
-window.updateJournalMsg = updateJournalMsg;
-window.injectEcrituresFromAI = injectEcrituresFromAI;
-window.formatJournalResponse = formatJournalResponse;
-
-// Saisie
 window.addLigne = addLigne;
 window.removeLigne = removeLigne;
 window.saveEcriture = saveEcriture;
@@ -7821,8 +7535,13 @@ window.dismissFillBanner = dismissFillBanner;
 window.hideMultiEcrBanner = hideMultiEcrBanner;
 window.hideSaisieNotif = hideSaisieNotif;
 window.goToSaisie = goToSaisie;
-
-// Journal / GL / Balance / États
+window.toggleGL = toggleGL;
+window.deleteEcriture = deleteEcriture;
+window.deleteGroupe = deleteGroupe;
+window.openExportModal = openExportModal;
+window.closeExportModal = closeExportModal;
+window.selectExport = selectExport;
+window.doExport = doExport;
 window.renderJournal = renderJournal;
 window.renderGrandLivre = renderGrandLivre;
 window.renderBalance = renderBalance;
@@ -7833,26 +7552,11 @@ window.renderPlanComptable = renderPlanComptable;
 window.resetJournalFiltre = resetJournalFiltre;
 window.resetGLFiltre = resetGLFiltre;
 window.resetBalanceFiltre = resetBalanceFiltre;
-window.resetBalFiltre = resetBalanceFiltre;
-window.toggleGL = toggleGL;
-window.deleteEcriture = deleteEcriture;
-window.deleteGroupe = deleteGroupe;
+window.updateStats = updateStats;
+window.toggleMobileSidebar = toggleMobileSidebar;
+window.closeMobileSidebar = closeMobileSidebar;
 
-// AI saisie assistée
-window.sendToAI = sendToAI;
-window.handleAiKey = handleAiKey;
-window.quickAI = quickAI;
-
-// Export
-window.openExportModal = openExportModal;
-window.closeExportModal = closeExportModal;
-window.selectExport = selectExport;
-window.doExport = doExport;
-window.buildPDFHeader = buildPDFHeader;
-window.addPDFFooter = addPDFFooter;
-window.updateExportOptions = updateExportOptions;
-
-// Facturation
+// ── Facturation ──
 window.openFactureModal = openFactureModal;
 window.closeFactureModal = closeFactureModal;
 window.saveFacture = saveFacture;
@@ -7873,25 +7577,17 @@ window.previewFacturePDF = (id) => exportFacturePDF(editingFactureId || id);
 window.openDevisModal = openDevisModal;
 window.renderDevis = renderDevis;
 window.convertirDevisEnFacture = convertirDevisEnFacture;
-window.updateFacTotaux = updateFacTotaux;
-window.calcLigneHT = calcLigneHT;
-window.calcLigneTVA = calcLigneTVA;
-
-// Clients
+window.updateFacTotaux = updateFacTotaux; // ← MANQUAIT
+window.calcLigneHT = calcLigneHT; // ← MANQUAIT
+window.calcLigneTVA = calcLigneTVA; // ← MANQUAIT
+// ── Clients ──
 window.openClientModal = openClientModal;
 window.closeClientModal = closeClientModal;
 window.saveClient = saveClient;
 window.renderClients = renderClients;
 
-// Fournisseurs
+// ── Fournisseurs ──
 window.openFournisseurModal = openFournisseurModal;
 window.closeFournisseurModal = closeFournisseurModal;
 window.saveFournisseur = saveFournisseur;
 window.renderFournisseurs = renderFournisseurs;
-
-// Robot vocal
-window.openRobot = openRobot;
-window.closeRobot = closeRobot;
-
-// Paywall
-window.confirmWavePaymentManual = (typeof confirmWavePaymentManual === 'function') ? confirmWavePaymentManual : function(){};
