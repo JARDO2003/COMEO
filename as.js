@@ -2396,6 +2396,7 @@ function initSaisie() {
     addLigne();
   }
   renderLignes();
+  renderMultiEcrEditor();
   updateQueueBar();
 }
 
@@ -2506,7 +2507,11 @@ async function autoSaveAllFromNotif() {
 function setEcritureQueue(ecritures_ai) {
   ecrQueue = ecritures_ai;
   ecrQueueIdx = 0;
-  if (ecrQueue.length > 0) {
+  if (ecrQueue.length > 1) {
+    renderMultiEcrEditor();
+    updateQueueBar();
+  } else if (ecrQueue.length === 1) {
+    renderMultiEcrEditor();
     loadEcritureFromQueue(0);
     updateQueueBar();
   }
@@ -2541,17 +2546,184 @@ function loadEcritureFromQueue(idx) {
 
 function updateQueueBar() {
   const bar = document.getElementById('saisieQueueBar');
+  const topBtn = document.getElementById('btnTopValidate');
   if (!bar) return;
   const counter = document.getElementById('sqbCounter');
+  const skipBtn = bar.querySelector('.sqb-skip');
+  const hint = document.getElementById('sqbHint');
+  const btnAll = document.getElementById('btnValidateAll');
+  if (ecrQueue.length > 1) {
+    bar.classList.add('show');
+    if (counter) counter.textContent = ecrQueue.length + ' écritures';
+    if (btnAll) btnAll.style.display = 'inline-flex';
+    if (skipBtn) skipBtn.style.display = 'none';
+    if (hint) hint.textContent = 'Vérifiez et modifiez chaque écriture ci-dessous, puis enregistrez-les toutes';
+    if (topBtn) topBtn.textContent = `⚡ Tout enregistrer (${ecrQueue.length})`;
+    return;
+  }
+  if (skipBtn) skipBtn.style.display = '';
+  if (topBtn) topBtn.textContent = "↳ Valider l'écriture";
   const remaining = ecrQueue.length - ecrQueueIdx;
   if (remaining > 0) {
     bar.classList.add('show');
     if (counter) counter.textContent = remaining + ' écriture' + (remaining > 1 ? 's' : '');
-    const btnAll = document.getElementById('btnValidateAll');
     if (btnAll) btnAll.style.display = remaining > 1 ? 'inline-flex' : 'none';
+    if (hint) hint.textContent = 'Validez cette écriture pour passer à la suivante';
   } else {
     bar.classList.remove('show');
   }
+}
+
+function onClickTopValidate() {
+  if (ecrQueue.length > 1) {
+    autoSaveAllEcritures();
+  } else {
+    saveEcriture();
+  }
+}
+
+// ══════════════════════════════════════════
+// ÉDITEUR MULTI-ÉCRITURES — affiche toutes les écritures
+// générées par l'IA en même temps (vérifiables/modifiables)
+// ══════════════════════════════════════════
+function journalOptionsHtml(selected) {
+  return Object.keys(JOURNAL_NAMES)
+    .map((code) => `<option value="${code}" ${code === selected ? 'selected' : ''}>${code} — ${JOURNAL_NAMES[code]}</option>`)
+    .join('');
+}
+
+function renderMultiEcrEditor() {
+  const multi = document.getElementById('multiEcrEditor');
+  const singleCard = document.getElementById('singleLignesCard');
+  if (!multi) return;
+  if (ecrQueue.length <= 1) {
+    multi.style.display = 'none';
+    multi.innerHTML = '';
+    if (singleCard) singleCard.style.display = '';
+    return;
+  }
+  if (singleCard) singleCard.style.display = 'none';
+  multi.style.display = 'flex';
+
+  let blocksHtml = '';
+  ecrQueue.forEach((ecr, qi) => {
+    if (!ecr.lignes) ecr.lignes = [];
+    let d = 0,
+      c = 0;
+    ecr.lignes.forEach((l) => {
+      d += parseFloat(l.debit) || 0;
+      c += parseFloat(l.credit) || 0;
+    });
+    const balanced = Math.abs(d - c) <= 1;
+    const icon = JOURNAL_ICONS[ecr.journal] || '📋';
+    const rowsHtml = ecr.lignes
+      .map(
+        (l, li) => `
+        <tr>
+          <td><input type="text" value="${String(l.compte || '').replace(/"/g, '&quot;')}" placeholder="Compte…" style="width:100%;font-family:var(--font-mono)"
+            oninput="ecrQueue[${qi}].lignes[${li}].compte=this.value"></td>
+          <td><input type="text" value="${String(l.libelle || '').replace(/"/g, '&quot;')}" placeholder="Libellé…" style="width:100%"
+            oninput="ecrQueue[${qi}].lignes[${li}].libelle=this.value"></td>
+          <td><input type="text" value="${l.debit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
+            oninput="ecrQueue[${qi}].lignes[${li}].debit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateMultiBlockBalance(${qi})"></td>
+          <td><input type="text" value="${l.credit || ''}" placeholder="0" style="text-align:right;width:100%;font-family:var(--font-mono)"
+            oninput="ecrQueue[${qi}].lignes[${li}].credit=parseFloat(this.value.replace(/[^0-9.]/g,''))||0;updateMultiBlockBalance(${qi})"></td>
+          <td><button class="del-line" onclick="removeLigneMulti(${qi},${li})">✕</button></td>
+        </tr>`,
+      )
+      .join('');
+    blocksHtml += `
+    <div class="mei-block">
+      <div class="mei-block-header">
+        <span class="mei-block-n">${qi + 1}</span>
+        <span class="mei-block-icon">${icon}</span>
+        <select class="mei-jnl-select" onchange="ecrQueue[${qi}].journal=this.value;renderMultiEcrEditor()">${journalOptionsHtml(ecr.journal)}</select>
+        <input type="text" class="mei-libelle-input" value="${String(ecr.libelle || '').replace(/"/g, '&quot;')}" placeholder="Libellé de l'écriture…"
+          oninput="ecrQueue[${qi}].libelle=this.value">
+        <span class="mei-block-balance ${balanced ? 'bok' : 'bbad'}" id="mei-bal-${qi}">${balanced ? '✓ équilibrée' : '⚠ Δ ' + fs(Math.abs(d - c))}</span>
+        <button class="mei-del-btn" title="Retirer cette écriture" onclick="removeEcritureFromQueue(${qi})">✕</button>
+      </div>
+      <div class="et-wrapper">
+        <table class="et">
+          <thead><tr><th style="min-width:100px">Compte</th><th>Libellé</th><th style="min-width:100px;text-align:right">Débit</th><th style="min-width:100px;text-align:right">Crédit</th><th style="width:30px"></th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+      <button class="add-line-btn" onclick="addLigneMulti(${qi})">＋ Ajouter une ligne</button>
+    </div>`;
+  });
+
+  multi.innerHTML = `
+    <div class="mei-toolbar">
+      <span class="mei-toolbar-count">${ecrQueue.length} écritures à vérifier</span>
+      <span class="mei-toolbar-hint">Modifiez comptes, libellés ou montants ci-dessous, puis validez en bas</span>
+    </div>
+    <div class="mei-scroll">${blocksHtml}</div>
+    <div class="bal-bar">
+      <div class="bal-item"><label>Débit</label><span class="val" id="mei-grand-debit" style="color:#60a5fa">0</span></div>
+      <div class="bal-item"><label>Crédit</label><span class="val" id="mei-grand-credit" style="color:#4ade80">0</span></div>
+      <div class="bal-item" style="margin-left:auto"><label>Écritures</label><span class="val">${ecrQueue.length}</span></div>
+    </div>`;
+  updateMultiGrandTotal();
+}
+
+function addLigneMulti(qi) {
+  if (!ecrQueue[qi].lignes) ecrQueue[qi].lignes = [];
+  ecrQueue[qi].lignes.push({ compte: '', libelle: '', debit: '', credit: '' });
+  renderMultiEcrEditor();
+}
+
+function removeLigneMulti(qi, li) {
+  ecrQueue[qi].lignes.splice(li, 1);
+  renderMultiEcrEditor();
+}
+
+function removeEcritureFromQueue(qi) {
+  ecrQueue.splice(qi, 1);
+  if (ecrQueue.length === 1) {
+    loadEcritureFromQueue(0);
+  } else if (ecrQueue.length === 0) {
+    lignes = [];
+    addLigne();
+    addLigne();
+    dismissFillBanner();
+  }
+  renderMultiEcrEditor();
+  updateQueueBar();
+  toast('Écriture retirée de la liste', 'info');
+}
+
+function updateMultiBlockBalance(qi) {
+  const ecr = ecrQueue[qi];
+  if (!ecr) return;
+  let d = 0,
+    c = 0;
+  (ecr.lignes || []).forEach((l) => {
+    d += parseFloat(l.debit) || 0;
+    c += parseFloat(l.credit) || 0;
+  });
+  const badge = document.getElementById('mei-bal-' + qi);
+  if (badge) {
+    const balanced = Math.abs(d - c) <= 1;
+    badge.textContent = balanced ? '✓ équilibrée' : '⚠ Δ ' + fs(Math.abs(d - c));
+    badge.className = 'mei-block-balance ' + (balanced ? 'bok' : 'bbad');
+  }
+  updateMultiGrandTotal();
+}
+
+function updateMultiGrandTotal() {
+  let gd = 0,
+    gc = 0;
+  ecrQueue.forEach((ecr) =>
+    (ecr.lignes || []).forEach((l) => {
+      gd += parseFloat(l.debit) || 0;
+      gc += parseFloat(l.credit) || 0;
+    }),
+  );
+  const dEl = document.getElementById('mei-grand-debit');
+  const cEl = document.getElementById('mei-grand-credit');
+  if (dEl) dEl.textContent = fn(gd);
+  if (cEl) cEl.textContent = fn(gc);
 }
 
 function skipToNextEcriture() {
@@ -2926,7 +3098,7 @@ function renderJournal() {
   soloList.forEach((e) => {
     groups.push({ type: 'solo', date: e.date, ecritures: [e], libelle: e.libelle || 'Écriture', isGroupe: false });
   });
-groups.sort((a, b) => b.date.localeCompare(a.date) || (b.ecritures[0].createdAt || '').localeCompare(a.ecritures[0].createdAt || ''));
+  groups.sort((a, b) => b.date.localeCompare(a.date) || (b.ecritures[0].createdAt || '').localeCompare(a.ecritures[0].createdAt || ''));
 
   const byDate = {};
   groups.forEach((g) => {
@@ -2941,9 +3113,9 @@ groups.sort((a, b) => b.date.localeCompare(a.date) || (b.ecritures[0].createdAt 
   let html = '';
 
   Object.keys(byDate)
-  .sort()
-  .reverse()
-  .forEach((date) => {
+    .sort()
+    .reverse()
+    .forEach((date) => {
       html += `<div class="jnl-date-sep">
       <div class="jnl-date-sep-line"></div>
       <div class="jnl-date-sep-label">📅 ${formatDateFR(date)}</div>
@@ -7532,6 +7704,12 @@ window.updateBalance = updateBalance;
 window.autoSaveAllEcritures = autoSaveAllEcritures;
 window.autoSaveAllFromNotif = autoSaveAllFromNotif;
 window.skipToNextEcriture = skipToNextEcriture;
+window.onClickTopValidate = onClickTopValidate;
+window.renderMultiEcrEditor = renderMultiEcrEditor;
+window.addLigneMulti = addLigneMulti;
+window.removeLigneMulti = removeLigneMulti;
+window.removeEcritureFromQueue = removeEcritureFromQueue;
+window.updateMultiBlockBalance = updateMultiBlockBalance;
 window.dismissFillBanner = dismissFillBanner;
 window.hideMultiEcrBanner = hideMultiEcrBanner;
 window.hideSaisieNotif = hideSaisieNotif;
