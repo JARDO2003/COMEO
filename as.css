@@ -279,14 +279,32 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 .field select option { background:var(--surface); }
 .field textarea { resize:vertical; min-height:62px; }
 
-/* ACCOUNT SUGGEST */
+/* ACCOUNT SUGGEST — dropdown 3D, groupé par classe SYSCOHADA */
 .asw { position:relative; }
-.adrop { position:absolute; top:calc(100% + 2px); left:0; right:0; background:var(--surface); border:1.5px solid var(--warm); border-radius:var(--rs); max-height:180px; overflow-y:auto; z-index:200; display:none; box-shadow:var(--sh2); }
+.adrop {
+  position:absolute; top:calc(100% + 6px); left:0; min-width:280px; max-width:380px;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  max-height:320px; overflow-y:auto; z-index:300; display:none;
+  box-shadow:0 2px 4px rgba(0,0,0,.06), 0 12px 28px rgba(0,0,0,.1), 0 20px 44px -16px rgba(212,168,83,.28);
+  animation:adropIn .14s ease;
+}
+@keyframes adropIn { from{opacity:0;transform:translateY(-4px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
 .adrop.open { display:block; }
-.aoption { padding:7px 11px; cursor:pointer; font-size:11.5px; display:flex; align-items:center; gap:9px; transition:background .1s; }
-.aoption:hover { background:var(--surface3); }
-.aoption .code { font-family:var(--font-mono); color:var(--warm); font-size:10px; min-width:44px; font-weight:600; }
-.aoption .name { color:var(--muted); }
+.adrop-class-group { border-bottom:1px solid var(--line); }
+.adrop-class-group:last-child { border-bottom:none; }
+.adrop-class-head {
+  position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:7px;
+  padding:5px 11px; background:linear-gradient(135deg,var(--ink),#1b1d27);
+}
+.adrop-class-head .acg-num {
+  font-family:var(--font-display); font-weight:700; font-size:13px; color:var(--warm);
+  width:18px; text-align:center;
+}
+.adrop-class-head .acg-name { font-size:9.5px; color:rgba(255,255,255,.55); letter-spacing:.08em; text-transform:uppercase; font-family:var(--font-mono); }
+.aoption { padding:7px 11px 7px 30px; cursor:pointer; font-size:11.5px; display:flex; align-items:center; gap:9px; transition:background .12s, transform .12s; }
+.aoption:hover { background:var(--warm-dim); transform:translateX(2px); }
+.aoption .code { font-family:var(--font-mono); color:var(--warm); font-size:10px; min-width:44px; font-weight:700; }
+.aoption .name { color:var(--slate); }
 .adrop-hint { padding:6px 11px; font-size:9px; color:var(--muted); background:var(--surface3); border-bottom:1px solid var(--line); font-family:var(--font-mono); letter-spacing:.04em; }
 .adrop-close {
   position:sticky; top:0; z-index:2; padding:7px 11px; cursor:pointer; font-size:10.5px;
@@ -294,6 +312,31 @@ body { font-family:var(--font-body); background:var(--paper); color:var(--ink); 
 }
 .adrop-close:hover { color:var(--red); background:rgba(220,38,38,.06); }
 .adrop-empty { padding:12px 11px; font-size:11px; color:var(--muted); text-align:center; }
+
+/* PLAN COMPTABLE — cartes 3D par classe */
+.pc3d-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px,1fr)); gap:18px; margin-top:4px; }
+.pc3d-card {
+  background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 22px rgba(0,0,0,.06), 0 18px 40px -16px rgba(212,168,83,.18);
+  transition:transform .22s ease, box-shadow .22s ease;
+}
+.pc3d-card:hover {
+  transform:translateY(-5px);
+  box-shadow:0 4px 10px rgba(0,0,0,.07), 0 22px 36px rgba(0,0,0,.1), 0 26px 56px -14px rgba(212,168,83,.3);
+}
+.pc3d-head { background:linear-gradient(135deg,var(--ink),#1b1d27); padding:14px 16px; display:flex; align-items:center; gap:12px; }
+.pc3d-num { font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--warm); line-height:1; min-width:30px; }
+.pc3d-titles { flex:1; min-width:0; }
+.pc3d-titles h3 { margin:0; font-size:13.5px; color:#fff; font-weight:600; }
+.pc3d-titles span { font-size:9.5px; color:rgba(255,255,255,.45); font-family:var(--font-mono); letter-spacing:.08em; text-transform:uppercase; }
+.pc3d-nature-badge { font-size:9px; padding:3px 9px; border-radius:20px; background:var(--warm-dim); color:var(--warm); font-weight:700; letter-spacing:.05em; white-space:nowrap; }
+.pc3d-body { max-height:320px; overflow-y:auto; }
+.pc3d-account-row { display:flex; align-items:baseline; gap:8px; padding:6px 16px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--slate); }
+.pc3d-account-row:last-child { border-bottom:none; }
+.pc3d-account-row:hover { background:var(--surface2); }
+.pc3d-account-row .code { font-family:var(--font-mono); color:var(--warm); font-weight:700; min-width:42px; flex-shrink:0; }
+.pc3d-account-row.lvl-header { font-weight:700; background:var(--surface3); color:var(--ink); }
+.pc3d-empty { padding:32px; text-align:center; color:var(--muted); grid-column:1/-1; }
 
 /* SAISIE TABLE */
 .et-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
