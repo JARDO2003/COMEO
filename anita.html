@@ -590,147 +590,111 @@
     </div>
 
     <!-- SAISIE -->
-<!-- JOURNAL EDITOR FULLSCREEN OVERLAY -->
-<div id="journalEditor" style="display:none; position:fixed; inset:0; z-index:2000; background:#0d0e14; flex-direction:row; overflow:hidden;"></div>
-
-  <!-- ZONE JOURNAL (gauche) -->
-  <div id="journalEditorLeft" style="flex:1; display:flex; flex-direction:column; overflow:hidden; border-right:1px solid rgba(212,168,83,.15);">
-
-    <!-- Topbar éditeur -->
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 18px; background:#0a0b10; border-bottom:1.5px solid rgba(212,168,83,.2); flex-shrink:0;">
-      <div style="font-family:'Playfair Display',serif; font-size:16px; color:#d4a853; font-weight:700; letter-spacing:.04em;">comeo</div>
-      <div style="width:1px; height:18px; background:rgba(255,255,255,.08);"></div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,.35); letter-spacing:.12em; text-transform:uppercase;">Éditeur de journal</div>
-      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-        <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; padding:4px 8px;">
-          <label style="font-size:10px; color:rgba(255,255,255,.4);">Date</label>
-          <input type="date" id="ecr-date" style="background:none; border:none; color:#d4a853; font-size:11px; font-family:'JetBrains Mono',monospace; outline:none; width:110px;">
-        </div>
-        <select id="ecr-journal" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; color:rgba(255,255,255,.6); font-size:11px; padding:5px 8px; font-family:'Space Grotesk',sans-serif; outline:none;">
-          <option value="AC">AC — Achats</option><option value="VE">VE — Ventes</option>
-          <option value="BQ">BQ — Banque</option><option value="CA">CA — Caisse</option>
-          <option value="OD">OD — Opérations Diverses</option><option value="AN">AN — À Nouveau</option>
-          <option value="IN">IN — Inventaire</option>
-        </select>
-        <input type="text" id="ecr-piece" placeholder="N° Pièce" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:4px; color:rgba(255,255,255,.6); font-size:11px; padding:5px 8px; width:90px; font-family:'JetBrains Mono',monospace; outline:none;">
-        <div class="saisie-queue-bar" id="saisieQueueBar" style="margin:0; border-radius:4px; padding:4px 10px; display:none;">
-          <span class="sqb-label">FILE</span>
-          <span class="sqb-counter" id="sqbCounter">0</span>
-          <button class="btn-validate-all" id="btnValidateAll" onclick="autoSaveAllEcritures()">⚡ Tout enregistrer</button>
-          <button class="sqb-skip" onclick="skipToNextEcriture()">Ignorer →</button>
-        </div>
-        <button onclick="saveEcriture()" style="background:linear-gradient(135deg,#d4a853,#b8912e); color:#0a0b10; border:none; border-radius:4px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Space Grotesk',sans-serif; white-space:nowrap;">↳ Valider</button>
-        <button onclick="closeJournalEditor()" style="background:rgba(220,38,38,.1); border:1px solid rgba(220,38,38,.2); color:#fca5a5; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-family:'Space Grotesk',sans-serif;">✕ Fermer</button>
-      </div>
-    </div>
-
-    <!-- Libellé général -->
-    <div style="padding:10px 18px 0; flex-shrink:0;">
-      <input type="text" id="ecr-libelle" placeholder="Libellé général de l'écriture…" style="width:100%; background:rgba(255,255,255,.03); border:none; border-bottom:1px solid rgba(212,168,83,.2); color:rgba(255,255,255,.8); font-size:13px; padding:8px 0; font-family:'Space Grotesk',sans-serif; outline:none;">
-    </div>
-
-    <!-- Bannière fill IA -->
-    <div class="ai-fill-banner" id="aiFillBanner" style="margin:8px 18px 0; flex-shrink:0;">
-      <div class="afi-icon">✨</div>
-      <div class="afi-text">
-        <strong>COMEO AI — Écriture <span id="aiFillNum"></span></strong> — <span id="aiFillDesc">—</span><br>
-        <span style="font-size:11px;color:var(--muted)">Vérifiez les lignes ci-dessous avant de valider</span>
-      </div>
-      <button class="btn-dismiss" onclick="dismissFillBanner()">✕</button>
-    </div>
-
-    <!-- TABLE écritures -->
-    <div style="flex:1; overflow:auto; padding:12px 18px;">
-      <div class="et-wrapper" style="border-radius:6px; overflow:hidden;">
-        <table class="et" style="width:100%;">
-          <thead><tr>
-            <th style="min-width:130px;">Compte</th>
-            <th>Libellé</th>
-            <th style="min-width:120px; text-align:right;">Débit (FCFA)</th>
-            <th style="min-width:120px; text-align:right;">Crédit (FCFA)</th>
-            <th style="width:36px;"></th>
-          </tr></thead>
-          <tbody id="lignesBody"></tbody>
-        </table>
-      </div>
-      <div id="lignesCardContainer"></div>
-      <button class="add-line-btn" onclick="addLigne()" style="margin-top:10px;">＋ Ajouter une ligne</button>
-      <div class="bal-bar" style="margin-top:10px;">
-        <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay" style="color:#60a5fa">0</span></div>
-        <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay" style="color:#4ade80">0</span></div>
-        <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- INBOX COMEO AI (droite) -->
-  <div id="comeoInbox" style="width:360px; flex-shrink:0; display:flex; flex-direction:column; background:linear-gradient(180deg,#0c0d15 0%,#0a0b10 100%);">
-
-    <!-- Header inbox -->
-    <div style="padding:16px 18px 14px; border-bottom:1px solid rgba(212,168,83,.12); flex-shrink:0;">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-        <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#d4a853,#8b6914); display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:13px; font-weight:700; color:#0a0b10; flex-shrink:0;">C</div>
-        <div>
-          <div style="font-family:'Playfair Display',serif; font-size:14px; font-weight:700; color:#d4a853; line-height:1.2;">COMEO AI</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:rgba(212,168,83,.45); letter-spacing:.14em; text-transform:uppercase;">Expert Comptable · SYSCOHADA</div>
-        </div>
-        <div style="margin-left:auto; display:flex; align-items:center; gap:5px;">
-          <div style="width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></div>
-          <span style="font-size:10px; color:#22c55e; font-family:'JetBrains Mono',monospace;">En ligne</span>
+    <div class="view" id="view-saisie">
+      <div class="ph">
+        <div><h1>Saisie des écritures</h1><p>Saisie manuelle ou assistée par COMEO AI</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-ink" onclick="saveEcriture()">↳ Valider l'écriture</button>
         </div>
       </div>
-      <!-- Chips suggestions -->
-      <div style="display:flex; flex-wrap:wrap; gap:5px;">
-        <button onclick="sendJournalAI('Rédige toutes les écritures pour cette opération')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">✦ Rédiger le journal</button>
-        <button onclick="sendJournalAI('Corrige les erreurs dans mes écritures')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">⊘ Corriger erreurs</button>
-        <button onclick="sendJournalAI('Passe une écriture d annulation de la dernière opération')" style="background:rgba(212,168,83,.08); border:1px solid rgba(212,168,83,.18); color:rgba(212,168,83,.8); font-size:9.5px; padding:3px 9px; border-radius:20px; cursor:pointer; font-family:'Space Grotesk',sans-serif; transition:all .15s;" onmouseover="this.style.background='rgba(212,168,83,.16)'" onmouseout="this.style.background='rgba(212,168,83,.08)'">↩ Annulation</button>
+      <div class="saisie-queue-bar" id="saisieQueueBar">
+        <span class="sqb-label">ÉCRITURES EN FILE</span>
+        <span class="sqb-counter" id="sqbCounter">0</span>
+        <span style="color:rgba(255,255,255,.4);font-size:11px;flex:1">Validez cette écriture pour passer à la suivante</span>
+        <button class="btn-validate-all" id="btnValidateAll" onclick="autoSaveAllEcritures()">⚡ Tout enregistrer</button>
+        <button class="sqb-skip" onclick="skipToNextEcriture()">Ignorer →</button>
       </div>
-    </div>
-
-    <!-- Messages -->
-    <div id="aiMessages-journal" style="flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth;">
-      <!-- Message accueil -->
-      <div style="display:flex; gap:10px; align-items:flex-start;">
-        <div style="width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#d4a853,#8b6914); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#0a0b10; flex-shrink:0; margin-top:2px;">C</div>
-        <div style="background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.12); border-radius:0 12px 12px 12px; padding:12px 14px; max-width:100%;">
-          <div style="font-size:10px; font-weight:700; color:#d4a853; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; font-family:'JetBrains Mono',monospace;">COMEO AI · Expert Comptable</div>
-          <div style="font-size:12.5px; color:rgba(255,255,255,.8); line-height:1.65; font-family:'Space Grotesk',sans-serif;">
-            Bonjour. Je suis votre assistant expert en comptabilité <strong style="color:#d4a853;">SYSCOHADA</strong> et normes <strong style="color:#d4a853;">OHADA 2023</strong>.<br><br>
-            Je peux <strong>rédiger vos écritures</strong>, <strong>corriger vos erreurs</strong>, passer des <strong>écritures d'annulation</strong>, d'<strong>inventaire</strong> ou de <strong>clôture</strong>.<br><br>
-            Décrivez simplement votre opération.
+      <div class="comeo-box">
+        <div class="comeo-header"><div class="comeo-dot"></div><span class="comeo-title">COMEO AI — Saisie assistée</span><span class="comeo-sub">Décrivez → COMEO remplit les lignes automatiquement</span></div>
+        <div class="comeo-messages" id="aiMessages-saisie" style="height:130px">
+          <div class="msg ai"><div class="msg-av">C</div><div class="msg-body">Décrivez l'opération et je prépare les lignes. Pour un achat ou vente, je génère les <strong>3 écritures</strong> — cliquez <strong>"Tout enregistrer"</strong> pour les valider toutes en une fois.</div></div>
+        </div>
+        <div class="comeo-input-row">
+          <textarea class="comeo-input" id="aiInput-saisie" placeholder="ex: Achat matériel bureau 250000 FCFA HT par chèque, TVA 18%..." onkeydown="handleAiKey(event,'saisie')"></textarea>
+          <button class="btn btn-ink" onclick="sendToAI('saisie')">⚡</button>
+        </div>
+      </div>
+      <div class="ai-fill-banner" id="aiFillBanner">
+        <div class="afi-icon">✨</div>
+        <div class="afi-text">
+          <strong>COMEO AI — Écriture <span id="aiFillNum"></span></strong> — <span id="aiFillDesc">—</span><br>
+          <span style="font-size:11px;color:var(--muted)">Vérifiez les lignes ci-dessous avant de valider</span>
+        </div>
+        <button class="btn-dismiss" onclick="dismissFillBanner()">✕</button>
+      </div>
+      <div class="card">
+        <div class="card-title">En-tête de l'écriture</div>
+        <div class="fg c4">
+          <div class="field"><label>Date</label><input type="date" id="ecr-date"></div>
+          <div class="field"><label>Journal</label>
+            <select id="ecr-journal">
+              <option value="AC">AC — Achats</option><option value="VE">VE — Ventes</option>
+              <option value="BQ">BQ — Banque</option><option value="CA">CA — Caisse</option>
+              <option value="OD">OD — Opérations Diverses</option><option value="AN">AN — À Nouveau</option>
+              <option value="IN">IN — Inventaire</option>
+            </select>
           </div>
+          <div class="field"><label>N° Pièce</label><input type="text" id="ecr-piece" placeholder="Auto"></div>
+          <div class="field"><label>Libellé général</label><input type="text" id="ecr-libelle" placeholder="Description…"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Lignes d'écriture</div>
+        <div class="et-wrapper">
+          <table class="et">
+            <thead><tr><th style="min-width:120px">Compte</th><th>Libellé</th><th style="min-width:110px;text-align:right">Débit (FCFA)</th><th style="min-width:110px;text-align:right">Crédit (FCFA)</th><th style="width:36px"></th></tr></thead>
+            <tbody id="lignesBody"></tbody>
+          </table>
+        </div>
+        <div id="lignesCardContainer"></div>
+        <button class="add-line-btn" onclick="addLigne()">＋ Ajouter une ligne</button>
+        <div class="bal-bar">
+          <div class="bal-item"><label>Débit</label><span class="val" id="totalDebitDisplay" style="color:#60a5fa">0</span></div>
+          <div class="bal-item"><label>Crédit</label><span class="val" id="totalCreditDisplay" style="color:#4ade80">0</span></div>
+          <div class="bal-item" style="margin-left:auto"><label>Solde</label><span class="val bok" id="soldeDisplay">0</span></div>
         </div>
       </div>
     </div>
 
-    <!-- Input zone -->
-    <div style="padding:12px 14px; border-top:1px solid rgba(212,168,83,.1); flex-shrink:0;">
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(212,168,83,.15); border-radius:10px; overflow:hidden; transition:border-color .2s;" onfocusin="this.style.borderColor='rgba(212,168,83,.4)'" onfocusout="this.style.borderColor='rgba(212,168,83,.15)'">
-        <textarea id="aiInput-journal" placeholder="Décrivez l'opération, demandez une correction ou une annulation…" onkeydown="handleJournalAiKey(event)" style="width:100%; background:transparent; border:none; color:rgba(255,255,255,.85); font-size:12.5px; line-height:1.6; padding:12px 14px; resize:none; outline:none; font-family:'Space Grotesk',sans-serif; min-height:72px; max-height:140px;"></textarea>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px 8px;">
-          <span style="font-size:9.5px; color:rgba(255,255,255,.2); font-family:'JetBrains Mono',monospace;">Entrée pour envoyer · Maj+Entrée pour saut de ligne</span>
-          <button onclick="sendJournalAI()" style="background:linear-gradient(135deg,#d4a853,#b8912e); border:none; border-radius:6px; width:32px; height:32px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="#0a0b10"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-          </button>
+    <!-- JOURNAL REDESIGNÉ — GROUPÉ PAR OPÉRATION -->
+    <div class="view" id="view-journal">
+      <div class="ph">
+        <div><h1>Journal général</h1><p>Opérations regroupées — 3 écritures liées par opération</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-sm-wire" onclick="openExportModal()">⎙ Exporter</button>
+          <button class="btn btn-ink" onclick="navigate('saisie')">+ Nouvelle</button>
+        </div>
+      </div>
+
+      <div class="filtre-periode-bar">
+        <label>Du</label><input type="date" id="jnl-date-debut" onchange="renderJournal()">
+        <label>Au</label><input type="date" id="jnl-date-fin" onchange="renderJournal()">
+        <label>Journal</label>
+        <select id="journalFilter" onchange="renderJournal()">
+          <option value="">Tous</option>
+          <option value="AC">Achats</option><option value="VE">Ventes</option>
+          <option value="BQ">Banque</option><option value="CA">Caisse</option>
+          <option value="OD">OD</option><option value="IN">Inventaire</option>
+        </select>
+        <input type="text" class="search-input" placeholder="Rechercher compte / libellé…" id="journalSearch" oninput="renderJournal()" style="min-width:160px;flex:1">
+        <button class="btn-filtre-reset" onclick="resetJournalFiltre()">✕ Effacer</button>
+      </div>
+
+      <div id="journal-analyse" style="display:none" class="analyse-card"></div>
+      <div id="journalContent"></div>
+
+      <div id="journal-totaux-footer" style="display:none">
+        <div class="jnl-footer-totaux">
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Opérations</span><span class="jnl-footer-val" id="jnl-nb-groupes" style="color:var(--warm)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Écritures</span><span class="jnl-footer-val" id="jnl-nb-ecr" style="color:rgba(255,255,255,.5)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Lignes</span><span class="jnl-footer-val" id="jnl-nb-lignes" style="color:rgba(255,255,255,.3)">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Total Débit</span><span class="jnl-footer-val d" id="jnl-total-debit">0</span></div>
+          <div class="jnl-footer-item"><span class="jnl-footer-label">Total Crédit</span><span class="jnl-footer-val c" id="jnl-total-credit">0</span></div>
+          <div class="jnl-footer-item"><span id="jnl-equil-label" class="jnl-footer-val eq">✓ Équilibré</span></div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- SAISIE (vue normale — maintenant sert juste de launcher) -->
-<div class="view" id="view-saisie">
-  <div class="ph">
-    <div><h1>Saisie des écritures</h1><p>Cliquez pour ouvrir l'éditeur complet</p></div>
-  </div>
-  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; gap:24px;">
-    <div style="font-family:'Playfair Display',serif; font-size:22px; color:rgba(255,255,255,.15); text-align:center;">Éditeur de journal</div>
-    <p style="color:rgba(255,255,255,.35); font-size:13px; text-align:center; max-width:340px; line-height:1.7;">Ouvrez l'éditeur plein écran pour saisir vos écritures manuellement ou laisser COMEO AI les rédiger pour vous.</p>
-    <button onclick="openJournalEditor()" style="background:linear-gradient(135deg,#d4a853,#b8912e); color:#0a0b10; border:none; border-radius:8px; padding:14px 32px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Space Grotesk',sans-serif; letter-spacing:.04em; box-shadow:0 8px 32px rgba(212,168,83,.25); transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-      ✎ Ouvrir l'éditeur de journal
-    </button>
-  </div>
-</div>
     <!-- GRAND LIVRE -->
     <div class="view" id="view-grandlivre">
       <div class="ph">
