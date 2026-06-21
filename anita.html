@@ -896,6 +896,18 @@
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
-<script type="module" src="as.js"></script>
+<script>
+  async function callServer(action, payload) {
+    const token = await getCurrentUserToken(); // depuis Firebase Auth
+    return fetch('/api/as', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ action, ...payload })
+    }).then(r => r.json());
+  }
+</script>
 </body>
 </html>
