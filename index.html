@@ -2,620 +2,469 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COMEO AI — Votre expert-comptable intelligent, conforme SYSCOHADA</title>
-<meta name="description" content="COMEO AI est la plateforme de comptabilité intelligente conforme SYSCOHADA Révisé 2023, pensée pour les entreprises de Côte d'Ivoire et de l'espace OHADA.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>COMEO AI — Expert-comptable IA, conforme SYSCOHADA</title>
+<meta name="description" content="COMEO AI est la plateforme de comptabilité intelligente conforme SYSCOHADA Révisé 2023, pensée pour les entreprises de Côte d'Ivoire.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --white:#FFFFFF;
-    --off-white:#FAFAFA;
-    --light:#F5F5F5;
-    --border:#E8E8E8;
-    --border-soft:#F0F0F0;
-    --ink:#0A0A0A;
-    --ink-mid:#1A1A1A;
-    --text:#2A2A2A;
-    --muted:#6B6B6B;
-    --faint:#9A9A9A;
-    --emerald:#1A7A52;
-    --emerald-light:#E8F5EE;
-    --emerald-mid:#2F9E6E;
-    --amber:#C97B1A;
-    --amber-light:#FEF7EC;
-    --radius:12px;
-    --max:1160px;
-    --shadow-sm:0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md:0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
-    --shadow-lg:0 16px 48px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
-  }
+:root{
+  --bg:#FFFFFF;
+  --bg2:#F7F8FA;
+  --bg3:#EEF0F5;
+  --line:#E4E7ED;
+  --line2:#D0D5DF;
+  --text:#0D111A;
+  --text2:#3D4455;
+  --muted:#7A8199;
+  --faint:#B0B6C8;
+  --green:#006E44;
+  --green-light:#E6F4EE;
+  --green-mid:#C8E8D8;
+  --green-strong:#004E30;
+  --gold:#7A5200;
+  --gold-light:#FEF3DC;
+  --gold-mid:#FAD98B;
+  --r:12px;
+  --max:1080px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3{font-family:'DM Serif Display',serif;line-height:1.1;letter-spacing:-0.01em;}
+a{color:inherit;text-decoration:none;}
+img,svg{display:block;}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px;}
+::selection{background:var(--green);color:#fff;}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;}
 
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
-    margin:0;
-    background:var(--white);
-    color:var(--text);
-    font-family:'Inter', sans-serif;
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-  }
-  h1,h2,h3,h4{
-    font-family:'Cormorant Garamond', serif;
-    font-weight:600;
-    line-height:1.12;
-    margin:0;
-    letter-spacing:-0.01em;
-  }
-  p{margin:0;}
-  a{color:inherit;}
-  img{display:block;}
-  svg{display:block;}
-  .mono{font-family:'JetBrains Mono', monospace;}
-  .wrap{max-width:var(--max); margin:0 auto; padding:0 28px;}
-  ::selection{background:var(--emerald); color:#fff;}
-  :focus-visible{outline:2px solid var(--emerald); outline-offset:3px;}
+/* NAV */
+header.site{
+  position:sticky;top:0;z-index:200;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+}
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:58px;max-width:var(--max);margin:0 auto;
+}
+.logo{
+  display:flex;align-items:center;gap:9px;
+  font-family:'DM Serif Display',serif;font-size:1.2rem;
+  color:var(--text);
+}
+.logo .mark{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--green);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:0.88rem;
+}
+.logo .ai-tag{
+  font-size:0.6rem;font-family:'JetBrains Mono',monospace;font-weight:500;
+  color:var(--gold);border:1px solid var(--gold-mid);
+  padding:2px 6px;border-radius:4px;letter-spacing:0.06em;
+  background:var(--gold-light);
+}
+.nav-links{
+  display:flex;gap:24px;align-items:center;
+  list-style:none;
+}
+.nav-links a,.nav-links button{
+  color:var(--muted);font-size:0.86rem;font-weight:500;
+  transition:color 0.2s;background:none;border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+.nav-links a:hover,.nav-links button:hover{color:var(--text);}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 20px;border-radius:9px;
+  font-weight:500;font-size:0.86rem;
+  border:1px solid transparent;cursor:pointer;
+  transition:all 0.15s ease;font-family:'Inter',sans-serif;
+  text-decoration:none;
+}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green);}
+.btn-primary:hover{background:var(--green-strong);border-color:var(--green-strong);}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--line2);}
+.btn-ghost:hover{border-color:var(--muted);background:var(--bg2);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-toggle{display:none;background:none;border:0;color:var(--text);padding:8px;cursor:pointer;}
+.nav-toggle svg{width:20px;height:20px;}
 
-  /* ── NAV ── */
-  header.site{
-    position:sticky; top:0; z-index:100;
-    background:rgba(255,255,255,0.92);
-    backdrop-filter:blur(14px);
-    border-bottom:1px solid var(--border);
-  }
-  nav{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 28px; max-width:var(--max); margin:0 auto;
-  }
-  .logo{
-    display:flex; align-items:center; gap:10px;
-    font-family:'Cormorant Garamond', serif; font-weight:700; font-size:1.3rem;
-    text-decoration:none; color:var(--ink);
-  }
-  .logo .mark{
-    width:32px; height:32px; border-radius:8px;
-    background:linear-gradient(135deg, var(--emerald), #0f5c3b);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; font-family:'JetBrains Mono', monospace; font-weight:600; font-size:0.88rem;
-    box-shadow:0 2px 8px rgba(26,122,82,0.3);
-  }
-  .logo .ai-tag{
-    font-size:0.63rem; font-family:'JetBrains Mono', monospace; font-weight:500;
-    color:var(--amber); border:1px solid rgba(201,123,26,0.35);
-    padding:2px 6px; border-radius:4px; letter-spacing:0.06em; background:var(--amber-light);
-  }
+@media(max-width:860px){
   .nav-links{
-    display:flex; gap:30px; align-items:center;
-    list-style:none; margin:0; padding:0;
+    position:fixed;inset:58px 0 auto 0;flex-direction:column;align-items:flex-start;
+    background:#fff;border-bottom:1px solid var(--line);
+    padding:16px 20px 24px;gap:14px;
+    transform:translateY(-110%);transition:transform 0.22s ease;
+    box-shadow:0 8px 32px rgba(0,0,0,0.08);z-index:199;
   }
-  .nav-links a{
-    text-decoration:none; color:var(--muted); font-size:0.9rem; font-weight:500;
-    transition:color 0.2s;
-  }
-  .nav-links a:hover{color:var(--ink);}
-  .btn{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:10px 20px; border-radius:9px;
-    font-weight:600; font-size:0.9rem; text-decoration:none;
-    border:1px solid transparent; cursor:pointer;
-    transition:all 0.15s ease; font-family:'Inter', sans-serif;
-  }
-  .btn:hover{transform:translateY(-1px);}
-  .btn-primary{
-    background:var(--emerald); color:#fff;
-    box-shadow:0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(26,122,82,0.35);
-  }
-  .btn-primary:hover{background:#1d8a5c; box-shadow:0 6px 20px rgba(26,122,82,0.4);}
-  .btn-ghost{
-    background:transparent; color:var(--ink); border-color:var(--border);
-  }
-  .btn-ghost:hover{border-color:#bbb; background:var(--light);}
-  .nav-cta{display:flex; align-items:center; gap:10px;}
-  .nav-toggle{display:none; background:none; border:0; color:var(--ink); padding:6px; cursor:pointer;}
-  .nav-toggle svg{width:22px; height:22px;}
+  .nav-links.open{transform:translateY(0);}
+  .nav-toggle{display:block;}
+  .nav-right .btn-ghost{display:none;}
+}
 
-  /* ── ABOUT MODAL BUTTON in nav ── */
-  .btn-about{
-    background:transparent; color:var(--muted); font-size:0.9rem; font-weight:500;
-    border:none; cursor:pointer; padding:0; font-family:'Inter', sans-serif;
-    transition:color 0.2s;
-  }
-  .btn-about:hover{color:var(--ink);}
+/* HERO */
+.hero{padding:64px 0 52px;background:var(--bg);border-bottom:1px solid var(--line);}
+.hero-grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:52px;align-items:center;}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.08em;
+  color:var(--green);text-transform:uppercase;
+  border:1px solid var(--green-mid);border-radius:20px;
+  padding:4px 11px;margin-bottom:18px;background:var(--green-light);
+}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+.hero h1{font-size:clamp(2.2rem,5vw,3.4rem);color:var(--text);}
+.hero h1 em{font-style:italic;color:var(--green);}
+.hero p.lede{margin-top:18px;font-size:1rem;color:var(--text2);max-width:46ch;line-height:1.75;}
+.hero-cta{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;}
+.hero-meta{margin-top:22px;display:flex;gap:14px;flex-wrap:wrap;font-size:0.79rem;color:var(--muted);}
+.hero-meta span{display:flex;align-items:center;gap:5px;}
+.hero-meta svg{width:12px;height:12px;color:var(--green);}
+.hero-badge{
+  margin-top:14px;display:inline-flex;align-items:center;gap:7px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted);
+}
 
-  @media(max-width:880px){
-    .nav-links{
-      position:fixed; inset:64px 0 auto 0; flex-direction:column; align-items:flex-start;
-      background:#fff; border-bottom:1px solid var(--border);
-      padding:20px 28px 28px; gap:18px;
-      transform:translateY(-130%); transition:transform 0.25s ease;
-      box-shadow:var(--shadow-md);
-    }
-    .nav-links.open{transform:translateY(0);}
-    .nav-cta .btn-ghost{display:none;}
-    .nav-toggle{display:block;}
-  }
+/* LEDGER CARD */
+.ledger-card{
+  background:#fff;border-radius:16px;border:1px solid var(--line);
+  box-shadow:0 2px 24px rgba(0,0,0,0.07);padding:22px 20px 18px;position:relative;
+}
+.ledger-card::before{
+  content:"";position:absolute;top:0;left:20px;right:20px;height:2px;
+  background:linear-gradient(90deg,var(--green),var(--green-mid));border-radius:2px;
+}
+.ledger-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.ledger-head .tag{font-family:'JetBrains Mono',monospace;font-size:0.64rem;letter-spacing:0.06em;color:var(--faint);text-transform:uppercase;}
+.ledger-input{
+  font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text2);
+  background:var(--bg2);border:1px solid var(--line);border-radius:7px;
+  padding:10px 12px;min-height:40px;margin-bottom:12px;
+}
+.ledger-input .caret{display:inline-block;width:5px;height:12px;background:var(--green);margin-left:2px;vertical-align:-2px;animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+table.lt{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:0.73rem;}
+table.lt thead th{text-align:left;font-weight:500;color:var(--faint);font-size:0.61rem;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--line);padding:0 6px 7px;}
+table.lt thead th:last-child,table.lt thead th:nth-last-child(2){text-align:right;}
+table.lt td{padding:8px 6px;color:var(--text2);border-bottom:1px solid var(--line);opacity:0;transform:translateY(4px);animation:rowIn 0.4s ease forwards;}
+table.lt td:last-child,table.lt td:nth-last-child(2){text-align:right;}
+table.lt td.acct{color:var(--muted);}
+.row1 td{animation-delay:1.7s;}.row2 td{animation-delay:2.0s;}.row3 td{animation-delay:2.3s;}
+@keyframes rowIn{to{opacity:1;transform:none;}}
+.ledger-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+.vpill{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--green-light);color:var(--green);
+  font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:500;
+  padding:3px 9px;border-radius:20px;border:1px solid var(--green-mid);
+  opacity:0;animation:fadeIn 0.4s ease forwards;animation-delay:2.8s;
+}
+@keyframes fadeIn{to{opacity:1;}}
+.ledger-footer .bal{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--faint);}
 
-  /* ── HERO ── */
-  .hero{
-    padding:100px 0 80px;
-    position:relative; overflow:hidden;
-    background:var(--white);
-  }
-  .hero::before{
-    content:"";
-    position:absolute; inset:0;
-    background:
-      radial-gradient(700px 500px at 80% -5%, rgba(26,122,82,0.07), transparent 65%),
-      radial-gradient(500px 400px at -5% 100%, rgba(201,123,26,0.05), transparent 65%);
-    pointer-events:none;
-  }
-  /* Subtle grid pattern */
-  .hero::after{
-    content:"";
-    position:absolute; inset:0;
-    background-image:linear-gradient(var(--border-soft) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
-    background-size:60px 60px;
-    opacity:0.5;
-    pointer-events:none;
-    mask-image:radial-gradient(ellipse 80% 80% at 50% 0%, black, transparent);
-  }
-  .hero-grid{
-    display:grid; grid-template-columns:1.1fr 0.9fr; gap:60px; align-items:center;
-    position:relative; z-index:1;
-  }
-  .eyebrow{
-    display:inline-flex; align-items:center; gap:8px;
-    font-family:'JetBrains Mono', monospace; font-size:0.76rem; letter-spacing:0.07em;
-    color:var(--emerald); text-transform:uppercase;
-    border:1px solid rgba(26,122,82,0.25); border-radius:20px;
-    padding:5px 13px; margin-bottom:20px; background:var(--emerald-light);
-  }
-  .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);}
-  .hero h1{
-    font-size:clamp(2.4rem, 4.5vw, 3.6rem);
-    color:var(--ink);
-  }
-  .hero h1 em{font-style:italic; color:var(--emerald);}
-  .hero p.lede{
-    margin-top:22px; font-size:1.05rem; color:var(--muted); max-width:48ch; line-height:1.7;
-  }
-  .hero-cta{display:flex; gap:12px; margin-top:32px; flex-wrap:wrap;}
-  .hero-meta{
-    margin-top:26px; display:flex; gap:20px; flex-wrap:wrap;
-    font-size:0.82rem; color:var(--faint);
-  }
-  .hero-meta span{display:flex; align-items:center; gap:6px;}
-  .hero-meta svg{width:14px;height:14px; color:var(--emerald);}
+@media(prefers-reduced-motion:reduce){
+  table.lt td,.vpill,.ledger-input .caret{animation:none!important;opacity:1!important;transform:none!important;}
+  .eyebrow .dot{animation:none!important;}
+}
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:36px;}
+  .ledger-card{max-width:480px;}
+  .hero{padding:44px 0 40px;}
+}
 
-  /* ── LEDGER CARD ── */
-  .ledger-card{
-    background:#fff; border-radius:18px;
-    box-shadow:var(--shadow-lg), 0 0 0 1px var(--border);
-    padding:26px 24px 22px;
-    position:relative;
-    transform:rotate(0.8deg);
-  }
-  .ledger-card::before{
-    content:"";
-    position:absolute; top:-1px; left:20px; right:20px; height:4px;
-    background:linear-gradient(90deg, var(--emerald), #2F9E6E, var(--amber));
-    border-radius:4px 4px 0 0;
-  }
-  .ledger-head{
-    display:flex; justify-content:space-between; align-items:baseline;
-    color:var(--text); margin-bottom:14px;
-  }
-  .ledger-head .tag{
-    font-family:'JetBrains Mono', monospace; font-size:0.67rem; letter-spacing:0.05em;
-    color:var(--faint); text-transform:uppercase;
-  }
-  .ledger-input{
-    font-family:'JetBrains Mono', monospace; font-size:0.84rem; color:var(--text);
-    background:var(--off-white); border:1px solid var(--border); border-radius:8px;
-    padding:12px 14px; min-height:44px;
-    margin-bottom:16px; position:relative;
-  }
-  .ledger-input .caret{
-    display:inline-block; width:6px; height:13px; background:var(--emerald);
-    margin-left:2px; vertical-align:-2px;
-    animation:blink 1s step-end infinite;
-  }
-  @keyframes blink{50%{opacity:0;}}
-  table.ledger-table{
-    width:100%; border-collapse:collapse; font-family:'JetBrains Mono', monospace; font-size:0.77rem;
-  }
-  table.ledger-table thead th{
-    text-align:left; font-weight:500; color:var(--faint); font-size:0.64rem;
-    text-transform:uppercase; letter-spacing:0.06em;
-    border-bottom:1px solid var(--border); padding:0 8px 8px;
-  }
-  table.ledger-table thead th:last-child, table.ledger-table thead th:nth-last-child(2){text-align:right;}
-  table.ledger-table td{
-    padding:9px 8px; color:var(--text); border-bottom:1px solid var(--border-soft);
-    opacity:0; transform:translateY(5px);
-    animation:rowIn 0.5s ease forwards;
-  }
-  table.ledger-table td:last-child, table.ledger-table td:nth-last-child(2){text-align:right;}
-  table.ledger-table td.acct{color:var(--faint);}
-  .row1 td{animation-delay:1.7s;}
-  .row2 td{animation-delay:2.05s;}
-  .row3 td{animation-delay:2.4s;}
-  @keyframes rowIn{to{opacity:1; transform:none;}}
-  .ledger-footer{
-    display:flex; justify-content:space-between; align-items:center;
-    margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
-  }
-  .validated-pill{
-    display:inline-flex; align-items:center; gap:6px;
-    background:var(--emerald-light); color:var(--emerald);
-    font-family:'JetBrains Mono', monospace; font-size:0.71rem; font-weight:600;
-    padding:5px 11px; border-radius:20px; border:1px solid rgba(26,122,82,0.2);
-    opacity:0; animation:fadeIn 0.4s ease forwards; animation-delay:2.8s;
-  }
-  @keyframes fadeIn{to{opacity:1;}}
-  .ledger-footer .balance{
-    font-family:'JetBrains Mono', monospace; font-size:0.73rem; color:var(--faint);
-  }
+/* STATS */
+.stats{border-bottom:1px solid var(--line);background:var(--bg2);}
+.stats .wrap{display:grid;grid-template-columns:repeat(4,1fr);padding:24px 20px;}
+.stat{text-align:center;padding:0 8px;border-left:1px solid var(--line);}
+.stat:first-child{border-left:none;}
+.stat .num{font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:500;color:var(--green);}
+.stat .label{margin-top:3px;font-size:0.74rem;color:var(--muted);}
+@media(max-width:640px){
+  .stats .wrap{grid-template-columns:repeat(2,1fr);row-gap:18px;padding:20px;}
+  .stat:nth-child(3){border-left:none;}
+}
 
-  @media(prefers-reduced-motion:reduce){
-    table.ledger-table td,.validated-pill,.ledger-input .caret{
-      animation:none !important; opacity:1 !important; transform:none !important;
-    }
-  }
-  @media(max-width:980px){
-    .hero-grid{grid-template-columns:1fr; gap:48px;}
-    .ledger-card{transform:none; max-width:480px;}
-  }
+/* SECTION SHELL */
+section{padding:72px 0;position:relative;}
+.section-head{max-width:600px;margin-bottom:44px;}
+.section-head .eyebrow{margin-bottom:14px;}
+.section-head h2{font-size:clamp(1.7rem,3vw,2.3rem);color:var(--text);}
+.section-head p{margin-top:12px;color:var(--text2);font-size:0.96rem;}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity 0.5s ease,transform 0.5s ease;}
+.reveal.in{opacity:1;transform:none;}
 
-  /* ── STATS ── */
-  .stats{
-    border-top:1px solid var(--border); border-bottom:1px solid var(--border);
-    background:var(--off-white);
-  }
-  .stats .wrap{
-    display:grid; grid-template-columns:repeat(4,1fr);
-    padding:32px 28px;
-  }
-  .stat{text-align:center; padding:0 12px; border-left:1px solid var(--border);}
-  .stat:first-child{border-left:none;}
-  .stat .num{
-    font-family:'JetBrains Mono', monospace; font-size:1.85rem; font-weight:600; color:var(--emerald);
-  }
-  .stat .label{margin-top:4px; font-size:0.78rem; color:var(--muted);}
-  @media(max-width:700px){
-    .stats .wrap{grid-template-columns:repeat(2,1fr); row-gap:22px;}
-    .stat:nth-child(3){border-left:none;}
-  }
+/* WHY */
+.why{background:#fff;border-bottom:1px solid var(--line);}
+.why-grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:start;}
+.why-grid p{color:var(--text2);font-size:0.96rem;margin-bottom:16px;line-height:1.75;}
+.pull-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:24px 22px;}
+.pull-card .qm{font-family:'DM Serif Display',serif;font-size:2.6rem;color:var(--green);line-height:0.5;display:block;margin-bottom:10px;}
+.pull-card p{font-family:'DM Serif Display',serif;font-style:italic;font-size:1.15rem;color:var(--text);line-height:1.55;}
+.pull-card .by{margin-top:14px;font-size:0.75rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+@media(max-width:820px){.why-grid{grid-template-columns:1fr;}}
 
-  /* ── SECTION SHELL ── */
-  section{padding:96px 0;}
-  .section-head{max-width:640px; margin-bottom:52px;}
-  .section-head .eyebrow{margin-bottom:16px;}
-  .section-head h2{font-size:clamp(1.9rem, 3.2vw, 2.5rem); color:var(--ink);}
-  .section-head p{margin-top:14px; color:var(--muted); font-size:1rem;}
-  .reveal{opacity:0; transform:translateY(16px); transition:opacity 0.6s ease,transform 0.6s ease;}
-  .reveal.in{opacity:1; transform:none;}
+/* FEATURES */
+.features{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
+.feature{background:#fff;padding:24px 20px;transition:background 0.15s;}
+.feature:hover{background:var(--bg2);}
+.feature .icon{width:36px;height:36px;border-radius:9px;background:var(--green-light);display:flex;align-items:center;justify-content:center;color:var(--green);margin-bottom:14px;border:1px solid var(--green-mid);}
+.feature .icon svg{width:17px;height:17px;}
+.feature h3{font-size:1rem;color:var(--text);font-weight:600;font-family:'Inter',sans-serif;}
+.feature p{margin-top:7px;font-size:0.85rem;color:var(--text2);line-height:1.65;}
+@media(max-width:820px){.feature-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:520px){.feature-grid{grid-template-columns:1fr;}}
 
-  /* ── WHY ── */
-  .why{background:var(--white);}
-  .why-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:start;}
-  .why-grid p{color:var(--muted); font-size:1.02rem; margin-bottom:18px; line-height:1.75;}
-  .pull-card{
-    background:var(--off-white); border:1px solid var(--border); border-radius:var(--radius);
-    padding:30px 28px; box-shadow:var(--shadow-sm);
-  }
-  .pull-card .quote-mark{font-family:'Cormorant Garamond', serif; font-size:3rem; color:var(--emerald); line-height:0.6; display:block; margin-bottom:12px;}
-  .pull-card p{
-    font-family:'Cormorant Garamond', serif; font-style:italic; font-size:1.22rem; color:var(--ink); line-height:1.55;
-  }
-  .pull-card .by{margin-top:18px; font-size:0.8rem; color:var(--faint); font-family:'JetBrains Mono', monospace;}
-  @media(max-width:880px){.why-grid{grid-template-columns:1fr;}}
+/* EXPORT BANNER */
+.export-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  background:var(--green-light);border:1px solid var(--green-mid);border-radius:var(--r);
+  padding:22px 24px;margin-top:32px;
+}
+.export-banner h3{font-size:1.05rem;color:var(--text);font-family:'Inter',sans-serif;font-weight:600;}
+.export-banner p{color:var(--text2);margin-top:4px;font-size:0.85rem;}
+.file-chip{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;background:#fff;border:1px solid var(--line);padding:5px 10px;border-radius:6px;margin-right:6px;color:var(--text2);}
 
-  /* ── FEATURES ── */
-  .features{background:var(--off-white); border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
-  .feature-grid{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
-    background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;
-    box-shadow:var(--shadow-sm);
-  }
-  .feature{background:#fff; padding:30px 26px; transition:background 0.2s;}
-  .feature:hover{background:var(--off-white);}
-  .feature .icon{
-    width:38px; height:38px; border-radius:9px; background:var(--emerald-light);
-    display:flex; align-items:center; justify-content:center; color:var(--emerald); margin-bottom:18px;
-  }
-  .feature .icon svg{width:19px;height:19px;}
-  .feature h3{font-size:1.1rem; color:var(--ink); font-weight:600; font-family:'Inter', sans-serif; letter-spacing:-0.01em;}
-  .feature p{margin-top:10px; font-size:0.9rem; color:var(--muted); line-height:1.65;}
-  @media(max-width:880px){.feature-grid{grid-template-columns:1fr;}}
+/* HOW */
+.how{background:#fff;border-bottom:1px solid var(--line);}
+.steps{position:relative;padding-left:4px;}
+.step{display:grid;grid-template-columns:54px 1fr;gap:18px;padding-bottom:36px;position:relative;}
+.step:last-child{padding-bottom:0;}
+.step::before{content:"";position:absolute;left:26px;top:46px;bottom:-4px;width:1px;background:var(--line);}
+.step:last-child::before{display:none;}
+.step .num{width:52px;height:52px;border-radius:50%;background:var(--green-light);border:1px solid var(--green-mid);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:1rem;color:var(--green);font-weight:500;}
+.step h3{font-size:1.04rem;color:var(--text);font-weight:600;font-family:'Inter',sans-serif;padding-top:13px;}
+.step p{margin-top:6px;color:var(--text2);font-size:0.9rem;max-width:54ch;}
+.step .ex{margin-top:10px;display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.76rem;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 11px;color:var(--text2);}
 
-  /* ── EXPORT BANNER ── */
-  .export-banner{
-    display:flex; align-items:center; justify-content:space-between; gap:30px; flex-wrap:wrap;
-    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
-    padding:28px 32px; margin-top:44px; box-shadow:var(--shadow-sm);
-  }
-  .export-banner h3{font-size:1.15rem; color:var(--ink); font-family:'Inter', sans-serif; font-weight:600;}
-  .export-banner p{color:var(--muted); margin-top:5px; font-size:0.9rem;}
-  .file-chip{
-    display:inline-flex; align-items:center; gap:7px;
-    font-family:'JetBrains Mono', monospace; font-size:0.76rem;
-    background:var(--light); border:1px solid var(--border);
-    padding:7px 12px; border-radius:7px; margin-right:8px; color:var(--text);
-  }
+/* FISCAL */
+.fiscal{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.fiscal-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.stamp{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 10px;text-align:center;transition:border-color 0.15s,transform 0.15s;}
+.stamp:hover{border-color:var(--green-mid);transform:translateY(-2px);}
+.stamp .rate{font-family:'JetBrains Mono',monospace;color:var(--gold);font-size:1.25rem;font-weight:500;}
+.stamp .what{margin-top:6px;font-size:0.74rem;color:var(--muted);}
+@media(max-width:900px){.fiscal-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:420px){.fiscal-grid{grid-template-columns:1fr;}}
 
-  /* ── HOW ── */
-  .how{background:var(--white);}
-  .steps{position:relative; padding-left:6px;}
-  .step{
-    display:grid; grid-template-columns:64px 1fr; gap:24px;
-    padding-bottom:44px; position:relative;
-  }
-  .step:last-child{padding-bottom:0;}
-  .step::before{
-    content:""; position:absolute; left:31px; top:52px; bottom:-4px; width:1px;
-    background:var(--border);
-  }
-  .step:last-child::before{display:none;}
-  .step .num{
-    width:62px; height:62px; border-radius:50%;
-    background:#fff; border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'JetBrains Mono', monospace; font-size:1.15rem; color:var(--emerald); font-weight:600;
-    box-shadow:var(--shadow-sm);
-  }
-  .step h3{font-size:1.1rem; color:var(--ink); font-weight:600; font-family:'Inter', sans-serif; padding-top:18px;}
-  .step p{margin-top:8px; color:var(--muted); font-size:0.95rem; max-width:56ch;}
-  .step .ex{
-    margin-top:12px; display:inline-block; font-family:'JetBrains Mono', monospace; font-size:0.81rem;
-    background:var(--emerald-light); border:1px solid rgba(26,122,82,0.2); border-radius:8px;
-    padding:8px 12px; color:var(--emerald);
-  }
+/* SECURITY */
+.security{background:#fff;border-bottom:1px solid var(--line);}
+.security-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+.sec-item .icon{width:36px;height:36px;border-radius:9px;background:var(--gold-light);border:1px solid var(--gold-mid);display:flex;align-items:center;justify-content:center;color:var(--gold);margin-bottom:12px;}
+.sec-item .icon svg{width:17px;height:17px;}
+.sec-item h3{font-size:0.96rem;color:var(--text);font-weight:600;font-family:'Inter',sans-serif;}
+.sec-item p{margin-top:6px;font-size:0.83rem;color:var(--text2);}
+@media(max-width:820px){.security-grid{grid-template-columns:repeat(2,1fr);row-gap:24px;}}
+@media(max-width:420px){.security-grid{grid-template-columns:1fr;}}
 
-  /* ── FISCAL ── */
-  .fiscal{background:var(--off-white); border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
-  .fiscal-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:14px;}
-  .stamp{
-    background:#fff; border:1px solid var(--border); border-radius:12px;
-    padding:22px 14px; text-align:center; box-shadow:var(--shadow-sm);
-    transition:box-shadow 0.2s, transform 0.2s;
-  }
-  .stamp:hover{box-shadow:var(--shadow-md); transform:translateY(-2px);}
-  .stamp .rate{font-family:'JetBrains Mono', monospace; color:var(--amber); font-size:1.35rem; font-weight:600;}
-  .stamp .what{margin-top:8px; font-size:0.79rem; color:var(--muted);}
-  @media(max-width:980px){.fiscal-grid{grid-template-columns:repeat(2,1fr);}}
+/* AUDIENCE */
+.audience{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.audience-list{display:flex;flex-direction:column;border-top:1px solid var(--line);}
+.audience-row{display:grid;grid-template-columns:190px 1fr;gap:20px;padding:18px 0;border-bottom:1px solid var(--line);align-items:baseline;}
+.audience-row .who{font-family:'DM Serif Display',serif;font-style:italic;color:var(--green);font-size:1.05rem;}
+.audience-row p{color:var(--text2);font-size:0.88rem;}
+@media(max-width:600px){.audience-row{grid-template-columns:1fr;gap:3px;}}
 
-  /* ── SECURITY ── */
-  .security{background:var(--white);}
-  .security-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:24px;}
-  .sec-item .icon{
-    width:38px; height:38px; border-radius:9px; background:var(--amber-light);
-    display:flex; align-items:center; justify-content:center; color:var(--amber); margin-bottom:14px;
-  }
-  .sec-item .icon svg{width:18px;height:18px;}
-  .sec-item h3{font-size:1rem; color:var(--ink); font-weight:600; font-family:'Inter', sans-serif;}
-  .sec-item p{margin-top:8px; font-size:0.87rem; color:var(--muted);}
-  @media(max-width:880px){.security-grid{grid-template-columns:repeat(2,1fr); row-gap:28px;}}
+/* DOWNLOAD CTA */
+.download{background:var(--green);border-top:1px solid var(--green-strong);text-align:center;}
+.download .wrap{display:flex;flex-direction:column;align-items:center;padding-top:72px;padding-bottom:72px;}
+.download h2{font-size:clamp(1.7rem,3.5vw,2.4rem);color:#fff;max-width:18ch;}
+.download p.lede{margin-top:14px;color:rgba(255,255,255,0.75);max-width:50ch;font-size:0.96rem;}
+.download-actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:center;}
+.btn-white{background:#fff;color:var(--green);border:1px solid #fff;padding:13px 26px;font-size:0.96rem;font-weight:600;border-radius:9px;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;}
+.btn-white:hover{background:var(--green-light);}
 
-  /* ── AUDIENCE ── */
-  .audience{background:var(--off-white);}
-  .audience-list{display:flex; flex-direction:column; border-top:1px solid var(--border);}
-  .audience-row{
-    display:grid; grid-template-columns:200px 1fr; gap:24px;
-    padding:22px 0; border-bottom:1px solid var(--border); align-items:baseline;
-  }
-  .audience-row .who{font-family:'Cormorant Garamond', serif; font-style:italic; color:var(--emerald); font-size:1.12rem;}
-  .audience-row p{color:var(--muted); font-size:0.94rem;}
-  @media(max-width:700px){.audience-row{grid-template-columns:1fr; gap:6px;}}
+/* SMARTSCREEN MODAL */
+.ss-overlay{
+  position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;
+  padding:0;opacity:0;pointer-events:none;transition:opacity 0.25s ease;
+}
+@media(min-width:600px){.ss-overlay{align-items:center;padding:20px;}}
+.ss-overlay.open{opacity:1;pointer-events:all;}
+.ss-box{background:#fff;border-radius:20px 20px 0 0;max-width:500px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,0.12);overflow:hidden;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);}
+@media(min-width:600px){.ss-box{border-radius:16px;transform:translateY(20px) scale(0.97);}}
+.ss-overlay.open .ss-box{transform:none;}
+.ss-handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:12px auto 0;}
+@media(min-width:600px){.ss-handle{display:none;}}
+.ss-header{background:var(--gold-light);border-bottom:1px solid var(--line);padding:20px 22px 16px;display:flex;align-items:center;gap:12px;}
+.ss-icon{width:40px;height:40px;border-radius:9px;flex-shrink:0;background:var(--gold-mid);display:flex;align-items:center;justify-content:center;color:var(--gold);}
+.ss-icon svg{width:20px;height:20px;}
+.ss-header h3{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--text);}
+.ss-header p{font-size:0.75rem;color:var(--muted);margin-top:2px;}
+.ss-body{padding:20px 22px 0;}
+.ss-step{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.ss-step:last-of-type{border-bottom:none;padding-bottom:0;}
+.ss-num{width:24px;height:24px;border-radius:50%;flex-shrink:0;background:var(--green-light);border:1px solid var(--green-mid);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--green);font-weight:500;margin-top:1px;}
+.ss-step p{font-size:0.87rem;color:var(--text2);line-height:1.6;}
+.ss-step strong{color:var(--text);}
+.ss-footer{padding:18px 22px;border-top:1px solid var(--line);display:flex;gap:9px;}
+.ss-footer .btn-primary{flex:1;justify-content:center;padding:12px;font-size:0.9rem;}
+.ss-footer .btn-ghost{flex-shrink:0;}
+.ss-note{margin:14px 22px 0;padding:11px 13px;background:#FEF3DC;border:1px solid var(--gold-mid);border-radius:8px;font-size:0.8rem;color:var(--gold);display:flex;align-items:flex-start;gap:8px;}
+.ss-note svg{width:14px;height:14px;flex-shrink:0;margin-top:2px;}
 
-  /* ── DOWNLOAD ── */
-  .download{
-    background:var(--ink); color:#fff;
-    text-align:center; border-top:1px solid #1a1a1a;
-  }
-  .download .wrap{display:flex; flex-direction:column; align-items:center;}
-  .download .eyebrow{color:var(--emerald-mid); border-color:rgba(47,158,110,0.35); background:rgba(47,158,110,0.12);}
-  .download h2{font-size:clamp(1.9rem, 3.5vw, 2.7rem); color:#fff; max-width:18ch;}
-  .download p.lede{margin-top:16px; color:#9A9A9A; max-width:50ch; font-size:1rem;}
-  .download-actions{display:flex; gap:14px; margin-top:30px; flex-wrap:wrap; justify-content:center;}
-  .download .btn-paper{
-    background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);
-  }
-  .download .btn-paper:hover{background:rgba(255,255,255,0.18);}
-  .smartscreen-note{
-    margin-top:24px; display:inline-flex; align-items:flex-start; gap:10px; text-align:left;
-    max-width:520px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
-    border-radius:10px; padding:14px 16px; font-size:0.82rem; color:#6B6B6B;
-  }
-  .smartscreen-note svg{width:15px;height:15px; color:var(--amber); flex-shrink:0; margin-top:2px;}
+/* ABOUT MODAL */
+.about-overlay{
+  position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.4);
+  backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;
+  padding:0;opacity:0;pointer-events:none;transition:opacity 0.25s ease;
+}
+@media(min-width:700px){.about-overlay{align-items:center;padding:20px;}}
+.about-overlay.open{opacity:1;pointer-events:all;}
+.about-box{background:#fff;border-radius:20px 20px 0 0;max-width:800px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,0.1);overflow:hidden;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);max-height:92vh;overflow-y:auto;}
+@media(min-width:700px){.about-box{border-radius:16px;transform:translateY(24px) scale(0.97);max-height:80vh;}}
+.about-overlay.open .about-box{transform:none;}
+.about-inner{display:grid;grid-template-columns:260px 1fr;}
+@media(max-width:700px){.about-inner{grid-template-columns:1fr;}}
+.about-photo{position:relative;min-height:320px;overflow:hidden;background:linear-gradient(160deg,var(--green-light),var(--green-mid));}
+@media(max-width:700px){.about-photo{min-height:180px;}}
+.about-photo img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
+.about-photo .ph-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--green);}
+.about-photo .ph-fallback svg{width:48px;height:48px;opacity:0.5;}
+.about-photo .ph-fallback span{margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;color:var(--muted);}
+.about-overlay-text{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(255,255,255,0.9),transparent);padding:20px 16px 16px;}
+.about-overlay-text .fn{font-family:'DM Serif Display',serif;font-size:1.25rem;color:var(--text);line-height:1.1;}
+.about-overlay-text .role{font-size:0.7rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;}
+.about-close{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.85);border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:background 0.15s;}
+.about-close:hover{background:#fff;}
+.about-close svg{width:14px;height:14px;}
+.about-content{padding:28px;overflow-y:auto;display:flex;flex-direction:column;}
+@media(max-width:700px){.about-content{padding:20px;}}
+.about-eyebrow{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;color:var(--green);text-transform:uppercase;border:1px solid var(--green-mid);border-radius:20px;padding:3px 10px;margin-bottom:12px;background:var(--green-light);}
+.about-content h2{font-family:'DM Serif Display',serif;font-size:1.65rem;color:var(--text);line-height:1.15;margin-bottom:16px;}
+.about-content p{color:var(--text2);font-size:0.88rem;line-height:1.78;margin-bottom:12px;}
+.about-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-family:'JetBrains Mono',monospace;background:var(--bg2);border:1px solid var(--line);padding:4px 8px;border-radius:6px;color:var(--text2);}
+.about-proverb{margin-top:16px;padding:12px 15px;background:var(--bg2);border-radius:0 9px 9px 0;border-left:3px solid var(--green);font-family:'DM Serif Display',serif;font-style:italic;font-size:0.95rem;color:var(--text);line-height:1.55;}
+.about-proverb cite{display:block;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:0.66rem;color:var(--muted);font-style:normal;}
 
-  /* ── ABOUT MODAL ── */
-  .modal-overlay{
-    position:fixed; inset:0; z-index:1000;
-    background:rgba(0,0,0,0.45);
-    backdrop-filter:blur(6px);
-    display:flex; align-items:center; justify-content:center;
-    padding:24px;
-    opacity:0; pointer-events:none;
-    transition:opacity 0.3s ease;
-  }
-  .modal-overlay.open{opacity:1; pointer-events:all;}
-  .modal{
-    background:#fff; border-radius:24px;
-    box-shadow:0 40px 100px rgba(0,0,0,0.2), 0 0 0 1px var(--border);
-    max-width:860px; width:100%;
-    overflow:hidden;
-    transform:translateY(20px) scale(0.98);
-    transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  .modal-overlay.open .modal{transform:translateY(0) scale(1);}
-  .modal-inner{display:grid; grid-template-columns:320px 1fr;}
-  .modal-photo{
-    position:relative; overflow:hidden; min-height:460px;
-    background:linear-gradient(160deg, #0a1f14 0%, #0f3020 50%, #1a4d32 100%);
-  }
-  .modal-photo img{
-    width:100%; height:100%; object-fit:cover; object-position:center top;
-    display:block;
-  }
-  .modal-photo .photo-fallback{
-    position:absolute; inset:0;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color:rgba(255,255,255,0.4);
-  }
-  .modal-photo .photo-fallback svg{width:64px;height:64px; color:rgba(47,158,110,0.4);}
-  .modal-photo .photo-fallback span{margin-top:12px; font-family:'JetBrains Mono', monospace; font-size:0.75rem; letter-spacing:0.06em;}
-  .modal-photo-overlay{
-    position:absolute; bottom:0; left:0; right:0;
-    background:linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-    padding:24px 20px 20px;
-    color:#fff;
-  }
-  .modal-photo-overlay .founder-name{
-    font-family:'Cormorant Garamond', serif; font-size:1.5rem; font-weight:600; color:#fff;
-    line-height:1.1;
-  }
-  .modal-photo-overlay .founder-role{
-    font-size:0.78rem; color:rgba(255,255,255,0.65); margin-top:4px;
-    font-family:'JetBrains Mono', monospace; letter-spacing:0.05em;
-  }
-  .modal-content{
-    padding:36px 36px 36px;
-    display:flex; flex-direction:column; justify-content:space-between;
-    overflow-y:auto; max-height:520px;
-  }
-  .modal-close{
-    position:absolute; top:16px; right:16px;
-    width:34px; height:34px; border-radius:50%;
-    background:rgba(255,255,255,0.15); border:none; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; color:#fff;
-    transition:background 0.2s;
-  }
-  .modal-close:hover{background:rgba(255,255,255,0.28);}
-  .modal-close svg{width:16px;height:16px;}
-  .modal-eyebrow{
-    display:inline-flex; align-items:center; gap:6px;
-    font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.07em;
-    color:var(--emerald); text-transform:uppercase;
-    border:1px solid rgba(26,122,82,0.25); border-radius:20px;
-    padding:4px 12px; margin-bottom:16px; background:var(--emerald-light);
-  }
-  .modal-content h2{
-    font-family:'Cormorant Garamond', serif; font-size:1.9rem; color:var(--ink); line-height:1.15;
-    margin-bottom:20px;
-  }
-  .modal-content p{
-    color:var(--muted); font-size:0.95rem; line-height:1.75; margin-bottom:16px;
-  }
-  .modal-content p:last-of-type{margin-bottom:0;}
-  .modal-badges{
-    display:flex; gap:8px; flex-wrap:wrap; margin-top:24px; padding-top:22px;
-    border-top:1px solid var(--border);
-  }
-  .badge{
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:0.78rem; font-family:'JetBrains Mono', monospace;
-    background:var(--light); border:1px solid var(--border);
-    padding:5px 10px; border-radius:6px; color:var(--text);
-  }
-  .modal-proverb{
-    margin-top:20px; padding:16px 18px;
-    background:linear-gradient(135deg, var(--emerald-light), var(--amber-light));
-    border-radius:10px; border:1px solid var(--border);
-    font-family:'Cormorant Garamond', serif; font-style:italic;
-    font-size:1.02rem; color:var(--ink); line-height:1.55;
-  }
-  .modal-proverb cite{
-    display:block; margin-top:8px;
-    font-family:'JetBrains Mono', monospace; font-size:0.7rem;
-    color:var(--faint); font-style:normal;
-  }
+/* FOOTER */
+footer{border-top:1px solid var(--line);padding:36px 0 24px;background:var(--bg2);}
+.footer-grid{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:18px;}
+footer .tagline{color:var(--muted);font-size:0.8rem;margin-top:4px;}
+.footer-links{display:flex;gap:18px;list-style:none;flex-wrap:wrap;}
+.footer-links a,.footer-links button{color:var(--muted);font-size:0.82rem;transition:color 0.15s;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;}
+.footer-links a:hover,.footer-links button:hover{color:var(--text);}
+.footer-bottom{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);font-size:0.74rem;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 
-  @media(max-width:720px){
-    .modal-inner{grid-template-columns:1fr;}
-    .modal-photo{min-height:220px;}
-    .modal-content{max-height:none; padding:24px;}
-  }
-
-  /* ── FOOTER ── */
-  footer{
-    background:var(--white);
-    border-top:1px solid var(--border); padding:48px 0 32px;
-  }
-  .footer-grid{display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;}
-  .footer-grid .logo{font-size:1.1rem;}
-  footer .tagline{color:var(--faint); font-size:0.84rem; margin-top:6px;}
-  .footer-links{display:flex; gap:24px; list-style:none; padding:0; margin:0;}
-  .footer-links a{color:var(--muted); text-decoration:none; font-size:0.87rem; transition:color 0.2s;}
-  .footer-links a:hover{color:var(--ink);}
-  .footer-bottom{
-    margin-top:34px; padding-top:22px; border-top:1px solid var(--border);
-    font-size:0.77rem; color:var(--faint); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
-  }
-
-  @media(max-width:600px){
-    section{padding:64px 0;}
-    .hero{padding:60px 0 50px;}
-  }
+/* MOBILE */
+@media(max-width:600px){
+  section{padding:52px 0;}
+  .section-head{margin-bottom:32px;}
+  .hero{padding:36px 0 36px;}
+  .hero h1{font-size:2.1rem;}
+  .hero p.lede{font-size:0.95rem;}
+  .hero-cta .btn{width:100%;justify-content:center;}
+  .hero-meta{display:none;}
+  .export-banner{flex-direction:column;align-items:flex-start;}
+  .btn-primary{padding:11px 18px;}
+}
+@media(max-width:400px){
+  nav{padding:0 14px;}
+  .wrap{padding:0 14px;}
+  .stats .wrap{padding:18px 14px;}
+}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════ ABOUT MODAL ════════════════════════════════════ -->
-<div class="modal-overlay" id="aboutModal" role="dialog" aria-modal="true" aria-label="À propos du fondateur">
-  <div class="modal">
-    <div class="modal-inner">
-      <div class="modal-photo">
-        <!-- Photo du fondateur — placer photo.jpg dans le même dossier -->
-        <img src="images/comeo-avatar.png" alt="ZINZINDOHOUE Marcio Jardel, fondateur de COMEO AI"
-          onerror="this.style.display='none'; document.getElementById('photoFallback').style.display='flex';">
-        <div class="photo-fallback" id="photoFallback" style="display:none;">
+<!-- SMARTSCREEN MODAL -->
+<div class="ss-overlay" id="ssModal" role="dialog" aria-modal="true">
+  <div class="ss-box">
+    <div class="ss-handle"></div>
+    <div class="ss-header">
+      <div class="ss-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg>
+      </div>
+      <div>
+        <h3>Avertissement SmartScreen</h3>
+        <p>À lire avant de lancer l'installation</p>
+      </div>
+    </div>
+    <div class="ss-body">
+      <div class="ss-step">
+        <div class="ss-num">1</div>
+        <p>Windows peut afficher <strong>« Windows a protégé votre PC »</strong> lors du premier lancement. C'est normal — l'app n'est pas encore signée numériquement.</p>
+      </div>
+      <div class="ss-step">
+        <div class="ss-num">2</div>
+        <p>Dans la fenêtre SmartScreen, cliquez sur <strong>« Informations complémentaires »</strong>.</p>
+      </div>
+      <div class="ss-step">
+        <div class="ss-num">3</div>
+        <p>Un bouton <strong>« Exécuter quand même »</strong> apparaît. Cliquez dessus pour continuer l'installation.</p>
+      </div>
+    </div>
+    <div class="ss-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      COMEO AI est un logiciel sûr, développé en Côte d'Ivoire. L'avertissement est uniquement lié à l'absence de signature numérique payante.
+    </div>
+    <div class="ss-footer">
+      <a id="ssDownloadBtn" href="https://github.com/JARDO2003/comeo-desktop/releases/download/v1.0.0/Comeo.Setup.1.0.0.exe" class="btn btn-primary" download>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+        Télécharger quand même
+      </a>
+      <button class="btn btn-ghost" onclick="closeSS()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="about-overlay" id="aboutModal" role="dialog" aria-modal="true">
+  <div class="about-box">
+    <div class="about-inner">
+      <div class="about-photo">
+        <img src="images/comeo-avatar.png" alt="ZINZINDOHOUE Marcio Jardel"
+          onerror="this.style.display='none';document.getElementById('phFallback').style.display='flex';">
+        <div class="ph-fallback" id="phFallback" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-          <span>PHOTO.JPG</span>
+          <span>PHOTO.PNG</span>
         </div>
-        <div class="modal-photo-overlay">
-          <div class="founder-name">Marcio Jardel<br>ZINZINDOHOUE</div>
-          <div class="founder-role">Fondateur &amp; CEO · COMEO AI</div>
+        <div class="about-overlay-text">
+          <div class="fn">Marcio Jardel<br>ZINZINDOHOUE</div>
+          <div class="role">Fondateur &amp; CEO · COMEO AI</div>
         </div>
-        <button class="modal-close" id="modalClose" aria-label="Fermer">
+        <button class="about-close" id="aboutClose" aria-label="Fermer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="modal-content">
-        <div>
-          <span class="modal-eyebrow">À propos du fondateur</span>
-          <h2>La vision derrière COMEO AI</h2>
-
-          <p>Je suis <strong>ZINZINDOHOUE Marcio Jardel</strong>, étudiant diplômé en Sciences Économiques et de Gestion, étudiant  <strong> au Groupe LOKO  en 2024</strong> et jeune entrepreneur ivoirien passionné par l'intersection entre technologie et développement économique africain.</p>
-
-          <p>J'ai créé <strong>COMEO AI</strong> avec un objectif clair : démocratiser l'accès à une comptabilité rigoureuse et conforme aux normes OHADA pour toutes les entreprises de Côte d'Ivoire et de l'espace UEMOA — sans que cela nécessite un cabinet d'expertise ou une formation approfondie en comptabilité.</p>
-
-          <p>Face au défi que représentait la gestion comptable pour les PME, les entrepreneurs individuels et les startups ivoiriennes, j'ai voulu bâtir un outil qui raisonne comme un expert-comptable expérimenté : qui comprend le français naturel, maîtrise les référentiels SYSCOHADA, intègre la fiscalité locale et génère automatiquement les états financiers réglementaires.</p>
-
-          <p>COMEO AI est né de la conviction que <em>l'intelligence artificielle peut être un vecteur d'inclusion économique</em> — en mettant à portée de tous les outils autrefois réservés aux grandes entreprises disposant de moyens importants.</p>
-
-          <div class="modal-badges">
-            <span class="badge">🎓 Sciences Éco &amp; Gestion</span>
-            <span class="badge">🏫 Groupe Loko · 2024</span>
-            <span class="badge">🇨🇮 Côte d'Ivoire</span>
-            <span class="badge">💡 Jeune entrepreneur</span>
-            <span class="badge">⚖️ SYSCOHADA Révisé 2023</span>
-          </div>
-
-          <div class="modal-proverb">
-            "The secret of getting ahead is getting started."
-            <cite>— Mark Twain</cite>
-          </div>
+      <div class="about-content">
+        <span class="about-eyebrow">À propos du fondateur</span>
+        <h2>La vision derrière COMEO AI</h2>
+        <p>Je suis <strong style="color:var(--text)">ZINZINDOHOUE Marcio Jardel</strong>, étudiant diplômé en Sciences Économiques et de Gestion, membre du <strong style="color:var(--text)">Groupe Loko depuis 2024</strong>, et jeune entrepreneur ivoirien passionné par l'intersection entre technologie et développement économique africain.</p>
+        <p>J'ai créé <strong style="color:var(--text)">COMEO AI</strong> avec un objectif clair : démocratiser l'accès à une comptabilité rigoureuse et conforme aux normes OHADA pour toutes les entreprises de Côte d'Ivoire et de l'espace UEMOA — sans cabinet d'expertise ni formation approfondie.</p>
+        <p>COMEO AI est né de la conviction que <em>l'intelligence artificielle peut être un vecteur d'inclusion économique</em> — en mettant à portée de tous les outils autrefois réservés aux grandes entreprises.</p>
+        <div class="about-badges">
+          <span class="badge">🎓 Sciences Éco &amp; Gestion</span>
+          <span class="badge">🏫 Groupe Loko · 2024</span>
+          <span class="badge">🇨🇮 Côte d'Ivoire</span>
+          <span class="badge">💡 Entrepreneur</span>
+          <span class="badge">⚖️ SYSCOHADA</span>
+        </div>
+        <div class="about-proverb">
+          "The secret of getting ahead is getting started."
+          <cite>— Mark Twain</cite>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════ HEADER ════════════════════════════════════ -->
+<!-- HEADER -->
 <header class="site">
   <nav>
     <a href="#" class="logo">
@@ -627,16 +476,17 @@
       <li><a href="#comment-ca-marche">Comment ça marche</a></li>
       <li><a href="#fiscalite">Fiscalité</a></li>
       <li><a href="#pour-qui">Pour qui</a></li>
-      <li><button class="btn-about" id="aboutBtnMobile" onclick="openAbout()">À propos</button></li>
-      <li class="nav-cta" style="display:flex; gap:10px; margin-top:6px;">
-        <a class="btn btn-primary" href="#telecharger">Télécharger</a>
-      </li>
+      <li><button onclick="openAbout()">À propos</button></li>
+      <li style="margin-top:4px;"><button class="btn btn-primary" onclick="openSS()">Télécharger</button></li>
     </ul>
-    <div class="nav-cta">
-      <button class="btn-about" onclick="openAbout()">À propos</button>
-      <a class="btn btn-primary" href="#telecharger">Télécharger</a>
+    <div class="nav-right">
+      <button class="btn-ghost btn" style="font-size:0.83rem;" onclick="openAbout()">À propos</button>
+      <button class="btn btn-primary" onclick="openSS()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+        Télécharger
+      </button>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Ouvrir le menu" aria-expanded="false">
+    <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </nav>
@@ -644,277 +494,280 @@
 
 <main>
 
-  <!-- ═══ HERO ═══ -->
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <span class="eyebrow"><span class="dot"></span>SYSCOHADA Révisé 2023 · Côte d'Ivoire</span>
-        <h1>Décrivez l'opération.<br>L'écriture comptable <em>s'écrit elle-même.</em></h1>
-        <p class="lede">COMEO AI raisonne comme un expert-comptable ivoirien diplômé, membre de l'ONECCA-CI. Vous décrivez vos opérations en français, l'IA génère les écritures SYSCOHADA correctes — journal, grand livre, bilan et compte de résultat se mettent à jour seuls.</p>
-        <div class="hero-cta">
-          <a href="#telecharger" class="btn btn-primary">Télécharger l'application</a>
-        </div>
-        <div class="hero-meta">
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>100% conforme SYSCOHADA</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Fiscalité ivoirienne intégrée</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Disponible 24/7</span>
-        </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span>SYSCOHADA Révisé 2023 · Côte d'Ivoire</span>
+      <h1>Décrivez l'opération.<br>L'écriture comptable<br><em>s'écrit elle-même.</em></h1>
+      <p class="lede">COMEO AI raisonne comme un expert-comptable ivoirien. Décrivez vos opérations en français — journal, grand livre, bilan et compte de résultat se mettent à jour automatiquement.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" onclick="openSS()" style="padding:12px 24px;font-size:0.95rem;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          Télécharger pour Windows
+        </button>
       </div>
-
-      <div class="ledger-card" id="ledgerDemo">
-        <div class="ledger-head">
-          <span class="tag">Saisie assistée</span>
-          <span class="tag" id="ledgerJournal">Journal — Ventes</span>
-        </div>
-        <div class="ledger-input"><span id="typedText"></span><span class="caret"></span></div>
-        <table class="ledger-table" id="ledgerTable">
-          <thead>
-            <tr><th>Compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr>
-          </thead>
-          <tbody id="ledgerRows"></tbody>
-        </table>
-        <div class="ledger-footer">
-          <span class="balance">Solde : équilibré</span>
-          <span class="validated-pill" id="validatedPill">✓ Écritures enregistrées</span>
-        </div>
+      <div class="hero-badge">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+        Application bureau Windows — gratuite
+      </div>
+      <div class="hero-meta">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>100% conforme SYSCOHADA</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Fiscalité ivoirienne intégrée</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Disponible 24/7</span>
       </div>
     </div>
-  </section>
-
-  <!-- ═══ STATS ═══ -->
-  <div class="stats">
-    <div class="wrap">
-      <div class="stat"><div class="num">100%</div><div class="label">Conforme SYSCOHADA</div></div>
-      <div class="stat"><div class="num">7</div><div class="label">Journaux auxiliaires</div></div>
-      <div class="stat"><div class="num">8</div><div class="label">Classes de comptes</div></div>
-      
+    <div class="ledger-card" id="ledgerDemo">
+      <div class="ledger-head">
+        <span class="tag">Saisie assistée</span>
+        <span class="tag" id="ledgerJournal">Journal — Ventes</span>
+      </div>
+      <div class="ledger-input"><span id="typedText"></span><span class="caret"></span></div>
+      <table class="lt" id="ledgerTable">
+        <thead><tr><th>Compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr></thead>
+        <tbody id="ledgerRows"></tbody>
+      </table>
+      <div class="ledger-footer">
+        <span class="bal">Solde : équilibré</span>
+        <span class="vpill" id="vpill">✓ Écritures enregistrées</span>
+      </div>
     </div>
   </div>
+</section>
 
-  <!-- ═══ WHY ═══ -->
-  <section class="why">
-    <div class="wrap why-grid">
-      <div class="reveal">
-        <div class="section-head" style="margin-bottom:24px;">
-          <span class="eyebrow"><span class="dot"></span>Pourquoi COMEO AI</span>
-          <h2>La rigueur OHADA, sans le temps perdu</h2>
-        </div>
-        <p>Gérer la comptabilité d'une entreprise en Côte d'Ivoire exige une maîtrise parfaite des normes OHADA, de la fiscalité locale — TVA 18 %, IS 25 %, CNPS — et des obligations déclaratives. C'est un travail chronophage, qui demande habituellement l'intervention constante d'un expert-comptable.</p>
-        <p>COMEO AI change la donne. Son assistant intégré comprend vos opérations en langage naturel, génère les écritures comptables correctes, et produit automatiquement vos états financiers réglementaires.</p>
+<!-- STATS -->
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><div class="num">100%</div><div class="label">Conforme SYSCOHADA</div></div>
+    <div class="stat"><div class="num">7</div><div class="label">Journaux auxiliaires</div></div>
+    <div class="stat"><div class="num">8</div><div class="label">Classes de comptes</div></div>
+    <div class="stat"><div class="num">24/7</div><div class="label">Disponible hors ligne</div></div>
+  </div>
+</div>
+
+<!-- WHY -->
+<section class="why">
+  <div class="wrap why-grid">
+    <div class="reveal">
+      <div class="section-head" style="margin-bottom:20px;">
+        <span class="eyebrow"><span class="dot"></span>Pourquoi COMEO AI</span>
+        <h2>La rigueur OHADA, sans le temps perdu</h2>
       </div>
-      <div class="pull-card reveal">
-        <span class="quote-mark">"</span>
-        <p>L'assistant comprend vos opérations en langage naturel, génère les écritures comptables correctes, et produit automatiquement vos états financiers réglementaires.</p>
-        <div class="by">— Principe de fonctionnement, COMEO AI</div>
+      <p>Gérer la comptabilité d'une entreprise en Côte d'Ivoire exige une maîtrise parfaite des normes OHADA, de la fiscalité locale — TVA 18 %, IS 25 %, CNPS — et des obligations déclaratives. C'est un travail chronophage qui demande habituellement l'intervention constante d'un expert-comptable.</p>
+      <p>COMEO AI change la donne. Son assistant intégré comprend vos opérations en langage naturel, génère les écritures comptables correctes, et produit automatiquement vos états financiers réglementaires.</p>
+    </div>
+    <div class="pull-card reveal">
+      <span class="qm">"</span>
+      <p>L'assistant comprend vos opérations en langage naturel, génère les écritures SYSCOHADA correctes et produit automatiquement vos états financiers réglementaires.</p>
+      <div class="by">— Principe de fonctionnement, COMEO AI</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="fonctionnalites">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Fonctionnalités</span>
+      <h2>Ce que COMEO AI fait pour vous</h2>
+      <p>De la saisie en langage naturel jusqu'aux états financiers officiels, chaque module reprend la structure exacte du référentiel SYSCOHADA.</p>
+    </div>
+    <div class="feature-grid reveal">
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M19 11a7 7 0 0 1-14 0M12 19v3"/></svg></div>
+        <h3>Saisie assistée par IA</h3>
+        <p>Décrivez simplement votre opération en français et COMEO AI génère toutes les écritures correctement imputées selon SYSCOHADA.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg></div>
+        <h3>Journal général groupé</h3>
+        <p>Les écritures liées à une même transaction apparaissent ensemble pour une lecture claire et conforme.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+        <h3>Grand Livre &amp; Balance</h3>
+        <p>Consultez en temps réel le détail de chaque compte avec son solde progressif, et la balance générale en un clic.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></div>
+        <h3>Bilan SYSCOHADA</h3>
+        <p>Votre bilan actif/passif généré automatiquement dans le format officiel SYSCOHADA, prêt pour votre banque ou la DGI.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <h3>Compte de résultat</h3>
+        <p>Marge commerciale, valeur ajoutée, EBE, résultat d'exploitation… tous les agrégats SYSCOHADA calculés instantanément.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h3>Tableau de trésorerie</h3>
+        <p>Caisse, banque et Mobile Money — Orange Money, MTN MoMo, Wave, Moov — via le compte 552, en temps réel.</p>
       </div>
     </div>
-  </section>
+    <div class="export-banner reveal">
+      <div>
+        <h3>Export professionnel en un clic</h3>
+        <p>Journal général, bilan, compte de résultat — prêts à envoyer à votre expert-comptable, votre banque ou la DGI.</p>
+      </div>
+      <div>
+        <span class="file-chip">⬇ PDF imprimable</span>
+        <span class="file-chip">⬇ Word (.doc)</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <!-- ═══ FEATURES ═══ -->
-  <section class="features" id="fonctionnalites">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Fonctionnalités</span>
-        <h2>Ce que COMEO AI fait pour vous</h2>
-        <p>De la saisie en langage naturel jusqu'aux états financiers officiels, chaque module reprend la structure exacte du référentiel SYSCOHADA.</p>
-      </div>
-      <div class="feature-grid reveal">
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M19 11a7 7 0 0 1-14 0M12 19v3"/></svg></div>
-          <h3>Saisie assistée par IA</h3>
-          <p>Décrivez simplement votre opération en français — « Achat de marchandises 500 000 FCFA en espèces » — et COMEO AI génère toutes les écritures correctement imputées.</p>
-        </div>
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg></div>
-          <h3>Journal général groupé</h3>
-          <p>Vos opérations sont regroupées intelligemment : les écritures liées à une même transaction apparaissent ensemble pour une lecture claire.</p>
-        </div>
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
-          <h3>Grand Livre &amp; Balance</h3>
-          <p>Consultez en temps réel le détail de chaque compte avec son solde progressif, et la balance générale en un clic.</p>
-        </div>
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></div>
-          <h3>Bilan SYSCOHADA</h3>
-          <p>Votre bilan actif/passif est généré automatiquement, dans le format officiel SYSCOHADA, prêt pour votre banque ou l'administration fiscale.</p>
-        </div>
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-          <h3>Compte de résultat</h3>
-          <p>Marge commerciale, valeur ajoutée, EBE, résultat d'exploitation et financier, RHAO… tous les agrégats SYSCOHADA, calculés instantanément.</p>
-        </div>
-        <div class="feature">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-          <h3>Tableau de trésorerie</h3>
-          <p>Suivez en temps réel caisse, banque et Mobile Money — Orange Money, MTN MoMo, Wave, Moov — via le compte 552.</p>
-        </div>
-      </div>
-      <div class="export-banner reveal">
+<!-- HOW -->
+<section class="how" id="comment-ca-marche">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Comment ça marche</span>
+      <h2>L'intelligence artificielle au service de votre comptabilité</h2>
+      <p>L'assistant intégré raisonne comme un expert-comptable ivoirien expérimenté.</p>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="num">1</div>
         <div>
-          <h3>Export professionnel en un clic</h3>
-          <p>Journal général, bilan, compte de résultat — prêts à envoyer à votre expert-comptable, votre banque ou la Direction des Impôts.</p>
+          <h3>Vous décrivez l'opération</h3>
+          <p>En français, comme vous le diriez à votre comptable.</p>
+          <span class="ex">« Vente de marchandises 1 200 000 FCFA TTC par virement, TVA 18 % »</span>
         </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
         <div>
-          <span class="file-chip">⬇ PDF imprimable</span>
-          <span class="file-chip">⬇ Word (.doc)</span>
+          <h3>COMEO AI analyse et génère</h3>
+          <p>L'IA calcule le HT, la TVA, impute les bons comptes SYSCOHADA et prépare les écritures liées.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h3>Vous validez en un clic</h3>
+          <p>Vérifiez les lignes proposées, puis enregistrez les écritures groupées dans votre journal.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div>
+          <h3>Vos états financiers se mettent à jour</h3>
+          <p>Balance, Grand Livre, Bilan et Compte de résultat sont instantanément actualisés.</p>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ═══ HOW IT WORKS ═══ -->
-  <section class="how" id="comment-ca-marche">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Comment ça marche</span>
-        <h2>L'intelligence artificielle au service de votre comptabilité</h2>
-        <p>L'assistant intégré est formé pour raisonner comme un expert-comptable ivoirien expérimenté.</p>
-      </div>
-      <div class="steps reveal">
-        <div class="step">
-          <div class="num">1</div>
-          <div>
-            <h3>Vous décrivez l'opération</h3>
-            <p>En français, comme vous le diriez à votre comptable.</p>
-            <span class="ex">« Vente de marchandises 1 200 000 FCFA TTC par virement, TVA 18 %, coût d'achat 700 000 FCFA »</span>
-          </div>
-        </div>
-        <div class="step">
-          <div class="num">2</div>
-          <div>
-            <h3>COMEO AI analyse et génère</h3>
-            <p>L'IA calcule automatiquement le HT, la TVA, impute les bons comptes SYSCOHADA et prépare les écritures liées.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="num">3</div>
-          <div>
-            <h3>Vous validez en un clic</h3>
-            <p>Vérifiez les lignes proposées, puis enregistrez les écritures groupées dans votre journal.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="num">4</div>
-          <div>
-            <h3>Vos états financiers se mettent à jour</h3>
-            <p>Balance, Grand Livre, Bilan et Compte de résultat sont instantanément actualisés, sans manipulation supplémentaire.</p>
-          </div>
-        </div>
-      </div>
+<!-- FISCAL -->
+<section class="fiscal" id="fiscalite">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Conformité fiscale</span>
+      <h2>Toutes les spécificités ivoiriennes, intégrées nativement</h2>
     </div>
-  </section>
+    <div class="fiscal-grid reveal">
+      <div class="stamp"><div class="rate">18%</div><div class="what">TVA — calcul HT / TTC / récupérable</div></div>
+      <div class="stamp"><div class="rate">25%</div><div class="what">IS — Impôt sur les Sociétés</div></div>
+      <div class="stamp"><div class="rate">7,7%/16%</div><div class="what">CNPS — salarié / patronal</div></div>
+      <div class="stamp"><div class="rate">552</div><div class="what">Mobile Money — Orange, MTN, Wave, Moov</div></div>
+      <div class="stamp"><div class="rate">0,5%</div><div class="what">IMF — du CA HT, min. 3M FCFA</div></div>
+    </div>
+  </div>
+</section>
 
-  <!-- ═══ FISCAL ═══ -->
-  <section class="fiscal" id="fiscalite">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Conformité fiscale</span>
-        <h2>Toutes les spécificités ivoiriennes, intégrées nativement</h2>
+<!-- SECURITY -->
+<section class="security">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Sécurité &amp; accès</span>
+      <h2>Vos données comptables, toujours disponibles</h2>
+      <p>Sauvegarde automatique, accessible depuis n'importe quel ordinateur Windows.</p>
+    </div>
+    <div class="security-grid reveal">
+      <div class="sec-item">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <h3>Données sécurisées</h3>
+        <p>Sauvegarde automatique en temps réel. Vos écritures ne sont jamais perdues.</p>
       </div>
-      <div class="fiscal-grid reveal">
-        <div class="stamp"><div class="rate">18%</div><div class="what">TVA — taux normal, calcul HT / TTC / récupérable</div></div>
-        <div class="stamp"><div class="rate">25%</div><div class="what">IS — Impôt sur les Sociétés</div></div>
-        <div class="stamp"><div class="rate">7,7%/16%</div><div class="what">CNPS — salarié / patronal, paie intégrée</div></div>
-        <div class="stamp"><div class="rate">552</div><div class="what">Mobile Money — Orange, MTN, Wave, Moov</div></div>
-        <div class="stamp"><div class="rate">0,5%</div><div class="what">IMF — du CA HT, minimum 3M FCFA</div></div>
+      <div class="sec-item">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <h3>Application bureau</h3>
+        <p>Interface dédiée, rapide, sans navigateur. Pensée pour un usage professionnel quotidien.</p>
+      </div>
+      <div class="sec-item">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <h3>Profil entreprise</h3>
+        <p>Un compte dédié par entreprise, protégé par mot de passe sécurisé.</p>
+      </div>
+      <div class="sec-item">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <h3>Mises à jour gratuites</h3>
+        <p>Nouvelles fonctionnalités SYSCOHADA et corrections automatiquement intégrées.</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ═══ SECURITY ═══ -->
-  <section class="security">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Sécurité &amp; accès</span>
-        <h2>Vos données comptables, toujours disponibles</h2>
-        <p>Sauvegarde en temps réel sur une infrastructure cloud sécurisée, accessible depuis n'importe quel appareil.</p>
-      </div>
-      <div class="security-grid reveal">
-        <div class="sec-item">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
-          <h3>Données sécurisées</h3>
-          <p>Sauvegarde automatique en temps réel. Vos écritures ne sont jamais perdues.</p>
-        </div>
-        <div class="sec-item">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg></div>
-          <h3>Accès en ligne</h3>
-          <p>Connectez-vous depuis votre bureau, votre domicile ou en déplacement.</p>
-        </div>
-        <div class="sec-item">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
-          <h3>Profil entreprise</h3>
-          <p>Un compte dédié par entreprise, protégé par mot de passe.</p>
-        </div>
-        <div class="sec-item">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <h3>Multi-appareils</h3>
-          <p>Compatible avec tous les navigateurs modernes, sur ordinateur et mobile.</p>
-        </div>
-      </div>
+<!-- AUDIENCE -->
+<section class="audience" id="pour-qui">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Pour qui</span>
+      <h2>COMEO AI s'adresse à tout l'espace OHADA</h2>
     </div>
-  </section>
+    <div class="audience-list reveal">
+      <div class="audience-row"><span class="who">PME &amp; SARL</span><p>Entreprises ivoiriennes souhaitant tenir une comptabilité rigoureuse sans cabinet d'expertise.</p></div>
+      <div class="audience-row"><span class="who">Entrepreneurs individuels</span><p>Commerçants voulant suivre leurs finances en temps réel, sans formation comptable.</p></div>
+      <div class="audience-row"><span class="who">Associations &amp; ONG</span><p>Structures soumises aux obligations déclaratives OHADA.</p></div>
+      <div class="audience-row"><span class="who">Cabinets comptables</span><p>Professionnels gérant plusieurs dossiers clients simultanément.</p></div>
+      <div class="audience-row"><span class="who">Espace OHADA</span><p>Toute entreprise de la zone UEMOA ou CEMAC appliquant le référentiel SYSCOHADA.</p></div>
+    </div>
+  </div>
+</section>
 
-  <!-- ═══ AUDIENCE ═══ -->
-  <section class="audience" id="pour-qui">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Pour qui</span>
-        <h2>COMEO AI s'adresse à tout l'espace OHADA</h2>
+<!-- STEPS DÉMARRAGE -->
+<section class="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><span class="dot"></span>Démarrage</span>
+      <h2>Commencez en 3 étapes simples</h2>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="num">1</div>
+        <div><h3>Téléchargez et installez</h3><p>Téléchargez le fichier <code style="font-family:'JetBrains Mono',monospace;font-size:0.84em;color:var(--green);">Comeo.Setup.exe</code> et lancez l'installation. En cas d'alerte SmartScreen, cliquez « Informations complémentaires » puis « Exécuter quand même ».</p></div>
       </div>
-      <div class="audience-list reveal">
-        <div class="audience-row"><span class="who">PME &amp; SARL</span><p>Entreprises ivoiriennes souhaitant tenir une comptabilité rigoureuse sans cabinet d'expertise.</p></div>
-        <div class="audience-row"><span class="who">Entrepreneurs individuels</span><p>Commerçants voulant suivre leurs finances en temps réel, sans formation comptable.</p></div>
-        <div class="audience-row"><span class="who">Associations &amp; ONG</span><p>Structures soumises aux obligations déclaratives OHADA.</p></div>
-        <div class="audience-row"><span class="who">Cabinets comptables</span><p>Professionnels gérant plusieurs dossiers clients simultanément.</p></div>
-        <div class="audience-row"><span class="who">Espace OHADA</span><p>Toute entreprise de la zone UEMOA ou CEMAC appliquant le référentiel SYSCOHADA.</p></div>
+      <div class="step">
+        <div class="num">2</div>
+        <div><h3>Créez votre profil</h3><p>Renseignez le nom de votre entreprise, votre exercice comptable et choisissez un mot de passe.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div><h3>Saisissez votre première opération</h3><p>Décrivez-la à COMEO AI en français. En quelques secondes, vos écritures sont générées, vérifiées et enregistrées.</p></div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ═══ STEPS DÉMARRAGE ═══ -->
-  <section class="how">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow"><span class="dot"></span>Démarrage</span>
-        <h2>Commencez en 3 étapes simples</h2>
-      </div>
-      <div class="steps reveal">
-        <div class="step">
-          <div class="num">1</div>
-          <div><h3>Créez votre profil</h3><p>Renseignez le nom de votre entreprise, votre exercice comptable et choisissez un mot de passe.</p></div>
-        </div>
-        <div class="step">
-          <div class="num">2</div>
-          <div><h3>Connectez-vous</h3><p>Accédez immédiatement à votre tableau de bord SYSCOHADA, pré-configuré pour la Côte d'Ivoire.</p></div>
-        </div>
-        <div class="step">
-          <div class="num">3</div>
-          <div><h3>Saisissez votre première opération</h3><p>Décrivez-la à COMEO AI en français. En quelques secondes, vos écritures sont générées, vérifiées et enregistrées.</p></div>
-        </div>
-      </div>
+<!-- DOWNLOAD -->
+<section class="download" id="telecharger">
+  <div class="wrap">
+    <span class="eyebrow" style="border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.12);color:#fff;"><span class="dot" style="background:#fff;"></span>Application bureau · Windows</span>
+    <h2>Téléchargez COMEO AI pour votre ordinateur</h2>
+    <p class="lede">Votre expert-comptable SYSCOHADA dans une fenêtre dédiée. Gratuit, pour Windows.</p>
+    <div class="download-actions">
+      <button class="btn-white" onclick="openSS()">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+        Télécharger pour Windows — Gratuit
+      </button>
     </div>
-  </section>
-
-  <!-- ═══ DOWNLOAD ═══ -->
-  <section class="download" id="telecharger">
-    <div class="wrap">
-      <span class="eyebrow"><span class="dot"></span>Application bureau</span>
-      <h2>Téléchargez COMEO AI pour votre ordinateur</h2>
-      <p class="lede">Retrouvez votre comptabilité dans une fenêtre dédiée, sans passer par le navigateur. Gratuit, pour Windows.</p>
-      <div class="download-actions">
-        <a href="https://github.com/JARDO2003/comeo-desktop/releases/download/v1.0.0/Comeo.Setup.1.0.0.exe" class="btn btn-primary">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-          Télécharger pour Windows
-        </a>
-        <a href="https://comeo-murex.vercel.app" target="_blank" rel="noopener" class="btn btn-paper">Utiliser la version web</a>
-      </div>
-      <div class="smartscreen-note">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg>
-        <span>Windows peut afficher un avertissement SmartScreen au premier lancement, car l'application n'est pas encore signée numériquement. Cliquez sur « Informations complémentaires » puis « Exécuter quand même » pour continuer.</span>
-      </div>
+    <div style="margin-top:18px;display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:0.74rem;color:rgba(255,255,255,0.55);">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      v1.0.0 · Windows 10/11 · 64-bit
     </div>
-  </section>
+  </div>
+</section>
 
 </main>
 
@@ -929,112 +782,50 @@
         <li><a href="#fonctionnalites">Fonctionnalités</a></li>
         <li><a href="#comment-ca-marche">Comment ça marche</a></li>
         <li><a href="#telecharger">Télécharger</a></li>
-        <li><a href="https://comeo-murex.vercel.app" target="_blank" rel="noopener">Version web</a></li>
-        <li><a href="#" onclick="openAbout(); return false;">À propos</a></li>
+        <li><button onclick="openAbout()">À propos</button></li>
       </ul>
     </div>
     <div class="footer-bottom">
       <span>© 2026 COMEO AI — Conforme OHADA · Fiscalité ivoirienne · Multi-journaux</span>
-      <span class="mono">SYSCOHADA Révisé 2023 · Côte d'Ivoire</span>
+      <span style="font-family:'JetBrains Mono',monospace;">SYSCOHADA Révisé 2023 · Côte d'Ivoire</span>
     </div>
   </div>
 </footer>
 
 <script>
-  // ── MODAL ──
-  function openAbout(){
-    document.getElementById('aboutModal').classList.add('open');
-    document.body.style.overflow='hidden';
-  }
-  function closeAbout(){
-    document.getElementById('aboutModal').classList.remove('open');
-    document.body.style.overflow='';
-  }
-  document.getElementById('modalClose').addEventListener('click', closeAbout);
-  document.getElementById('aboutModal').addEventListener('click', function(e){
-    if(e.target===this) closeAbout();
-  });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAbout(); });
-
-  // ── MOBILE NAV ──
-  const navToggle=document.getElementById('navToggle');
-  const navLinks=document.getElementById('navLinks');
-  navToggle.addEventListener('click',()=>{
-    const open=navLinks.classList.toggle('open');
-    navToggle.setAttribute('aria-expanded',open);
-  });
-  navLinks.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
-    navLinks.classList.remove('open');
-    navToggle.setAttribute('aria-expanded',false);
-  }));
-
-  // ── SCROLL REVEAL ──
-  const reduceMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  const revealEls=document.querySelectorAll('.reveal');
-  if(reduceMotion){
-    revealEls.forEach(el=>el.classList.add('in'));
-  } else {
-    const io=new IntersectionObserver(entries=>{
-      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
-    },{threshold:0.12});
-    revealEls.forEach(el=>io.observe(el));
-  }
-
-  // ── LEDGER DEMO ──
-  const examples=[
-    {
-      journal:'Journal — Ventes',
-      text:"Vente de marchandises 1 200 000 FCFA TTC par virement, TVA 18%",
-      rows:[['521','Banque','1 200 000',''],['707','Ventes de marchandises','','1 016 949'],['4434','TVA collectée','','183 051']]
-    },
-    {
-      journal:'Journal — Achats',
-      text:"Achat de marchandises 500 000 FCFA en espèces",
-      rows:[['601','Achats de marchandises','500 000',''],['571','Caisse','','500 000']]
-    }
-  ];
-  const typedEl=document.getElementById('typedText');
-  const rowsEl=document.getElementById('ledgerRows');
-  const journalEl=document.getElementById('ledgerJournal');
-  const pillEl=document.getElementById('validatedPill');
-  let exIndex=0;
-
-  function buildRows(rows){
-    rowsEl.innerHTML='';
-    rows.forEach((r,i)=>{
-      const tr=document.createElement('tr');
-      tr.className='row'+(i+1);
-      tr.innerHTML=`<td class="acct">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td>`;
-      rowsEl.appendChild(tr);
-    });
-  }
-  function typeText(text,cb){
-    let i=0; typedEl.textContent='';
-    function step(){
-      if(i<=text.length){typedEl.textContent=text.slice(0,i);i++;setTimeout(step,28);}
-      else if(cb) setTimeout(cb,300);
-    }
-    step();
-  }
-  function runDemo(){
-    const ex=examples[exIndex%examples.length];
-    journalEl.textContent=ex.journal;
-    pillEl.style.animation='none'; pillEl.style.opacity='0';
-    void pillEl.offsetWidth; pillEl.style.animation='';
-    typeText(ex.text,()=>buildRows(ex.rows));
-    exIndex++;
-  }
-  if(reduceMotion){
-    journalEl.textContent=examples[0].journal;
-    typedEl.textContent=examples[0].text;
-    buildRows(examples[0].rows);
-    rowsEl.querySelectorAll('td').forEach(td=>{td.style.opacity=1;td.style.transform='none';});
-    pillEl.style.opacity=1;
-  } else {
-    runDemo();
-    setInterval(runDemo,6500);
-  }
+function openSS(){document.getElementById('ssModal').classList.add('open');document.body.style.overflow='hidden';}
+function closeSS(){document.getElementById('ssModal').classList.remove('open');document.body.style.overflow='';}
+document.getElementById('ssModal').addEventListener('click',function(e){if(e.target===this)closeSS();});
+function openAbout(){document.getElementById('aboutModal').classList.add('open');document.body.style.overflow='hidden';}
+function closeAbout(){document.getElementById('aboutModal').classList.remove('open');document.body.style.overflow='';}
+document.getElementById('aboutClose').addEventListener('click',closeAbout);
+document.getElementById('aboutModal').addEventListener('click',function(e){if(e.target===this)closeAbout();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSS();closeAbout();}});
+const navToggle=document.getElementById('navToggle');
+const navLinks=document.getElementById('navLinks');
+navToggle.addEventListener('click',()=>{const open=navLinks.classList.toggle('open');navToggle.setAttribute('aria-expanded',open);});
+navLinks.querySelectorAll('a,button').forEach(el=>el.addEventListener('click',()=>{navLinks.classList.remove('open');navToggle.setAttribute('aria-expanded',false);}));
+const rm=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const revEls=document.querySelectorAll('.reveal');
+if(rm){revEls.forEach(el=>el.classList.add('in'));}
+else{
+  const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:0.1});
+  revEls.forEach(el=>io.observe(el));
+}
+const demos=[
+  {j:'Journal — Ventes',t:"Vente marchandises 1 200 000 FCFA TTC virement TVA 18%",rows:[['521','Banque','1 200 000',''],['707','Ventes de marchandises','','1 016 949'],['4434','TVA collectée','','183 051']]},
+  {j:'Journal — Achats',t:"Achat de marchandises 500 000 FCFA en espèces",rows:[['601','Achats de marchandises','500 000',''],['571','Caisse','','500 000']]}
+];
+const tEl=document.getElementById('typedText');
+const rEl=document.getElementById('ledgerRows');
+const jEl=document.getElementById('ledgerJournal');
+const pEl=document.getElementById('vpill');
+let idx=0;
+function buildRows(rows){rEl.innerHTML='';rows.forEach((r,i)=>{const tr=document.createElement('tr');tr.className='row'+(i+1);tr.innerHTML=`<td class="acct">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td>`;rEl.appendChild(tr);});}
+function type(text,cb){let i=0;tEl.textContent='';function s(){if(i<=text.length){tEl.textContent=text.slice(0,i);i++;setTimeout(s,26);}else if(cb)setTimeout(cb,280);}s();}
+function run(){const d=demos[idx%demos.length];jEl.textContent=d.j;pEl.style.animation='none';pEl.style.opacity='0';void pEl.offsetWidth;pEl.style.animation='';type(d.t,()=>buildRows(d.rows));idx++;}
+if(rm){jEl.textContent=demos[0].j;tEl.textContent=demos[0].t;buildRows(demos[0].rows);rEl.querySelectorAll('td').forEach(td=>{td.style.opacity=1;td.style.transform='none';});pEl.style.opacity=1;}
+else{run();setInterval(run,6500);}
 </script>
-
 </body>
 </html>
