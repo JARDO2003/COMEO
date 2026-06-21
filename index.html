@@ -132,6 +132,34 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px
   .v-stat:nth-child(3){border-left:none;}
 }
 
+/* ÉCRAN QUESTION */
+.question-body{padding:36px 28px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.question-icon{width:72px;height:72px;border-radius:50%;background:rgba(110,228,160,0.1);border:2px solid rgba(110,228,160,0.3);display:flex;align-items:center;justify-content:center;color:#6EE4A0;margin-bottom:22px;}
+.question-body h2{font-family:'DM Serif Display',serif;font-size:1.45rem;color:#fff;line-height:1.2;max-width:22ch;}
+.question-body p{margin-top:10px;font-size:0.88rem;color:rgba(255,255,255,0.5);line-height:1.7;max-width:38ch;}
+.question-btns{display:flex;flex-direction:column;gap:10px;margin-top:28px;width:100%;max-width:360px;}
+.qbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:15px 24px;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;border:none;transition:all 0.18s;}
+.qbtn-yes{background:var(--green);color:#fff;}
+.qbtn-yes:hover{background:var(--green-h);}
+.qbtn-no{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.15);}
+.qbtn-no:hover{background:rgba(255,255,255,0.14);color:#fff;}
+
+/* ÉCRAN DONE */
+.done-body{padding:28px;}
+.done-check{width:56px;height:56px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 18px;}
+.done-body h2{font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;text-align:center;margin-bottom:24px;}
+.done-steps{display:flex;flex-direction:column;gap:0;border:1px solid rgba(255,255,255,0.1);border-radius:12px;overflow:hidden;}
+.done-step{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);}
+.done-step:last-child{border-bottom:none;}
+.done-num{width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:0.78rem;font-weight:500;flex-shrink:0;margin-top:2px;}
+.done-step strong{font-size:0.88rem;color:#fff;display:block;margin-bottom:3px;font-family:'Inter',sans-serif;}
+.done-step p{font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.6;}
+.done-step em{color:rgba(255,255,255,0.75);font-style:normal;}
+
+/* Transition entre écrans */
+.screen-fade{animation:screenIn 0.25s ease;}
+@keyframes screenIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
 /* MODAL INSTALLATION (vidéo + bouton suivant) */
 .install-overlay{
   position:fixed;inset:0;z-index:1000;
@@ -419,67 +447,120 @@ code.inline{font-family:'JetBrains Mono',monospace;font-size:0.84em;color:var(--
 <!-- ══ MODAL INSTALLATION VIDÉO ══ -->
 <div class="install-overlay" id="installModal" role="dialog" aria-modal="true">
   <div class="install-box">
-    <div class="install-header">
-      <div>
-        <h3>Guide d'installation — COMEO AI</h3>
-        <p>Regardez la vidéo puis cliquez sur Suivant pour télécharger</p>
-      </div>
-      <button class="install-close" onclick="closeInstall()" aria-label="Fermer">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
 
-    <!-- Étapes -->
-    <div class="install-steps">
-      <div class="inst-step active" id="istep1">
-        <div class="dot">1</div>
-        <span class="step-label">Regarder la vidéo</span>
-      </div>
-      <div class="inst-step-sep"></div>
-      <div class="inst-step" id="istep2">
-        <div class="dot">2</div>
-        <span class="step-label">Télécharger le ZIP</span>
-      </div>
-      <div class="inst-step-sep"></div>
-      <div class="inst-step" id="istep3">
-        <div class="dot">3</div>
-        <span class="step-label">Installer COMEO AI</span>
-      </div>
-    </div>
-
-    <!-- Vidéo -->
-    <div class="install-video-wrap">
-      <!-- Remplacez "videos/installation.mp4" par votre fichier vidéo -->
-      <video id="installVideo" preload="metadata" playsinline
-        onerror="document.getElementById('installVideoPH').style.display='flex';this.style.display='none';">
-        <source src="videos/installation.mp4" type="video/mp4">
-      </video>
-      <div class="install-video-placeholder" id="installVideoPH" onclick="playInstallVideo()">
-        <div class="big-play">
-          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+    <!-- ÉCRAN 1 : QUESTION -->
+    <div id="screenQuestion">
+      <div class="install-header">
+        <div>
+          <h3>Avant de télécharger</h3>
+          <p>Une courte question pour vous aider</p>
         </div>
-        <h4>Vidéo d'installation</h4>
-        <p>Cliquez pour lancer · ~2 minutes</p>
+        <button class="install-close" onclick="closeInstall()" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="question-body">
+        <div class="question-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        </div>
+        <h2>Avez-vous regardé le guide d'installation ?</h2>
+        <p>Il explique comment installer COMEO AI et contourner l'avertissement Windows SmartScreen en 2 minutes.</p>
+        <div class="question-btns">
+          <button class="qbtn qbtn-yes" onclick="answerYes()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M20 6L9 17l-5-5"/></svg>
+            Oui, je l'ai regardé
+          </button>
+          <button class="qbtn qbtn-no" onclick="answerNo()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none"/></svg>
+            Non, voir la vidéo d'abord
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Barre de progression -->
-    <div class="install-progress-bar">
-      <div class="install-progress-fill" id="installProgressFill"></div>
+    <!-- ÉCRAN 2 : VIDÉO -->
+    <div id="screenVideo" style="display:none;">
+      <div class="install-header">
+        <div>
+          <h3>Guide d'installation — COMEO AI</h3>
+          <p>Regardez jusqu'à la fin pour débloquer le téléchargement</p>
+        </div>
+        <button class="install-close" onclick="closeInstall()" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="install-video-wrap">
+        <video id="installVideo" preload="metadata" playsinline
+          onerror="document.getElementById('installVideoPH').style.display='flex';this.style.display='none';">
+          <source src="videos/installation.mp4" type="video/mp4">
+        </video>
+        <div class="install-video-placeholder" id="installVideoPH" onclick="playInstallVideo()">
+          <div class="big-play">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+          <h4>Guide d'installation</h4>
+          <p>Cliquez pour lancer · ~2 minutes</p>
+        </div>
+      </div>
+
+      <div class="install-progress-bar">
+        <div class="install-progress-fill" id="installProgressFill"></div>
+      </div>
+
+      <div class="install-footer">
+        <div class="hint" id="installHint">
+          <strong>⏳ Regardez la vidéo</strong> — le bouton se débloque automatiquement à la fin.
+        </div>
+        <a id="btnNext"
+           href="https://github.com/JARDO2003/comeo-desktop/releases/download/v1.0.0/Comeo-AI-v1.0.0.zip"
+           class="btn-next" download onclick="onDownloadClick()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          Télécharger COMEO AI
+        </a>
+      </div>
     </div>
 
-    <!-- Footer avec bouton Suivant -->
-    <div class="install-footer">
-      <div class="hint" id="installHint">
-        <strong>⏳ Regardez la vidéo jusqu'à la fin</strong> pour débloquer le téléchargement. Elle explique comment contourner l'avertissement Windows SmartScreen.
+    <!-- ÉCRAN 3 : CONFIRMATION TÉLÉCHARGEMENT -->
+    <div id="screenDone" style="display:none;">
+      <div class="install-header">
+        <div><h3>Téléchargement lancé !</h3><p>Suivez les étapes ci-dessous</p></div>
+        <button class="install-close" onclick="closeInstall()" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <a id="btnNext"
-         href="https://github.com/JARDO2003/comeo-desktop/releases/download/v1.0.0/Comeo-AI-v1.0.0.zip"
-         class="btn-next" download>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-        Suivant — Télécharger
-      </a>
+      <div class="done-body">
+        <div class="done-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <h2>Le ZIP est en cours de téléchargement</h2>
+        <div class="done-steps">
+          <div class="done-step">
+            <div class="done-num">1</div>
+            <div>
+              <strong>Ouvrez le ZIP téléchargé</strong>
+              <p>Extrayez le contenu dans un dossier de votre choix</p>
+            </div>
+          </div>
+          <div class="done-step">
+            <div class="done-num">2</div>
+            <div>
+              <strong>Lancez Comeo.Setup.1.0.0.exe</strong>
+              <p>Si Windows bloque → <em>Informations complémentaires</em> → <em>Exécuter quand même</em></p>
+            </div>
+          </div>
+          <div class="done-step">
+            <div class="done-num">3</div>
+            <div>
+              <strong>COMEO AI est installé !</strong>
+              <p>Créez votre profil entreprise et commencez à saisir vos opérations</p>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:8px;width:100%;justify-content:center;" onclick="closeInstall()">Fermer</button>
+      </div>
     </div>
+
   </div>
 </div>
 
@@ -899,71 +980,78 @@ const progressFill=document.getElementById('installProgressFill');
 const btnNext=document.getElementById('btnNext');
 const installHint=document.getElementById('installHint');
 
+function showScreen(id){
+  ['screenQuestion','screenVideo','screenDone'].forEach(s=>{
+    const el=document.getElementById(s);
+    el.style.display='none';
+    el.classList.remove('screen-fade');
+  });
+  const target=document.getElementById(id);
+  target.style.display='block';
+  void target.offsetWidth;
+  target.classList.add('screen-fade');
+}
+
 function openInstall(){
   installModal.classList.add('open');
   document.body.style.overflow='hidden';
-  // Reset
-  resetInstallSteps();
+  showScreen('screenQuestion');
 }
 function closeInstall(){
   installModal.classList.remove('open');
   document.body.style.overflow='';
-  if(!installVideo.paused)installVideo.pause();
+  if(installVideo && !installVideo.paused)installVideo.pause();
 }
 installModal.addEventListener('click',function(e){if(e.target===this)closeInstall();});
 
+// Réponse OUI → télécharge direct
+function answerYes(){
+  // Déclenche le téléchargement immédiatement
+  const link=document.createElement('a');
+  link.href='https://github.com/JARDO2003/comeo-desktop/releases/download/v1.0.0/Comeo-AI-v1.0.0.zip';
+  link.download='';
+  link.click();
+  showScreen('screenDone');
+}
+
+// Réponse NON → affiche la vidéo
+function answerNo(){
+  showScreen('screenVideo');
+  // Reset vidéo
+  progressFill.style.width='0%';
+  btnNext.classList.remove('enabled');
+  installHint.innerHTML='<strong>⏳ Regardez la vidéo</strong> — le bouton se débloque automatiquement à la fin.';
+  installVideo.currentTime=0;
+  installVideo.style.display='none';
+  installPH.style.display='flex';
+}
+
+// Lecture vidéo dans le modal
 function playInstallVideo(){
   installPH.style.display='none';
   installVideo.style.display='block';
   installVideo.play();
 }
 
-// Suivi progression vidéo
+// Suivi progression vidéo → débloque bouton à 80%
 installVideo.addEventListener('timeupdate',function(){
   if(!installVideo.duration)return;
   const pct=(installVideo.currentTime/installVideo.duration)*100;
   progressFill.style.width=pct+'%';
-
-  // Débloquer le bouton à 80% de la vidéo
   if(pct>=80){
     btnNext.classList.add('enabled');
-    // Étape 1 terminée
-    document.getElementById('istep1').classList.remove('active');
-    document.getElementById('istep1').classList.add('done');
-    document.getElementById('istep2').classList.add('active');
-    installHint.innerHTML='<strong>✅ Vidéo regardée !</strong> Cliquez sur <strong>Suivant</strong> pour télécharger le ZIP d\'installation.';
+    installHint.innerHTML='<strong>✅ C\'est bon !</strong> Cliquez sur <strong>Télécharger</strong> pour obtenir le ZIP.';
   }
 });
-
 installVideo.addEventListener('ended',function(){
   progressFill.style.width='100%';
   btnNext.classList.add('enabled');
-  document.getElementById('istep1').classList.remove('active');
-  document.getElementById('istep1').classList.add('done');
-  document.getElementById('istep2').classList.add('active');
-  installHint.innerHTML='<strong>✅ Vidéo terminée !</strong> Cliquez sur <strong>Suivant — Télécharger</strong> pour obtenir le ZIP.';
+  installHint.innerHTML='<strong>✅ Vidéo terminée !</strong> Cliquez sur <strong>Télécharger COMEO AI</strong>.';
 });
 
-btnNext.addEventListener('click',function(){
-  document.getElementById('istep2').classList.remove('active');
-  document.getElementById('istep2').classList.add('done');
-  document.getElementById('istep3').classList.add('active');
-  installHint.innerHTML='<strong>⬇ Téléchargement lancé !</strong> Extrayez le ZIP puis lancez <code style="font-family:monospace;font-size:0.82em;">Comeo.Setup.1.0.0.exe</code>. Suivez les instructions de la vidéo si Windows bloque.';
-});
-
-function resetInstallSteps(){
-  ['istep1','istep2','istep3'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.classList.remove('active','done');
-  });
-  document.getElementById('istep1').classList.add('active');
-  progressFill.style.width='0%';
-  btnNext.classList.remove('enabled');
-  installHint.innerHTML='<strong>⏳ Regardez la vidéo jusqu\'à la fin</strong> pour débloquer le téléchargement. Elle explique comment contourner l\'avertissement Windows SmartScreen.';
-  // Reset video
-  installVideo.currentTime=0;
-  installVideo.style.display='none';
-  installPH.style.display='flex';
+// Clic sur Télécharger après vidéo → écran confirmation
+function onDownloadClick(){
+  setTimeout(()=>showScreen('screenDone'),300);
 }
 
 /* ── Vidéos page d'accueil ── */
