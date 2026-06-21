@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plan Comptable OHADA — Kawaii Edition ✨</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mint:#c8f0e0;
+  --mint2:#a8e4ce;
+  --mint3:#7dd4b4;
+  --pink:#ffd6e7;
+  --pink2:#ffb3d1;
+  --lavender:#e8d5f5;
+  --cream:#fffdf5;
+  --white:#ffffff;
+  --text:#3d2c4e;
+  --text2:#7a5f8e;
+  --text3:#b4a0c4;
+  --bow:#1a1a2e;
+  --shadow:rgba(100,60,140,0.12);
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  font-family:'Nunito',sans-serif;
+  background:var(--mint);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* BACKGROUND FUR TEXTURE */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 2px 8px at 15% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 10px at 35% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 7px at 65% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 9px at 80% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 8px at 50% 50%, rgba(255,255,255,0.35) 0%, transparent 100%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* FLOATING BOWS */
+.bow{
+  position:fixed;
+  width:28px;height:18px;
+  z-index:1;pointer-events:none;
+  animation:floatBow 6s ease-in-out infinite;
+}
+.bow::before,.bow::after{
+  content:'';position:absolute;
+  width:12px;height:12px;
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  background:var(--bow);
+  top:0;
+}
+.bow::before{left:0;transform:rotate(-20deg)}
+.bow::after{right:0;transform:rotate(20deg)}
+.bow-center{
+  position:absolute;width:6px;height:6px;
+  border-radius:50%;background:var(--bow);
+  top:4px;left:11px;z-index:2;
+}
+@keyframes floatBow{
+  0%,100%{transform:translateY(0) rotate(-5deg)}
+  50%{transform:translateY(-12px) rotate(5deg)}
+}
+
+/* HERO */
+#hero{
+  position:relative;
+  padding:4rem 2rem 3rem;
+  text-align:center;
+  z-index:10;
+  overflow:hidden;
+}
+
+/* FLOATING BUBBLES BG */
+.bubble{
+  position:absolute;
+  border-radius:50%;
+  background:rgba(255,255,255,0.25);
+  animation:rise 8s ease-in-out infinite;
+}
+@keyframes rise{
+  0%{transform:translateY(0) scale(1);opacity:0.4}
+  50%{opacity:0.7}
+  100%{transform:translateY(-100px) scale(1.1);opacity:0}
+}
+
+#badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text2);
+  background:var(--white);
+  padding:6px 18px;border-radius:20px;
+  margin-bottom:1.4rem;
+  box-shadow:0 4px 16px var(--shadow);
+  animation:popIn 0.6s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes popIn{
+  from{opacity:0;transform:scale(0.5) translateY(20px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+
+#hero h1{
+  font-size:clamp(28px,6vw,52px);
+  font-weight:800;
+  color:var(--text);
+  line-height:1.1;
+  margin-bottom:.6rem;
+  letter-spacing:-1.5px;
+  animation:slideUp 0.7s cubic-bezier(.34,1.56,.64,1) 0.1s both;
+}
+
+.hero-sub{
+  font-size:14px;
+  color:var(--text2);
+  margin-bottom:2.5rem;
+  font-weight:600;
+  animation:slideUp 0.7s cubic-bezier(.34,1.56,.64,1) 0.2s both;
+}
+
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(30px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* SEARCH */
+#search-wrap{
+  position:relative;
+  max-width:560px;
+  margin:0 auto;
+  animation:slideUp 0.7s cubic-bezier(.34,1.56,.64,1) 0.3s both;
+}
+#search-box{
+  width:100%;
+  padding:0 3.5rem 0 4rem;
+  height:60px;
+  border-radius:30px;
+  border:3px solid var(--white);
+  background:var(--white);
+  font-size:15px;
+  font-family:'Nunito',sans-serif;
+  font-weight:600;
+  color:var(--text);
+  outline:none;
+  transition:all 0.3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 8px 32px var(--shadow);
+}
+#search-box:focus{
+  border-color:var(--pink2);
+  box-shadow:0 12px 40px var(--shadow), 0 0 0 4px rgba(255,179,209,0.3);
+  transform:scale(1.02);
+}
+#search-box::placeholder{color:var(--text3);font-weight:600}
+#s-icon{
+  position:absolute;left:1.4rem;top:50%;transform:translateY(-50%);
+  font-size:20px;color:var(--mint3);pointer-events:none;
+  transition:transform 0.3s;
+}
+#search-box:focus ~ #s-icon{transform:translateY(-50%) scale(1.2) rotate(-10deg)}
+#clear-btn{
+  position:absolute;right:1rem;top:50%;transform:translateY(-50%);
+  background:var(--mint);border:none;cursor:pointer;
+  width:32px;height:32px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  color:var(--text2);font-size:16px;
+  transition:all 0.2s;
+}
+#clear-btn.show{display:flex}
+#clear-btn:hover{background:var(--pink);transform:translateY(-50%) rotate(90deg)}
+
+/* STATS */
+#stats-bar{
+  display:flex;gap:2rem;justify-content:center;
+  margin-top:2rem;flex-wrap:wrap;
+  animation:slideUp 0.7s cubic-bezier(.34,1.56,.64,1) 0.4s both;
+}
+.stat{
+  background:var(--white);
+  border-radius:16px;
+  padding:12px 20px;
+  box-shadow:0 4px 16px var(--shadow);
+  text-align:center;
+  transition:transform 0.2s;
+}
+.stat:hover{transform:translateY(-4px) scale(1.05)}
+.stat strong{display:block;font-size:22px;font-weight:800;color:var(--text);letter-spacing:-0.5px}
+.stat span{font-size:11px;color:var(--text2);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+
+/* MAIN */
+#main{padding:1.5rem 1.5rem 5rem;max-width:1100px;margin:0 auto;position:relative;z-index:10}
+
+#toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:1.4rem;flex-wrap:wrap;gap:.8rem;
+}
+#result-count{font-size:12px;color:var(--text2);font-weight:700;letter-spacing:.5px}
+
+#filter-row{display:flex;gap:8px;flex-wrap:wrap}
+.filter-pill{
+  font-size:12px;padding:7px 16px;border-radius:20px;
+  border:2.5px solid transparent;
+  background:var(--white);
+  cursor:pointer;color:var(--text2);
+  font-family:'Nunito',sans-serif;
+  font-weight:700;
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 3px 10px var(--shadow);
+  white-space:nowrap;
+}
+.filter-pill:hover{
+  transform:translateY(-3px) scale(1.05);
+  border-color:var(--mint3);
+  box-shadow:0 8px 20px var(--shadow);
+}
+.filter-pill.active{
+  background:var(--text);
+  color:#fff;
+  border-color:var(--text);
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(61,44,78,0.3);
+}
+
+/* GRID */
+#grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:14px;
+}
+
+/* CARD */
+.card{
+  background:var(--white);
+  border:2.5px solid transparent;
+  border-radius:20px;
+  padding:1.1rem 1.2rem 1.1rem 1.5rem;
+  cursor:pointer;
+  transition:all 0.3s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 16px var(--shadow);
+  animation:cardPop 0.5s cubic-bezier(.34,1.56,.64,1) both;
+}
+.card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:5px;
+  border-radius:3px 0 0 3px;background:var(--mint2);transition:all 0.3s;
+}
+.card:hover{
+  transform:translateY(-6px) scale(1.02);
+  border-color:var(--pink2);
+  box-shadow:0 16px 40px var(--shadow);
+}
+.card:hover::before{background:var(--pink2);width:8px}
+.card:focus{outline:none;border-color:var(--mint3)}
+
+@keyframes cardPop{
+  from{opacity:0;transform:translateY(20px) scale(0.95)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+.card-num{
+  font-size:11px;letter-spacing:2px;color:var(--text3);
+  margin-bottom:5px;font-weight:800;
+}
+.card-name{font-size:14px;color:var(--text);line-height:1.4;font-weight:700}
+.card-meta{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+
+/* CHIPS */
+.chip{font-size:11px;padding:4px 11px;border-radius:12px;font-weight:700}
+.chip-class{background:var(--mint);color:var(--text2)}
+.cn-Passif{background:#dce9f8;color:#0a3d6e}
+.cn-Actif{background:#d4f7e8;color:#0d5c35}
+.cn-Charge{background:#fde0d5;color:#6e2a10}
+.cn-Produit{background:#d5f5ed;color:#0a4d3c}
+.cn-Mixte{background:#fef0d0;color:#6e3e0a}
+.cn-Spécial{background:#ece5fd;color:#2d1a7a}
+.cn-Hors{background:#f5e5fd;color:#4a1a7a}
+.cn-—{background:#f0f0f0;color:#888}
+
+mark{background:linear-gradient(120deg,#ffecb3,#ffe08a);border-radius:3px;padding:0 3px;color:inherit;font-weight:800}
+
+/* EMPTY */
+#empty{text-align:center;padding:5rem 2rem;display:none}
+#empty-emoji{font-size:60px;display:block;margin-bottom:1rem;animation:wobble 2s ease-in-out infinite}
+@keyframes wobble{
+  0%,100%{transform:rotate(-5deg) scale(1)}
+  50%{transform:rotate(5deg) scale(1.1)}
+}
+#empty-text{font-size:18px;color:var(--text2);font-weight:700}
+#empty-sub{font-size:13px;color:var(--text3);margin-top:.5rem;font-weight:600}
+
+/* MODAL OVERLAY */
+#overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(61,44,78,0.45);
+  z-index:1000;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+#overlay.open{display:flex}
+#modal{
+  background:var(--cream);
+  border-radius:28px;
+  padding:2.2rem;
+  max-width:460px;width:calc(100% - 2rem);
+  border:3px solid var(--white);
+  box-shadow:0 24px 64px rgba(61,44,78,0.25);
+  position:relative;
+  animation:modalPop 0.4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes modalPop{
+  from{opacity:0;transform:scale(0.8) translateY(30px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+#modal-close{
+  position:absolute;right:1.2rem;top:1.2rem;
+  background:var(--pink);border:none;cursor:pointer;
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:18px;
+  transition:all 0.2s cubic-bezier(.34,1.56,.64,1);
+}
+#modal-close:hover{background:var(--pink2);transform:rotate(90deg) scale(1.1)}
+#modal-code{font-size:11px;letter-spacing:3px;color:var(--text3);margin-bottom:.5rem;font-weight:800;text-transform:uppercase}
+#modal-name{font-size:22px;font-weight:800;color:var(--text);line-height:1.3;margin-bottom:1.2rem;padding-right:2rem}
+#modal-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.4rem}
+#modal-chip-class,#modal-chip-nature{font-size:12px;padding:5px 14px;border-radius:14px}
+#modal-rows{
+  background:var(--white);
+  border-radius:16px;
+  padding:1rem 1.2rem;
+}
+.mrow{
+  display:flex;justify-content:space-between;
+  padding:8px 0;font-size:13px;
+  border-bottom:2px dashed var(--mint);
+}
+.mrow:last-child{border-bottom:none}
+.mrow-label{color:var(--text2);font-weight:700}
+.mrow-val{color:var(--text);font-weight:800;text-align:right;max-width:60%}
+#copy-btn{
+  width:100%;margin-top:1.4rem;padding:13px;
+  border-radius:16px;
+  border:3px solid var(--mint2);
+  background:var(--mint);cursor:pointer;
+  font-size:14px;font-weight:800;color:var(--text);
+  font-family:'Nunito',sans-serif;
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+#copy-btn:hover{
+  background:var(--mint2);
+  transform:scale(1.03);
+  box-shadow:0 8px 24px var(--shadow);
+}
+#copy-btn.copied{border-color:#0d5c35;color:#0d5c35;background:#d4f7e8}
+
+footer{
+  text-align:center;padding:2rem;
+  font-size:12px;color:var(--text2);
+  font-weight:700;
+  position:relative;z-index:10;
+}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--mint)}
+::-webkit-scrollbar-thumb{background:var(--mint3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--text2)}
+
+@media(max-width:540px){
+  #hero{padding:3rem 1rem 2rem}
+  #main{padding:1rem 1rem 3rem}
+  #grid{grid-template-columns:1fr}
+  #stats-bar{gap:1rem}
+  #toolbar{flex-direction:column;align-items:flex-start}
+}
+
+/* STAGGER CARDS */
+.card:nth-child(1){animation-delay:0.05s}
+.card:nth-child(2){animation-delay:0.08s}
+.card:nth-child(3){animation-delay:0.11s}
+.card:nth-child(4){animation-delay:0.14s}
+.card:nth-child(5){animation-delay:0.17s}
+.card:nth-child(6){animation-delay:0.20s}
+.card:nth-child(7){animation-delay:0.23s}
+.card:nth-child(8){animation-delay:0.26s}
+.card:nth-child(9){animation-delay:0.29s}
+.card:nth-child(n+10){animation-delay:0.32s}
+
+/* SPARKLE */
+.sparkle{
+  position:fixed;pointer-events:none;z-index:9999;
+  font-size:18px;
+  animation:sparkleAnim 0.8s ease-out forwards;
+}
+@keyframes sparkleAnim{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)}
+}
+</style>
+</head>
+<body>
+
+<!-- FLOATING BOWS -->
+<div class="bow" style="top:8%;left:5%;animation-delay:0s"><div class="bow-center"></div></div>
+<div class="bow" style="top:15%;right:8%;animation-delay:1.5s"><div class="bow-center"></div></div>
+<div class="bow" style="top:45%;left:2%;animation-delay:3s"><div class="bow-center"></div></div>
+<div class="bow" style="top:70%;right:4%;animation-delay:0.7s"><div class="bow-center"></div></div>
+<div class="bow" style="top:85%;left:8%;animation-delay:2.2s"><div class="bow-center"></div></div>
+<div class="bow" style="top:30%;right:2%;animation-delay:4s"><div class="bow-center"></div></div>
+
+<div id="hero">
+  <!-- BUBBLES -->
+  <div class="bubble" style="width:60px;height:60px;left:10%;top:20%;animation-duration:7s;animation-delay:0s"></div>
+  <div class="bubble" style="width:40px;height:40px;left:80%;top:40%;animation-duration:9s;animation-delay:2s"></div>
+  <div class="bubble" style="width:80px;height:80px;left:50%;top:10%;animation-duration:11s;animation-delay:4s"></div>
+  <div class="bubble" style="width:30px;height:30px;left:30%;top:60%;animation-duration:8s;animation-delay:1s"></div>
+
+  <div id="hero-content" style="position:relative;z-index:1;max-width:640px;margin:0 auto">
+    <div id="badge">✨ SYSCOHADA RÉVISÉ ✨</div>
+    <h1>Plan Comptable<br>OHADA 🌸</h1>
+    <p class="hero-sub">Recherchez parmi les 700+ comptes du référentiel · Classes 1 à 9</p>
+    <div id="search-wrap">
+      <i class="ti ti-search" id="s-icon"></i>
+      <input id="search-box" type="text" placeholder="Numéro, intitulé, classe…" autocomplete="off" spellcheck="false"/>
+      <button id="clear-btn"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="stats-bar">
+      <div class="stat"><strong id="s-total">0</strong><span>comptes</span></div>
+      <div class="stat"><strong>9</strong><span>classes</span></div>
+      <div class="stat"><strong id="s-results">—</strong><span>résultats</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="toolbar">
+    <div id="result-count"></div>
+    <div id="filter-row"></div>
+  </div>
+  <div id="grid"></div>
+  <div id="empty">
+    <span id="empty-emoji">🔍</span>
+    <div id="empty-text">Aucun compte trouvé</div>
+    <div id="empty-sub"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div id="modal">
+    <button id="modal-close"><i class="ti ti-x"></i></button>
+    <div id="modal-code"></div>
+    <div id="modal-name"></div>
+    <div id="modal-chips">
+      <span id="modal-chip-class" class="chip"></span>
+      <span id="modal-chip-nature" class="chip"></span>
+    </div>
+    <div id="modal-rows"></div>
+    <button id="copy-btn">
+      <i class="ti ti-copy"></i>
+      <span id="copy-label">Copier le numéro de compte</span>
+    </button>
+  </div>
+</div>
+
+<footer>💫 Plan Comptable Général OHADA — SYSCOHADA Révisé · Règlement N°01/2017/CM/UEMOA 💫</footer>
+
+<script>
+const PC={10:'CAPITAL',101:'CAPITAL SOCIAL',1011:'Capital souscrit, non appelé',1012:'Capital souscrit, appelé, non versé',1013:'Capital souscrit, appelé, versé, non amorti',1014:'Capital souscrit, appelé, versé, amorti',1018:'Capital souscrit soumis à des conditions particulières',102:'CAPITAL PAR DOTATION',1021:'Dotation initiale',1022:'Dotations complémentaires',1028:'Autres dotations',103:'CAPITAL PERSONNEL',104:"COMPTE DE L'EXPLOITANT",1041:'Apports temporaires',1042:'Opérations courantes',1043:'Rémunérations, impôts et autres charges personnelles',1047:"Prélèvements d'autoconsommation",1048:'Autres prélèvements',105:'PRIMES LIEES AU CAPITAL SOCIAL',1051:"Primes d'émission",1052:"Primes d'apport",1053:'Primes de fusion',1054:'Primes de conversion',1058:'Autres primes',106:'ECARTS DE REEVALUATION',1061:'Ecarts de réévaluation légale',1062:'Ecarts de réévaluation libre',109:'APPORTEURS, CAPITAL SOUSCRIT, NON APPELE',11:'RESERVES',111:'RESERVE LEGALE',112:'RESERVES STATUTAIRES OU CONTRACTUELLES',113:'RESERVES REGLEMENTEES',1131:'Réserves de plus-values nettes à long terme',1132:"Réserves d'attribution gratuite d'actions au personnel salarié et aux dirigeants",1133:"Réserves consécutives à l'octroi de subventions d'investissement",1134:'Réserves des valeurs mobilières donnant accès au capital',1138:'Autres réserves réglementées',118:'AUTRES RESERVES',1181:'Réserves facultatives',1188:'Réserves diverses',12:'REPORT A NOUVEAU',121:'REPORT A NOUVEAU CREDITEUR',129:'REPORT A NOUVEAU DEBITEUR',1291:'Perte nette à reporter',1292:'Perte - Amortissements réputés différés',13:"RESULTAT NET DE L'EXERCICE",130:"RESULTAT EN INSTANCE D'AFFECTATION",1301:"Résultat en instance d'affectation : Bénéfice",1309:"Résultat en instance d'affectation : Perte",131:'RESULTAT NET : BENEFICE',132:'MARGE COMMERCIALE (MC)',133:'VALEUR AJOUTEE (V.A.)',134:"EXCEDENT BRUT D'EXPLOITATION (E.B.E.)",135:"RESULTAT D'EXPLOITATION (R.E.)",136:'RESULTAT FINANCIER (R.F.)',137:'RESULTAT DES ACTIVITES ORDINAIRES (R.A.O.)',138:'RESULTAT HORS ACTIVITES ORDINAIRES (R.H.A.O.)',1381:'Résultat de fusion',1382:"Résultat d'apport partiel d'actif",1383:'Résultat de scission',1384:'Résultat de liquidation',139:'RESULTAT NET : PERTE',14:"SUBVENTIONS D'INVESTISSEMENT",141:"SUBVENTIONS D'EQUIPEMENT",1411:'Etat',1412:'Régions',1413:'Départements',1414:'Communes et collectivités publiques décentralisées',1415:'Entités publiques ou mixtes',1416:'Entités et organismes privés',1417:'Organismes internationaux',1418:'Autres',148:"AUTRES SUBVENTIONS D'INVESTISSEMENT",15:'PROVISIONS REGLEMENTEES ET FONDS ASSIMILES',151:'AMORTISSEMENTS DEROGATOIRES',152:'PLUS-VALUES DE CESSION A REINVESTIR',153:'FONDS REGLEMENTES',1531:'Fonds National',1532:'Prélèvement pour le Budget',154:'PROVISIONS SPECIALES DE REEVALUATION',155:'PROVISIONS REGLEMENTEES RELATIVES AUX IMMOBILISATIONS',1551:'Reconstitution des gisements miniers et pétroliers',156:'PROVISIONS REGLEMENTEES RELATIVES AUX STOCKS',1561:'Hausse de prix',1562:'Fluctuation des cours',157:'PROVISIONS POUR INVESTISSEMENT',158:'AUTRES PROVISIONS ET FONDS REGLEMENTES',16:'EMPRUNTS ET DETTES ASSIMILEES',161:'EMPRUNTS OBLIGATAIRES',1611:'Emprunts obligataires ordinaires',1612:'Emprunts obligataires convertibles en actions',1613:'Emprunts obligataires remboursables en actions',1618:'Autres emprunts obligataires',162:'EMPRUNTS ET DETTES AUPRES DES ETABLISSEMENTS DE CREDIT',163:"AVANCES RECUES DE L'ETAT",164:'AVANCES RECUES ET COMPTES COURANTS BLOQUES',165:'DEPOTS ET CAUTIONNEMENTS RECUES',1651:'Dépôts',166:'INTERETS COURUS',1661:'sur emprunts obligataires',1662:'sur emprunts et dettes auprès des établissements de crédit',1663:"sur avances reçues de l'Etat",1664:'sur avances reçues et comptes courants bloqués',1665:'sur dépôts et cautionnements reçus',1667:'sur avances assorties de conditions particulières',1668:'sur autres emprunts et dettes',167:'AVANCES ASSORTIES DE CONDITIONS PARTICULIERES',168:'AUTRES EMPRUNTS ET DETTES',1681:'Rentes viagères capitalisées',1682:'Billets de fonds',1683:'Dettes consécutives à des titres empruntés',1684:'Emprunts participatifs',1685:'Participation des travailleurs aux bénéfices',1686:'Emprunts et dettes contractés auprès des autres tiers',17:'DETTES DE LOCATION-ACQUISITION',19:'PROVISIONS POUR RISQUES ET CHARGES',191:'PROVISIONS POUR LITIGES',192:'PROVISIONS POUR GARANTIES DONNEES AUX CLIENTS',193:'PROVISIONS POUR PERTES SUR MARCHES A ACHEVEMENT FUTUR',194:'PROVISIONS POUR PERTES DE CHANGE',195:'PROVISIONS POUR IMPOTS',196:'PROVISIONS POUR PENSIONS ET OBLIGATIONS SIMILAIRES',197:'PROVISIONS POUR RESTRUCTURATION',198:'AUTRES PROVISIONS POUR RISQUES ET CHARGES',21:'IMMOBILISATIONS INCORPORELLES',211:'FRAIS DE DEVELOPPEMENT',212:'BREVETS, LICENCES, CONCESSIONS ET DROITS SIMILAIRES',213:'LOGICIELS ET SITES INTERNET',215:'MARQUES',216:'FONDS COMMERCIAL',217:'DROIT AU BAIL',218:'INVESTISSEMENTS DE CREATION',219:'IMMOBILISATIONS INCORPORELLES EN COURS',22:'TERRAINS',221:'TERRAINS AGRICOLES ET FORESTIERS',222:'TERRAINS NUS',223:'TERRAINS BATIS',224:'TRAVAUX DE MISE EN VALEUR DES TERRAINS',225:'TERRAINS DE CARRIERES – TREFONDS',226:'TERRAINS AMENAGES',227:'TERRAINS MIS EN CONCESSION',228:'AUTRES TERRAINS',229:'AMENAGEMENTS DE TERRAINS EN COURS',23:'BATIMENTS, INSTALLATIONS TECHNIQUES ET AGENCEMENTS',231:'BATIMENTS INDUSTRIELS, AGRICOLES, ADMINISTRATIFS ET COMMERCIAUX SUR SOL PROPRE',232:"BATIMENTS SUR SOL D'AUTRUI",233:"OUVRAGES D'INFRASTRUCTURE",234:'AMENAGEMENTS, AGENCEMENTS ET INSTALLATIONS TECHNIQUES',235:'AMENAGEMENTS DE BUREAUX',238:'AUTRES INSTALLATIONS ET AGENCEMENTS',239:'BATIMENTS ET INSTALLATIONS EN COURS',24:'MATERIEL, MOBILIER ET ACTIFS BIOLOGIQUES',241:'MATERIEL ET OUTILLAGE INDUSTRIEL ET COMMERCIAL',242:'MATERIEL ET OUTILLAGE AGRICOLE',244:'MATERIEL ET MOBILIER',245:'MATERIEL DE TRANSPORT',246:'ACTIFS BIOLOGIQUES',248:'AUTRES MATERIELS ET MOBILIERS',249:'MATERIELS ET ACTIFS BIOLOGIQUES EN COURS',25:'AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS',26:'TITRES DE PARTICIPATION',261:'TITRES DE PARTICIPATION – CONTROLE EXCLUSIF',262:'TITRES DE PARTICIPATION – CONTROLE CONJOINT',263:'TITRES DE PARTICIPATION – INFLUENCE NOTABLE',265:'PARTICIPATIONS DANS DES ORGANISMES PROFESSIONNELS',268:'AUTRES TITRES DE PARTICIPATION',27:'AUTRES IMMOBILISATIONS FINANCIERES',28:'AMORTISSEMENTS',281:'AMORTISSEMENTS DES IMMOBILISATIONS INCORPORELLES',282:'AMORTISSEMENTS DES TERRAINS',283:'AMORTISSEMENTS DES BATIMENTS, INSTALLATIONS ET AGENCEMENTS',284:'AMORTISSEMENTS DU MATERIEL',29:'DEPRECIATIONS DES IMMOBILISATIONS',291:'DEPRECIATIONS DES IMMOBILISATIONS INCORPORELLES',292:'DEPRECIATIONS DES TERRAINS',293:'DEPRECIATIONS DES BATIMENTS, INSTALLATIONS ET AGENCEMENTS',294:"DEPRECIATIONS DE MATERIEL, DU MOBILIER ET DE L'ACTIF BIOLOGIQUE",295:'DEPRECIATIONS DES AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS',296:'DEPRECIATIONS DES TITRES DE PARTICIPATION',297:'DEPRECIATIONS DES AUTRES IMMOBILISATIONS FINANCIERES',31:'MARCHANDISES',311:'MARCHANDISES A',312:'MARCHANDISES B',313:'ACTIFS BIOLOGIQUES (marchandises)',318:'MARCHANDISES HORS ACTIVITES ORDINAIRES (H.A.O.)',32:'MATIERES PREMIERES ET FOURNITURES LIEES',321:'MATIERES A',322:'MATIERES B',33:'AUTRES APPROVISIONNEMENTS',331:'MATIERES CONSOMMABLES',332:"FOURNITURES D'ATELIER ET D'USINE",333:'FOURNITURES DE MAGASIN',334:'FOURNITURES DE BUREAU',335:'EMBALLAGES',338:'AUTRES MATIERES',34:'PRODUITS EN COURS',35:'SERVICES EN COURS',36:'PRODUITS FINIS',361:'PRODUITS FINIS A',362:'PRODUITS FINIS B',37:'PRODUITS INTERMEDIAIRES ET RESIDUELS',371:'PRODUITS INTERMEDIAIRES',372:'PRODUITS RESIDUELS',38:'STOCKS EN COURS DE ROUTE, EN CONSIGNATION OU EN DEPOT',39:'DEPRECIATIONS DES STOCKS ET ENCOURS DE PRODUCTION',40:'FOURNISSEURS ET COMPTES RATTACHES',401:'FOURNISSEURS, DETTES EN COMPTE',402:'FOURNISSEURS, EFFETS A PAYER',408:'FOURNISSEURS, FACTURES NON PARVENUES',409:'FOURNISSEURS DEBITEURS',41:'CLIENTS ET COMPTES RATTACHES',411:'CLIENTS',412:'CLIENTS, EFFETS A RECEVOIR EN PORTEFEUILLE',413:'CLIENTS, CHEQUES, EFFETS ET AUTRES VALEURS IMPAYES',418:'CLIENTS, PRODUITS A RECEVOIR',419:'CLIENTS CREDITEURS',42:'PERSONNEL',421:'PERSONNEL, AVANCES ET ACOMPTES',422:'PERSONNEL, REMUNERATIONS DUES',424:'PERSONNEL, OEUVRES SOCIALES INTERNES',426:'PERSONNEL, PARTICIPATION AUX BENEFICES ET AU CAPITAL',43:'ORGANISMES SOCIAUX',431:'SECURITE SOCIALE',432:'CAISSES DE RETRAITE COMPLEMENTAIRE',433:'AUTRES ORGANISMES SOCIAUX',44:'ETAT ET COLLECTIVITES PUBLIQUES',441:"ETAT, IMPOT SUR LES BENEFICES",442:'ETAT, AUTRES IMPOTS ET TAXES',443:'ETAT, T.V.A. FACTUREE',444:'ETAT, T.V.A. DUE OU CREDIT DE T.V.A.',445:'ETAT, T.V.A. RECUPERABLE',447:'ETAT, IMPOTS RETENUS A LA SOURCE',448:'ETAT, CHARGES A PAYER ET PRODUITS A RECEVOIR',449:'ETAT, CREANCES ET DETTES DIVERSES',45:'ORGANISMES INTERNATIONAUX',46:'APPORTEURS, ASSOCIES ET GROUPE',461:'APPORTEURS',462:'ASSOCIES, COMPTES COURANTS',465:'ASSOCIES, DIVIDENDES A PAYER',466:'GROUPE, COMPTES COURANTS',47:'DEBITEURS ET CREDITEURS DIVERS',471:'DEBITEURS ET CREDITEURS DIVERS',476:"CHARGES CONSTATEES D'AVANCE",477:"PRODUITS CONSTATES D'AVANCE",478:'ECARTS DE CONVERSION - ACTIF',479:'ECARTS DE CONVERSION - PASSIF',48:'CREANCES ET DETTES HORS ACTIVITES ORDINAIRES (HAO)',481:"FOURNISSEURS D'INVESTISSEMENTS",485:"CREANCES SUR CESSIONS D'IMMOBILISATIONS",488:'AUTRES CREANCES HORS ACTIVITES ORDINAIRES (H.A.O.)',49:'DEPRECIATIONS ET PROVISIONS POUR RISQUES A COURT TERME (TIERS)',491:'DEPRECIATIONS DES COMPTES CLIENTS',497:'DEPRECIATIONS DES COMPTES DEBITEURS DIVERS',499:'PROVISIONS POUR RISQUES A COURT TERME',50:'TITRES DE PLACEMENT',501:'TITRES DU TRESOR ET BONS DE CAISSE A COURT TERME',502:'ACTIONS',503:'OBLIGATIONS',506:'INTERETS COURUS (titres de placement)',508:'AUTRES TITRES DE PLACEMENT ET CREANCES ASSIMILEES',51:'VALEURS A ENCAISSER',511:'EFFETS A ENCAISSER',513:'CHEQUES A ENCAISSER',515:'CARTES DE CREDIT A ENCAISSER',52:'BANQUES',521:'BANQUES LOCALES',522:'BANQUES AUTRES ETATS REGION',523:'BANQUES AUTRES ETATS ZONE MONETAIRE',524:'BANQUES HORS ZONE MONETAIRE',525:'BANQUES DEPOT A TERME',526:'BANQUES, INTERETS COURUS',53:'ETABLISSEMENTS FINANCIERS ET ASSIMILES',531:'CHEQUES POSTAUX',532:'TRESOR',54:'INSTRUMENTS DE TRESORERIE',55:'INSTRUMENTS DE MONNAIE ELECTRONIQUE',551:'MONNAIE ELECTRONIQUE - CARTE CARBURANT',552:'MONNAIE ELECTRONIQUE - TELEPHONE PORTABLE',554:'PORTE-MONNAIE ELECTRONIQUE',56:"BANQUES, CREDITS DE TRESORERIE ET D'ESCOMPTE",561:'CREDITS DE TRESORERIE',57:'CAISSE',571:'CAISSE SIEGE SOCIAL',572:'CAISSE SUCCURSALE A',58:"REGIES D'AVANCES, ACCREDITIFS ET VIREMENTS",59:'DEPRECIATIONS ET PROVISIONS POUR RISQUE A COURT TERME (trésorerie)',60:'ACHATS ET VARIATIONS DE STOCKS',601:'ACHATS DE MARCHANDISES',602:'ACHATS DE MATIERES PREMIERES ET FOURNITURES LIEES',603:'VARIATIONS DES STOCKS DE BIENS ACHETES',604:'ACHATS STOCKES DE MATIERES ET FOURNITURES CONSOMMABLES',605:'AUTRES ACHATS',61:'TRANSPORTS',612:'TRANSPORTS SUR VENTES',614:'TRANSPORTS DU PERSONNEL',618:'AUTRES FRAIS DE TRANSPORT',62:'SERVICES EXTERIEURS',621:'SOUS-TRAITANCE GENERALE',622:'LOCATIONS, CHARGES LOCATIVES',623:'REDEVANCES DE LOCATION-ACQUISITION',624:'ENTRETIEN, REPARATIONS, REMISE EN ETAT ET MAINTENANCE',625:"PRIMES D'ASSURANCE",626:'ETUDES, RECHERCHES ET DOCUMENTATION',627:'PUBLICITE, PUBLICATIONS, RELATIONS PUBLIQUES',628:'FRAIS DE TELECOMMUNICATIONS',63:'AUTRES SERVICES EXTERIEURS',631:'FRAIS BANCAIRES',632:"REMUNERATIONS D'INTERMEDIAIRES ET DE CONSEILS",633:'FRAIS DE FORMATION DU PERSONNEL',634:'REDEVANCES POUR BREVETS, LICENCES, LOGICIELS, CONCESSIONS ET DROITS SIMILAIRES',635:'COTISATIONS',638:'AUTRES CHARGES EXTERNES',64:'IMPOTS ET TAXES',641:'IMPOTS ET TAXES DIRECTS',645:'IMPOTS ET TAXES INDIRECTS',647:'PENALITES, AMENDES FISCALES',648:'AUTRES IMPOTS ET TAXES',65:'AUTRES CHARGES',651:'PERTES SUR CREANCES CLIENTS ET AUTRES DEBITEURS',654:"VALEURS COMPTABLES DES CESSIONS COURANTES D'IMMOBILISATIONS",656:'PERTE DE CHANGE SUR CREANCES ET DETTES COMMERCIALES',658:'CHARGES DIVERSES',66:'CHARGES DE PERSONNEL',661:'REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NATIONAL',662:'REMUNERATIONS DIRECTES VERSEES AU PERSONNEL NON NATIONAL',663:'INDEMNITES FORFAITAIRES VERSEES AU PERSONNEL',664:'CHARGES SOCIALES',668:'AUTRES CHARGES SOCIALES',67:'FRAIS FINANCIERS ET CHARGES ASSIMILEES',671:'INTERETS DES EMPRUNTS',673:'ESCOMPTES ACCORDES',676:'PERTES DE CHANGE FINANCIERES',677:'PERTES SUR TITRES DE PLACEMENT',68:'DOTATIONS AUX AMORTISSEMENTS',681:"DOTATIONS AUX AMORTISSEMENTS D'EXPLOITATION",69:'DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS',691:"DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS D'EXPLOITATION",697:'DOTATIONS AUX PROVISIONS ET AUX DEPRECIATIONS FINANCIERES',701:'VENTES DE MARCHANDISES',702:'VENTES DE PRODUITS FINIS',703:'VENTES DE PRODUITS INTERMEDIAIRES',704:'VENTES DE PRODUITS RESIDUELS',705:'TRAVAUX FACTURES',706:'SERVICES VENDUS',707:'PRODUITS ACCESSOIRES',71:"SUBVENTIONS D'EXPLOITATION",72:'PRODUCTION IMMOBILISEE',721:'IMMOBILISATIONS INCORPORELLES (production)',722:'IMMOBILISATIONS CORPORELLES (production)',73:'VARIATIONS DES STOCKS DE BIENS ET DE SERVICES PRODUITS',75:'AUTRES PRODUITS',751:'PROFITS SUR CREANCES CLIENTS ET AUTRES DEBITEURS',754:"PRODUITS DES CESSIONS COURANTES D'IMMOBILISATIONS",756:'GAINS DE CHANGE SUR CREANCES ET DETTES COMMERCIALES',758:'PRODUITS DIVERS',77:'REVENUS FINANCIERS ET PRODUITS ASSIMILES',771:'INTERETS DE PRETS ET CREANCES DIVERSES',772:'REVENUS DE PARTICIPATIONS ET AUTRES TITRES IMMOBILISES',773:'ESCOMPTES OBTENUS',774:'REVENUS DE PLACEMENT',776:'GAINS DE CHANGE FINANCIERS',777:'GAINS SUR CESSIONS DE TITRES DE PLACEMENT',78:'TRANSFERTS DE CHARGES',79:'REPRISES DE PROVISIONS, DE DEPRECIATIONS ET AUTRES',791:"REPRISES DE PROVISIONS ET DEPRECIATIONS D'EXPLOITATION",797:'REPRISES DE PROVISIONS ET DEPRECIATIONS FINANCIERES',81:"VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS",811:'IMMOBILISATIONS INCORPORELLES',812:'IMMOBILISATIONS CORPORELLES',816:'IMMOBILISATIONS FINANCIERES',82:"PRODUITS DES CESSIONS D'IMMOBILISATIONS",83:'CHARGES HORS ACTIVITES ORDINAIRES',831:'CHARGES H.A.O. CONSTATEES',835:'DONS ET LIBERALITES ACCORDES',84:'PRODUITS HORS ACTIVITES ORDINAIRES',841:'PRODUITS H.A.O CONSTATES',845:'DONS ET LIBERALITES OBTENUS',85:'DOTATIONS HORS ACTIVITES ORDINAIRES',851:'DOTATIONS AUX PROVISIONS REGLEMENTEES',86:'REPRISES DE CHARGES, PROVISIONS ET DEPRECIATIONS HAO',87:'PARTICIPATION DES TRAVAILLEURS',871:'PARTICIPATION LEGALE AUX BENEFICES',89:'IMPOTS SUR LE RESULTAT',891:"IMPOTS SUR LES BENEFICES DE L'EXERCICE",895:'IMPOT MINIMUM FORFAITAIRE (I.M.F.)',90:'ENGAGEMENTS OBTENUS ET ENGAGEMENTS ACCORDES',901:'ENGAGEMENTS DE FINANCEMENT OBTENUS',902:'ENGAGEMENTS DE GARANTIE OBTENUS',903:'ENGAGEMENTS RECIPROQUES',905:'ENGAGEMENTS DE FINANCEMENT ACCORDES',906:'ENGAGEMENTS DE GARANTIE ACCORDES',907:'ENGAGEMENTS RECIPROQUES ACCORDES',908:'AUTRES ENGAGEMENTS ACCORDES'};
+
+const CLASS_NAMES={1:'Capitaux',2:'Immobilisations',3:'Stocks',4:'Tiers',5:'Trésorerie',6:'Charges',7:'Produits',8:'Spéciaux',9:'Engagements'};
+const NATURE_MAP={1:'Passif',2:'Actif',3:'Actif',4:'Mixte',5:'Actif',6:'Charge',7:'Produit',8:'Spécial',9:'Hors bilan'};
+const NATURE_CSS={'Passif':'cn-Passif','Actif':'cn-Actif','Charge':'cn-Charge','Produit':'cn-Produit','Mixte':'cn-Mixte','Spécial':'cn-Spécial','Hors bilan':'cn-Hors','—':'cn-—'};
+
+const CLASS_EMOJIS={1:'💰',2:'🏗️',3:'📦',4:'🤝',5:'🏦',6:'💸',7:'📈',8:'⭐',9:'📋'};
+
+const DATA=Object.entries(PC).filter(([k])=>!isNaN(parseInt(k))).map(([k,v])=>{
+  const code=String(k);const cls=parseInt(code[0]);
+  return{code,name:v,class:cls,className:CLASS_NAMES[cls]||'Autre',nature:NATURE_MAP[cls]||'—'};
+});
+
+const $=id=>document.getElementById(id);
+$('s-total').textContent=DATA.length;
+
+let activeFilter='all',currentQ='';
+
+function escape(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function hi(text,q){
+  if(!q)return escape(text);
+  const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+  return escape(text).replace(re,'<mark>$1</mark>');
+}
+
+function spawnSparkle(e){
+  const s=document.createElement('div');
+  s.className='sparkle';
+  const emojis=['✨','⭐','💫','🌟','✦'];
+  s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+  const dx=(Math.random()-0.5)*80;
+  const dy=-(20+Math.random()*60);
+  s.style.cssText=`left:${e.clientX}px;top:${e.clientY}px;--dx:${dx}px;--dy:${dy}px`;
+  document.body.appendChild(s);
+  s.addEventListener('animationend',()=>s.remove());
+}
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('.card')||e.target.closest('#copy-btn')||e.target.closest('.filter-pill'))spawnSparkle(e);
+});
+
+function doSearch(){
+  const q=currentQ.trim().toLowerCase();
+  let res=DATA;
+  if(q)res=DATA.filter(d=>d.code.includes(q)||d.name.toLowerCase().includes(q)||d.className.toLowerCase().includes(q)||d.nature.toLowerCase().includes(q));
+  if(activeFilter!=='all'){const f=parseInt(activeFilter);res=res.filter(d=>d.class===f);}
+  $('s-results').textContent=res.length;
+  if(res.length===0){
+    $('grid').innerHTML='';$('empty').style.display='block';
+    $('empty-emoji').textContent=q?'🔍':'🌸';
+    $('empty-sub').textContent=q?'Essayez un autre numéro ou intitulé':'Aucun compte dans cette classe';
+    $('result-count').textContent='';return;
+  }
+  $('empty').style.display='none';
+  const show=res.slice(0,150);
+  $('result-count').textContent=res.length+' résultat'+(res.length>1?'s':'')+(res.length>150?' · 150 affichés':'');
+  $('grid').innerHTML=show.map(d=>`
+    <div class="card" tabindex="0" data-code="${d.code}">
+      <div class="card-num">${CLASS_EMOJIS[d.class]||''} ${hi(d.code,q)}</div>
+      <div class="card-name">${hi(d.name,q)}</div>
+      <div class="card-meta">
+        <span class="chip chip-class">Classe ${d.class} · ${d.className}</span>
+        <span class="chip ${NATURE_CSS[d.nature]||'cn-—'}">${d.nature}</span>
+      </div>
+    </div>`).join('');
+  $('grid').querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('click',()=>showDetail(card.dataset.code));
+    card.addEventListener('keydown',e=>{if(e.key==='Enter')showDetail(card.dataset.code);});
+  });
+}
+
+function buildFilters(){
+  const counts={};DATA.forEach(d=>{counts[d.class]=(counts[d.class]||0)+1;});
+  const fr=$('filter-row');
+  const all=document.createElement('button');
+  all.className='filter-pill active';all.textContent='🌸 Toutes les classes';all.dataset.f='all';
+  all.addEventListener('click',()=>{
+    activeFilter='all';
+    fr.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
+    all.classList.add('active');doSearch();
+  });
+  fr.appendChild(all);
+  [1,2,3,4,5,6,7,8,9].forEach(c=>{
+    if(!counts[c])return;
+    const btn=document.createElement('button');
+    btn.className='filter-pill';
+    btn.textContent=`${CLASS_EMOJIS[c]||''} ${CLASS_NAMES[c]||'Autre'}`;
+    btn.dataset.f=String(c);
+    btn.addEventListener('click',()=>{
+      activeFilter=String(c);
+      fr.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');doSearch();
+    });
+    fr.appendChild(btn);
+  });
+}
+
+function showDetail(code){
+  const d=DATA.find(x=>x.code===code);if(!d)return;
+  const depth=d.code.length;
+  const depthLabel={1:'Classe',2:'Groupe',3:'Compte principal',4:'Compte',5:'Sous-compte',6:'Sous-compte détaillé'}[depth]||'Compte';
+  $('modal-code').textContent='✨ COMPTE '+d.code;
+  $('modal-name').textContent=d.name;
+  $('modal-chip-class').className='chip chip-class';
+  $('modal-chip-class').textContent=`${CLASS_EMOJIS[d.class]||''} Classe ${d.class} · ${d.className}`;
+  $('modal-chip-nature').className='chip '+(NATURE_CSS[d.nature]||'cn-—');
+  $('modal-chip-nature').textContent=d.nature;
+  $('modal-rows').innerHTML=`
+    <div class="mrow"><span class="mrow-label">Numéro</span><span class="mrow-val">${d.code}</span></div>
+    <div class="mrow"><span class="mrow-label">Niveau</span><span class="mrow-val">${depthLabel}</span></div>
+    <div class="mrow"><span class="mrow-label">Classe</span><span class="mrow-val">${d.class} · ${d.className}</span></div>
+    <div class="mrow"><span class="mrow-label">Nature</span><span class="mrow-val">${d.nature}</span></div>
+  `;
+  $('copy-btn').className='';
+  $('copy-label').textContent='Copier le numéro de compte';
+  $('copy-btn').onclick=()=>{
+    navigator.clipboard.writeText(d.code).catch(()=>{});
+    $('copy-btn').className='copied';
+    $('copy-label').textContent='Copié ! 🎉';
+    setTimeout(()=>{$('copy-btn').className='';$('copy-label').textContent='Copier le numéro de compte';},1800);
+  };
+  $('overlay').classList.add('open');
+  $('modal-close').focus();
+}
+
+$('modal-close').addEventListener('click',()=>$('overlay').classList.remove('open'));
+$('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))$('overlay').classList.remove('open');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('overlay').classList.remove('open');});
+
+const searchEl=$('search-box');
+const clearBtn=$('clear-btn');
+searchEl.addEventListener('input',()=>{
+  currentQ=searchEl.value;
+  clearBtn.classList.toggle('show',currentQ.length>0);
+  doSearch();
+});
+clearBtn.addEventListener('click',()=>{
+  searchEl.value='';currentQ='';
+  clearBtn.classList.remove('show');
+  searchEl.focus();doSearch();
+});
+
+buildFilters();
+doSearch();
+</script>
+</body>
+</html>
