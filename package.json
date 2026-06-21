@@ -1,48 +1,16 @@
 {
-  "name": "COMEO",
-  "version": "2.0.0",
-  "description": "Plan Comptable SYSCOHADA Révisé — Application Web Progressive (PWA)",
-  "author": "COMEO",
-  "license": "MIT",
-  "private": true,
-  "homepage": ".",
-  "keywords": [
-    "syscohada",
-    "ohada",
-    "plan-comptable",
-    "comptabilite",
-    "afrique",
-    "pwa",
-    "offline"
-  ],
+  "name": "COMEO AI ",
+  "version": "1.0.0",
+  "main": "main.js",
   "scripts": {
-    "build": "echo 'Site statique - aucun build requis'",
-    "start": "npx serve . -p 3000 --no-clipboard",
-    "dev": "npx live-server --port=3000 --open=index.html",
-    "serve": "npx serve . -p 3000",
-    "preview": "npx serve . -l 3000"
+    "start": "electron .",
+    "build": "electron-builder"
   },
-  "dependencies": {},
-  "devDependencies": {
-    "serve": "^14.2.0"
-  },
-  "pwa": {
-    "name": "COMEO",
-    "short_name": "SYSCOHADA",
-    "theme_color": "#0a0e1a",
-    "background_color": "#060910",
-    "display": "standalone",
-    "scope": "/",
-    "start_url": "/index.html"
-  },
-  "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions"
-  ],
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+  "build": {
+    "appId": "com.comeo.app",
+    "productName": "Comeo",
+    "win": {
+      "target": "nsis"
+    }
   }
 }
